@@ -1,2 +1,3 @@
-# PhD_Chapter1
-Chapter 1 analysis - including population synchrony for birds and butterflies, and functional connectivity analysis for JNCC &amp; Defra
+# PhD R script
+
+Includes Chapter 1 => Population synchrony/functional connectivity analysis for birds and butterflies
