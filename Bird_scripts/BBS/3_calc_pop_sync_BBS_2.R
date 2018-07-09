@@ -39,7 +39,7 @@ final_pair_data <- NULL
 final_summ_stats <- NULL
 final_summary <- NULL
 ### split based on species ###
-for(g in spp.list){
+for(g in spp.list[8:31]){
 
 # loop through spp.list 
   spp_data <- final_data[final_data$name==g,]
@@ -139,7 +139,7 @@ for(g in spp.list){
   }
 }
 
-write.csv(final_summary, file="../Data/Bird_sync_data/BBS_summary_1_7.csv", row.names=FALSE) 
+write.csv(final_summary, file="../Data/Bird_sync_data/BBS_summary_8_31.csv", row.names=FALSE) 
 
     CCF1 <- CCF
     ## rank by numYears
