@@ -11,6 +11,7 @@
 rm(list=ls()) # clear R
 
 library(lme4)
+library(lmerTest)
 
 ################################
 ## CREATE PAIR ATTRIBUTE DATA ##
@@ -79,12 +80,21 @@ pair_attr$spp <- as.factor(pair_attr$spp)
 pair_attr$end.year <- as.factor(pair_attr$end.year)
 pair_attr$mid.year <- as.factor(pair_attr$mid.year)
 
+## model without intercept
+all_spp_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
+### save results for northing, distance and hab sim
+fixed_results <- data.frame(summary(all_spp_model)$coefficients[,1:5])
+fixed_results$parameter <- paste(row.names(fixed_results))
+rownames(fixed_results) <- 1:nrow(fixed_results)
+## remove mid.year rows and intercept
+fixed_results <- fixed_results[-c(1,5:15),]
+## save results
+write.csv(fixed_results, file = "../Results/Model_outputs/fixed_effect_results_cbc.csv", row.names=FALSE)
+
+
 all_spp_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp)-1, data = pair_attr)
 summary(all_spp_model) 
 anova(all_spp_model)
-
-# results_table_full_model_bbs <- data.frame(summary(all_spp_model)$coefficients[,1:5])
-# write.csv(results_table_full_model_bbs, file = "../Results/Model_outputs/full_model_bbs.csv", row.names=TRUE)
 
 ### check model fit ###
 plot(all_spp_model)
