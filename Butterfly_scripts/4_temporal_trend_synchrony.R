@@ -99,15 +99,23 @@ pair_attr$pair.id <- as.character(pair_attr$pair.id)
 ###############################################
 length(unique(pair_attr$spp)) ## 33 species
 
+## model without intercept
+all_spp_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
+### save results for northing, distance and hab sim
+fixed_results <- data.frame(summary(all_spp_model)$coefficients[,1:5])
+fixed_results$parameter <- paste(row.names(fixed_results))
+rownames(fixed_results) <- 1:nrow(fixed_results)
+## remove mid.year rows
+fixed_results <- fixed_results[-c(1,5:31),]
+## save results
+write.csv(fixed_results, file = "../Results/Model_outputs/fixed_effect_results_ukbms.csv", row.names=FALSE)
+
 ##  model to produce aggregate FCI model for all 33 species - no intercept and no migrants ##
 all_spp_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp)-1, data = pair_attr)
 summary(all_spp_model) 
 anova(all_spp_model)
 
-# results_table_full_model_ukbms <- data.frame(summary(all_spp_model)$coefficients[,1:5])
-# write.csv(results_table_full_model_ukbms, file = "../Results/Model_outputs/full_model_ukbms.csv", row.names=TRUE)
-
-## save and plot results ## 
+# save and plot results ## 
 results_table_all_spp <- data.frame(summary(all_spp_model)$coefficients[,1:3])
 
 ## change names and add in parameter column ##
