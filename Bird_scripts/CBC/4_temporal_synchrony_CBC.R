@@ -75,12 +75,21 @@ pair_attr$mid.year <- as.factor(pair_attr$mid.year)
 ##  model to produce one line for all species ##
 ################################################
 
+## model without intercept
+all_spp_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
+### save results for northing, distance and hab sim
+fixed_results <- data.frame(summary(all_spp_model)$coefficients[,1:5])
+fixed_results$parameter <- paste(row.names(fixed_results))
+rownames(fixed_results) <- 1:nrow(fixed_results)
+## remove mid.year rows
+fixed_results <- fixed_results[-c(4:15),]
+## save results
+write.csv(fixed_results, file = "../Results/Model_outputs/fixed_effect_results_cbc.csv", row.names=FALSE)
+
+## model with intercept
 all_spp_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp)-1, data = pair_attr)
 summary(all_spp_model) 
 anova(all_spp_model)
-
-# results_table_full_model_cbc <- data.frame(summary(all_spp_model)$coefficients[,1:5])
-# write.csv(results_table_full_model_cbc, file = "../Results/Model_outputs/full_model_cbc.csv", row.names=TRUE)
 
 ### check model fit ###
 plot(all_spp_model)
