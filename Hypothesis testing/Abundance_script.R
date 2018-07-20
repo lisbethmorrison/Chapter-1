@@ -6,21 +6,21 @@
 #############################################################################
 
 rm(list=ls()) # clear R
-library(plyr)
-library(dplyr) # load packages
+library(plyr) # load packages
+library(dplyr) 
 library(lme4)
 library(ggplot2)
 library(lmerTest)
+library(plotrix)
 options(scipen=999)
 
-# remove.packages(c("lme4", "data.table"))
-# install.packages('Rcpp', dependencies = TRUE)
-# install.packages('lme4', dependencies = TRUE)
-# install.packages('data.table', dependencies = TRUE)
 
-
-################################# AVERAGE ABUNDANCE IN FULL MODEL #####################################
+################################# AVERAGE SYNCHRONY #####################################
  
+###################################
+#### Abundance model for UKBMS ####
+###################################
+
 ## read data
 pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE)
 pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE)
@@ -46,34 +46,17 @@ pair_attr$distance <- (pair_attr$distance - mean(na.omit(pair_attr$distance)))/s
 pair_attr$mean_northing <- (pair_attr$mean_northing - mean(na.omit(pair_attr$mean_northing)))/sd(na.omit(pair_attr$mean_northing))
 pair_attr$renk_hab_sim <- (pair_attr$renk_hab_sim - mean(na.omit(pair_attr$renk_hab_sim)))/sd(na.omit(pair_attr$renk_hab_sim))
 
-model_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
-pair_attr$residuals <- resid(model_ukbms)
-pair_attr$fit <- fitted(model_ukbms)
-
-qqnorm(resid(model_ukbms)) # A quantile normal plot - good for checking normality
-qqline(resid(model_ukbms))
-
-library(plotrix)
-summary <- pair_attr %>% group_by(spp, average_abundance) %>% 
-  summarise_at(vars(residuals), funs(mean,std.error))
-# summary <- summary[!summary$spp == "18", ]
-ggplot(summary, aes(x = average_abundance, y = mean)) +
-  geom_point(size = 1) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error))
-
 ### full model with average_abundance as a measure of commonness
 common_model_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + average_abundance + (1|pair.id) + (1|spp), data = pair_attr)
 summary(common_model_ukbms)
 anova(common_model_ukbms)
-library(MuMIn)
-r.squaredGLMM(common_model_ukbms)
 ## significant, p=0.039 (positive relationship)
 
-## plot graph
+## predict data to plot graphs
 newdata_ukbms <- expand.grid(mean_northing=mean(pair_attr$mean_northing), distance=mean(pair_attr$distance), 
-                           renk_hab_sim=mean(pair_attr$renk_hab_sim), pair.id=sample(pair_attr$pair.id,10),
-                           mid.year=mean(pair_attr$mid.year), spp=sample(pair_attr$spp,10),
-                           average_abundance=unique(pair_attr$average_abundance))
+                             renk_hab_sim=mean(pair_attr$renk_hab_sim), pair.id=sample(pair_attr$pair.id,10),
+                             mid.year=mean(pair_attr$mid.year), spp=sample(pair_attr$spp,10),
+                             average_abundance=unique(pair_attr$average_abundance))
 newdata_ukbms$lag0 <- predict(common_model_ukbms, newdata=newdata_ukbms, re.form=NA)
 
 mm <- model.matrix(terms(common_model_ukbms), newdata_ukbms)
@@ -89,53 +72,65 @@ newdata_ukbms <- data.frame(
   , thi = newdata_ukbms$lag0+1.96*sqrt(tvar)
 )
 
+## run model without abundance and species random effect to get residuals from graph
+model_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data = pair_attr)
+pair_attr$residuals <- resid(model_ukbms) ## save residuals
+
+## create new dataframe to calculate mean, SD and SE of residuals for each species
+summary_ukbms <- pair_attr %>% group_by(spp, average_abundance) %>% 
+  summarise_at(vars(residuals), funs(mean,std.error,sd))
+
+## plot graph with raw data residuals (+SE error bars) and fitted line
 png("../Graphs/Abundance/Common_average_predicted_ukbms.png", height = 100, width = 120, units = "mm", res = 300)
+ggplot(summary_ukbms, aes(x = average_abundance, y = mean)) +
+  geom_point(size = 1, colour="grey") +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey") +
+  geom_line(data=newdata_ukbms, aes(x=average_abundance, y=lag0), colour="black", lwd=0.5) +
+  labs(x="Average population abundance", y="Population synchrony") +
+  theme_bw() +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+dev.off()
+
+## plot graph with fitted line and confidence interval shaded error
+png("../Graphs/Abundance/Common_average_predicted_ukbms2.png", height = 100, width = 120, units = "mm", res = 300)
 ggplot(newdata_ukbms, aes(x=average_abundance, y=lag0)) +
   geom_line() +
   geom_ribbon(aes(ymin = plo, ymax = phi), alpha=0.2, lwd=0.5) +
-  labs(x="Population abundance", y="Population synchrony") +
+  labs(x="Average population abundance", y="Population synchrony") +
   theme_bw() +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 dev.off()
 
 
-######### CBC BIRDS #############
+#################################
+#### Abundance model for CBC ####
+#################################
+
 ## merge the two datasets
 pair_attr_CBC <- merge(pair_attr_CBC, bird_common, by.x="spp", by.y="species_code", all=FALSE)
 
 ## rescale variables
-#pair_attr_CBC$pop_estimate <- (pair_attr_CBC$pop_estimate - mean(na.omit(pair_attr_CBC$pop_estimate)))/sd(na.omit(pair_attr_CBC$pop_estimate))
-pair_attr_CBC$pop_estimate_log <- log10(pair_attr_CBC$pop_estimate)
+pair_attr_CBC$pop_estimate <- (pair_attr_CBC$pop_estimate - mean(na.omit(pair_attr_CBC$pop_estimate)))/sd(na.omit(pair_attr_CBC$pop_estimate))
 pair_attr_CBC$distance <- (pair_attr_CBC$distance - mean(na.omit(pair_attr_CBC$distance)))/sd(na.omit(pair_attr_CBC$distance))
 pair_attr_CBC$mean_northing <- (pair_attr_CBC$mean_northing - mean(na.omit(pair_attr_CBC$mean_northing)))/sd(na.omit(pair_attr_CBC$mean_northing))
 ## remove columns not needed (region, season, unit, year)
 pair_attr_CBC <- pair_attr_CBC[-c(21:22,24:26)]
 summary(pair_attr_CBC)
 
-model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr_CBC)
-pair_attr_CBC$residuals <- resid(model_cbc)
-
-library(plotrix)
-summary <- pair_attr_CBC %>% group_by(spp, pop_estimate_log) %>% 
-  summarise_at(vars(residuals), funs(mean,std.error))
-# summary <- summary[!summary$spp == "18", ]
-ggplot(summary, aes(x = pop_estimate_log, y = mean)) +
-  geom_point(size = 1) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error))
-
 
 ### full model with pop_estimate as a measure of commonness
-common_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + pop_estimate_log + (1|pair.id) + (1|spp), data = pair_attr_CBC)
+common_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + pop_estimate + (1|pair.id) + (1|spp), data = pair_attr_CBC)
 summary(common_model_cbc)
 anova(common_model_cbc)
 ## significant (p=0.0018)
 
-## plot graph
+## predict new data to plot graph
 newdata_cbc <- expand.grid(mean_northing=mean(pair_attr_CBC$mean_northing), distance=mean(pair_attr_CBC$distance), 
                        hab_sim=mean(pair_attr_CBC$hab_sim), pair.id=sample(pair_attr_CBC$pair.id,10),
                        mid.year=mean(pair_attr_CBC$mid.year), spp=sample(pair_attr_CBC$spp,10),
-                       pop_estimate_log=unique(pair_attr_CBC$pop_estimate_log))
+                       pop_estimate=unique(pair_attr_CBC$pop_estimate))
 newdata_cbc$lag0 <- predict(common_model_cbc, newdata=newdata_cbc, re.form=NA)
 
 mm2 <- model.matrix(terms(common_model_cbc), newdata_cbc)
@@ -151,43 +146,41 @@ newdata_cbc <- data.frame(
   , thi = newdata_cbc$lag0+1.96*sqrt(tvar2)
 )
 
-png("../Graphs/Abundance/Common_average_predicted_cbc.png", height = 100, width = 120, units = "mm", res = 300)
-ggplot(newdata_cbc, aes(x=pop_estimate_log, y=lag0)) +
-  geom_line() +
-  geom_ribbon(aes(ymin = plo, ymax = phi), alpha=0.2, lwd=0.5) +
-  labs(x="Population Estimate", y="Population synchrony") +
+## model without abundance and species random effect to get residuals for graph
+model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id), data = pair_attr_CBC)
+pair_attr_CBC$residuals <- resid(model_cbc)
+
+## create new dataframe to calculate mean, SD and SE of residuals for each species
+summary_cbc <- pair_attr_CBC %>% group_by(spp, pop_estimate) %>% 
+  summarise_at(vars(residuals), funs(mean,std.error,sd))
+
+## plot graph with raw data residuals (+SE error bars) and fitted line
+png("../Graphs/Abundance/Common_average_predicted_cbc.png", height = 150, width = 200, units = "mm", res = 300)
+ggplot(summary_cbc, aes(x = pop_estimate, y = mean)) +
+  geom_point(size = 1, colour="grey") +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey") +
+  geom_line(data=newdata_cbc, aes(x=pop_estimate, y=lag0), colour="black", lwd=0.5) +
+  labs(x="Average population abundance", y="Population synchrony") +
   theme_bw() +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 dev.off()
 
-# 
-# ## split commonness into 3 groups and run model again 
-# pair_attr_CBC$pop_estimate <- as.numeric(pair_attr_CBC$pop_estimate)
-# pair_attr_CBC$common_score1 <- cut(pair_attr_CBC$pop_estimate, 3, labels=FALSE)
-# pair_attr_CBC$common_score1 <- as.factor(pair_attr_CBC$common_score1)
-# 
-# ### full model with common_score1 of 3 levels
-# common_model_cbc2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + common_score1 + (1|pair.id) + (1|spp), data = pair_attr_CBC)
-# summary(common_model_cbc2)
-# anova(common_model_cbc2)
-# ## significant p=0.017
-# 
-# ## run again with 2 groups 
-# pair_attr_CBC$pop_estimate <- as.numeric(pair_attr_CBC$pop_estimate)
-# pair_attr_CBC$common_score2 <- cut(pair_attr_CBC$pop_estimate, 2, labels=FALSE)
-# pair_attr_CBC$common_score2 <- as.factor(pair_attr_CBC$common_score2)
-# 
-# ### full model with common_score1 of 2 levels
-# common_model_cbc3 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + common_score2 + (1|pair.id) + (1|spp), data = pair_attr_CBC)
-# summary(common_model_cbc3)
-# anova(common_model_cbc3)
-# ## still significant p=0.014
-# 
-# AIC(common_model_cbc,common_model_cbc2, common_model_cbc3) ## model 3 has lower AIC than model 2 (2 groups better than 3)
-# ## model with raw common values still performs the best
+## plot graph with fitted line and confidence interval shaded error
+png("../Graphs/Abundance/Common_average_predicted_cbc2.png", height = 100, width = 120, units = "mm", res = 300)
+ggplot(newdata_cbc, aes(x=pop_estimate, y=lag0)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = plo, ymax = phi), alpha=0.2, lwd=0.5) +
+  labs(x="Average population abundance", y="Population synchrony") +
+  theme_bw() +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+dev.off()
 
-######### BBS BIRDS #############
+#################################
+#### Abundance model for BBS ####
+#################################
+
 ## merge the two datasets
 pair_attr_BBS <- merge(pair_attr_BBS, bird_common, by.x="spp", by.y="species_code", all=FALSE)
 
@@ -207,35 +200,15 @@ anova(common_model_bbs)
 summary(common_model_bbs)
 ## non-significant
 
-### split commonness into 3 groups and run model again 
-pair_attr_BBS$pop_estimate <- as.numeric(pair_attr_BBS$pop_estimate)
-pair_attr_BBS$common_score1 <- cut(pair_attr_BBS$pop_estimate, 3, labels=FALSE)
-pair_attr_BBS$common_score1 <- as.factor(pair_attr_BBS$common_score1)
-
-### full model with common_score1 of 3 levels
-common_model_bbs2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + common_score1 + (1|pair.id) + (1|spp), data = pair_attr_BBS)
-summary(common_model_bbs2)
-anova(common_model_bbs2)
-## non-significant
-
-## run again with 2 groups 
-pair_attr_BBS$pop_estimate <- as.numeric(pair_attr_BBS$pop_estimate)
-pair_attr_BBS$common_score2 <- cut(pair_attr_BBS$pop_estimate, 2, labels=FALSE)
-pair_attr_BBS$common_score2 <- as.factor(pair_attr_BBS$common_score2)
-
-### full model with common_score1 of 2 levels
-common_model_bbs3 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + common_score2 + (1|pair.id) + (1|spp), data = pair_attr_BBS)
-summary(common_model_bbs3)
-anova(common_model_bbs3)
-## non-significant
-
-AIC(common_model_bbs2, common_model_bbs3) ## model 3 has lower AIC (2 groups better than 3)
-
 #######################################################################################################
-#################################### CALCULATE CHANGE IN ABUNDANCE #################################### 
+####################################################################################################### 
 #######################################################################################################
 
-####################### ALL BUTTERFLIES #########################
+################################# CHANGE IN SYNCHRONY #####################################
+
+###################################
+#### Abundance model for UKBMS ####
+###################################
 
 ### add abundance data
 abundance_data <- read.csv("../Data/UKBMS_data/Collated_Indices_2016.csv", header=TRUE)
@@ -356,11 +329,11 @@ anova(abund_model2)
 ## very significant interaction (p<0.00001)
 r.squaredGLMM(abund_model2)
 
-### plot this result using predicted values
+### predict new data to plot graph
 newdata_ukbms <- expand.grid(mean_northing=mean(pair_attr_ukbms$mean_northing), distance=mean(pair_attr_ukbms$distance), 
-                       renk_hab_sim=mean(pair_attr_ukbms$renk_hab_sim), pair.id=sample(pair_attr_ukbms$pair.id,10),
-                       spp=sample(pair_attr_ukbms$spp,10), mid.year=unique(pair_attr_ukbms$mid.year), 
-                       ab_change_00_12=unique(pair_attr_ukbms$ab_change_00_12))
+                             renk_hab_sim=mean(pair_attr_ukbms$renk_hab_sim), pair.id=sample(pair_attr_ukbms$pair.id,10),
+                             spp=sample(pair_attr_ukbms$spp,10), mid.year=unique(pair_attr_ukbms$mid.year), 
+                             ab_change_00_12=unique(pair_attr_ukbms$ab_change_00_12))
 newdata_ukbms$lag0 <- predict(abund_model2, newdata=newdata_ukbms, re.form=NA)
 
 
@@ -377,19 +350,45 @@ newdata_ukbms <- data.frame(
   , thi = newdata_ukbms$lag0+1.96*sqrt(tvar)
 )
 
-## change year values
+## run model without abundance and species random effect to obtain residuals
+abund_model_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_ukbms)
+pair_attr_ukbms$residuals <- resid(abund_model_ukbms)
+
+## create new dataframe to calculate mean, SD and SE of residuals for each species
+summary_ukbms2 <- pair_attr_ukbms %>% group_by(spp, ab_change_00_12, mid.year) %>% 
+  summarise_at(vars(residuals), funs(mean,std.error,sd))
+
+## change year values and abundance variable names
 newdata_ukbms$mid.year <- revalue(newdata_ukbms$mid.year, c("1999.5"="2000"))
 newdata_ukbms$mid.year <- revalue(newdata_ukbms$mid.year, c("2011.5"="2012"))
 colnames(newdata_ukbms)[7] <- "Abundance_change"
 newdata_ukbms$Abundance_change <- revalue(newdata_ukbms$Abundance_change, c("decrease"="Decrease"))
 newdata_ukbms$Abundance_change <- revalue(newdata_ukbms$Abundance_change, c("increase"="Increase"))
-levels(newdata_ukbms$Abundance_change)
 newdata_ukbms$Abundance_change <- factor(newdata_ukbms$Abundance_change, levels=c("Increase", "Decrease"))
-levels(newdata_ukbms$Abundance_change)
+## same for summary dataframe
+summary_ukbms2$mid.year <- revalue(summary_ukbms2$mid.year, c("1999.5"="2000"))
+summary_ukbms2$mid.year <- revalue(summary_ukbms2$mid.year, c("2011.5"="2012"))
+colnames(summary_ukbms2)[2] <- "Abundance_change"
+summary_ukbms2$Abundance_change <- revalue(summary_ukbms2$Abundance_change, c("decrease"="Decrease"))
+summary_ukbms2$Abundance_change <- revalue(summary_ukbms2$Abundance_change, c("increase"="Increase"))
+summary_ukbms2$Abundance_change <- factor(summary_ukbms2$Abundance_change, levels=c("Increase", "Decrease"))
 
-pd <- position_dodge(0.1)
-
+## plot graph with raw data residuals (+SE error bars) and fitted line
 png("../Graphs/Abundance/Abundance_change_predicted_ukbms_00_12.png", height = 100, width = 120, units = "mm", res = 300)
+pd <- position_dodge(0.1)
+ggplot(summary_ukbms2, aes(x = mid.year, y = mean, group=Abundance_change)) +
+  geom_point(aes(colour=Abundance_change), size = 1, position=pd) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error, colour=Abundance_change), position=pd, width=0.1) +
+  geom_line(data=newdata_ukbms, aes(x=mid.year, y=lag0, colour=Abundance_change), lwd=1) +
+  labs(x="Mid year of moving window", y="Population synchrony") +
+  labs(colour="Change in abundance") +
+  theme_bw() +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+dev.off()
+
+## plot graph with fitted line and shaded confidence intervals
+png("../Graphs/Abundance/Abundance_change_predicted_ukbms_00_12_2.png", height = 100, width = 120, units = "mm", res = 300)
 ggplot(newdata_ukbms, aes(x=mid.year, y=lag0, group=Abundance_change)) +
   geom_point(position=pd) +
   geom_line(aes(linetype=Abundance_change), size=1, position=pd) +
@@ -418,9 +417,9 @@ bird_abundance <- bird_abundance[-c(2,4,5)]
 ## remove years before 1980
 bird_abundance <- bird_abundance[bird_abundance$year>=1980,]
 
-################################################################################
-################################# CBC BIRDS ####################################
-################################################################################
+#################################
+#### Abundance model for CBC ####
+#################################
 
 ## for cbc only interested in years 1980-1989 and 1991-2000
 bird_abundance_cbc_1 <- subset(bird_abundance[(bird_abundance$year>=1980) & (bird_abundance$year<=1989),])
@@ -504,49 +503,4 @@ abund_model_bbs <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.yea
 summary(abund_model_bbs)
 ## intercept is mid.year 1999
 anova(abund_model_bbs)
-## mid.year*mean_abund_change interaction is very significant overall
-
-## save model output
-results_table_abund_bbs <- data.frame(summary(abund_model_bbs)$coefficients[,1:5])
-write.csv(results_table_abund_bbs, file = "../Results/Model_outputs/change_abund_bbs.csv", row.names=TRUE)
-
-### plot result using predicted values
-newdata_bbs <- expand.grid(mean_northing=mean(pair_attr_bbs$mean_northing), distance=mean(pair_attr_bbs$distance), renk_hab_sim=mean(pair_attr_bbs$renk_hab_sim),
-                       mid.year=unique(pair_attr_bbs$mid.year), ab_change_99_12=unique(pair_attr_bbs$ab_change_99_12),
-                       pair.id=sample(pair_attr_bbs$pair.id,10), spp=sample(pair_attr_bbs$spp,10))
-newdata_bbs$lag0 <- predict(abund_model_bbs, newdata=newdata_bbs, re.form=NA)
-
-mm2 <- model.matrix(terms(abund_model_bbs), newdata_bbs)
-pvar2 <- diag(mm2 %*% tcrossprod(vcov(abund_model_bbs),mm2))
-tvar2 <- pvar2+VarCorr(abund_model_bbs)$spp[1]+VarCorr(abund_model_bbs)$pair.id[1]
-cmult <- 2
-
-newdata_bbs <- data.frame(
-  newdata_bbs
-  , plo = newdata_bbs$lag0-1.96*sqrt(pvar2)
-  , phi = newdata_bbs$lag0+1.96*sqrt(pvar2)
-  , tlo = newdata_bbs$lag0-1.96*sqrt(tvar2)
-  , thi = newdata_bbs$lag0+1.96*sqrt(tvar2)
-)
-
-## change year values
-newdata_bbs$mid.year <- revalue(newdata_bbs$mid.year, c("1998.5"="1999"))
-newdata_bbs$mid.year <- revalue(newdata_bbs$mid.year, c("2011.5"="2012"))
-colnames(newdata_bbs)[5] <- "Abundance_change"
-newdata_bbs$Abundance_change <- revalue(newdata_bbs$Abundance_change, c("decrease"="Decrease"))
-newdata_bbs$Abundance_change <- revalue(newdata_bbs$Abundance_change, c("increase"="Increase"))
-
-pd <- position_dodge(0.1)
-
-png("../Graphs/Abundance/Abundance_change_predicted_bbs.png", height = 100, width = 120, units = "mm", res = 300)
-ggplot(newdata_bbs, aes(x=mid.year, y=lag0, group=Abundance_change)) +
-  geom_point(position=pd) +
-  geom_line(aes(linetype=Abundance_change), size=1, position=pd) +
-  labs(x="Year", y="Population synchrony") +
-  geom_linerange(aes(ymin=plo, ymax=phi), position=pd) +
-  labs(linetype="Change in abundance") +
-  theme_bw() +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-dev.off()
-
+## mid.year*mean_abund_change interaction is non-significant 
