@@ -11,6 +11,7 @@ library(lmerTest)
 library(ggplot2)
 library(ggsignif)
 library(plyr)
+library(dplyr)
 options(scipen=999)
 
 ## read data
@@ -132,9 +133,12 @@ anova(spec_model_ukbms2)
 results_table_spec_ukbms <- data.frame(summary(spec_model_ukbms2)$coefficients[,1:5])
 write.csv(results_table_strategy_ukbms, file = "../Results/Model_outputs/change_spec_ukbms.csv", row.names=TRUE)
 
-newdata <- expand.grid(mean_northing=mean(pair_attr_ukbms$mean_northing), distance=mean(pair_attr_ukbms$distance), renk_hab_sim=mean(pair_attr_ukbms$renk_hab_sim),
-              mid.year=unique(pair_attr_ukbms$mid.year), specialism=unique(pair_attr_ukbms$specialism),
-              pair.id=sample(pair_attr_ukbms$pair.id,10), spp=sample(pair_attr_ukbms$spp,10))
+
+## plot graph
+newdata <- expand.grid(mean_northing=mean(pair_attr_ukbms$mean_northing), distance=mean(pair_attr_ukbms$distance), 
+              renk_hab_sim=mean(pair_attr_ukbms$renk_hab_sim), mid.year=unique(pair_attr_ukbms$mid.year), 
+              specialism=unique(pair_attr_ukbms$specialism), pair.id=unique(pair_attr_ukbms$pair.id), 
+              spp=unique(pair_attr_ukbms$spp))
                          
 newdata$lag0 <- predict(spec_model_ukbms2, newdata=newdata, re.form=NA)
 
@@ -150,6 +154,26 @@ newdata <- data.frame(
   , tlo = newdata$lag0-1.96*sqrt(tvar2)
   , thi = newdata$lag0+1.96*sqrt(tvar2)
 )
+
+spec_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_ukbms)
+pair_attr_ukbms$residuals <- resid(spec_ukbms)
+
+library(plotrix)
+summary_ukbms <- pair_attr_ukbms %>% group_by(spp, specialism, mid.year) %>% 
+  summarise_at(vars(residuals), funs(mean,std.error,sd))
+
+spec_ukbms <- ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=specialism)) +
+  geom_point(aes(colour=specialism), size = 2) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1)
+#geom_smooth(method="lm", se=FALSE, colour="black")
+spec_ukbms
+
+spec_ukbms + geom_line(data=newdata, aes(x=mid.year, y=lag0, colour=specialism), lwd=1) +
+  labs(x="Mid year of moving window", y="Population synchrony") +
+  theme_bw() +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+### doesn't look good 
 
 ## change year values
 newdata$mid.year <- revalue(newdata$mid.year, c("1984.5"="1985"))
@@ -202,6 +226,7 @@ anova(spec_model_cbc2)
 results_table_strategy_cbc <- data.frame(summary(spec_model_cbc2)$coefficients[,1:5])
 write.csv(results_table_strategy_cbc, file = "../Results/Model_outputs/change_strategy_cbc.csv", row.names=TRUE)
 
+## plot results
 newdata_cbc <- expand.grid(mean_northing=mean(pair_attr_cbc$mean_northing), distance=mean(pair_attr_cbc$distance), hab_sim=sample(pair_attr_cbc$hab_sim,1),
                        mid.year=unique(pair_attr_cbc$mid.year), specialism=unique(pair_attr_cbc$specialism),
                        pair.id=sample(pair_attr_cbc$pair.id,10), spp=sample(pair_attr_cbc$spp,10))
@@ -221,6 +246,25 @@ newdata_cbc <- data.frame(
   , thi = newdata_cbc$lag0+1.96*sqrt(tvar1)
 )
 
+spec_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id), data=pair_attr_cbc)
+pair_attr_cbc$residuals <- resid(spec_cbc)
+
+library(plotrix)
+summary_cbc <- pair_attr_cbc %>% group_by(spp, specialism, mid.year) %>% 
+  summarise_at(vars(residuals), funs(mean,std.error,sd))
+
+spec_cbc <- ggplot(summary_cbc, aes(x = mid.year, y = mean, group=specialism)) +
+  geom_point(aes(colour=specialism), size = 2) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1)
+#geom_smooth(method="lm", se=FALSE, colour="black")
+spec_cbc
+
+spec_cbc + geom_line(data=newdata_cbc, aes(x=mid.year, y=lag0, colour=specialism), lwd=0.5) +
+  labs(x="Mid year of moving window", y="Population synchrony") +
+  theme_bw() +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+### doesn't look good 
 
 ## change year values
 newdata_cbc$mid.year <- revalue(newdata_cbc$mid.year, c("1984.5"="1985"))
@@ -266,6 +310,7 @@ anova(spec_model_bbs2)
 results_table_strategy_bbs <- data.frame(summary(spec_model_bbs2)$coefficients[,1:5])
 write.csv(results_table_strategy_bbs, file = "../Results/Model_outputs/change_strategy_bbs.csv", row.names=TRUE)
 
+## plot results
 newdata_bbs <- expand.grid(mean_northing=mean(pair_attr_bbs$mean_northing), distance=mean(pair_attr_bbs$distance), renk_hab_sim=mean(pair_attr_bbs$renk_hab_sim),
                        mid.year=unique(pair_attr_bbs$mid.year), specialism=unique(pair_attr_bbs$specialism),
                        pair.id=sample(pair_attr_bbs$pair.id,10), spp=sample(pair_attr_bbs$spp,10))
@@ -283,6 +328,32 @@ newdata_bbs <- data.frame(
   , tlo = newdata_bbs$lag0-1.96*sqrt(tvar3)
   , thi = newdata_bbs$lag0+1.96*sqrt(tvar3)
 )
+
+spec_bbs <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_bbs)
+pair_attr_bbs$residuals <- resid(spec_bbs)
+
+library(plotrix)
+summary_bbs <- pair_attr_bbs %>% group_by(spp, specialism, mid.year) %>% 
+  summarise_at(vars(residuals), funs(mean,std.error,sd))
+
+spec_bbs <- ggplot(summary_bbs, aes(x = mid.year, y = mean, group=specialism)) +
+  geom_point(aes(colour=specialism), size = 2) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1)
+  #geom_smooth(method="lm", se=FALSE, colour="black")
+spec_bbs
+
+spec_bbs + geom_line(data=newdata_bbs, aes(x=mid.year, y=lag0, colour=specialism), lwd=0.5) +
+  labs(x="Mid year of moving window", y="Population synchrony") +
+  theme_bw() +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+### doesn't look good 
+
+
+
+
+
+
 
 ## change year values
 newdata_bbs$mid.year <- revalue(newdata_bbs$mid.year, c("1998.5"="1999"))
