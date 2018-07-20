@@ -187,7 +187,7 @@ site2 <- as.data.frame(unique(pair_attr$site2))
 colnames(site1)[1] <- "site"
 colnames(site2)[1] <- "site"
 site_list <- rbind(site1, site2)
-site_list <- unique(site_list) ## 710 sites
+site_list <- unique(site_list) ## 709 sites
 
 pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE) 
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS_final.csv", header=TRUE) 
@@ -208,3 +208,107 @@ colnames(site6)[1] <- "site"
 site_list3 <- rbind(site5, site6)
 site_list3 <- unique(site_list3) ## 2499 sites
 
+
+
+library(ggmap)
+library(ggplot2)
+UK <- map_data(map = "world", region = "UK") # changed map to "world"
+ggplot(data = UK, aes(x = long, y = lat, group = group)) + 
+  geom_polygon() +
+  coord_map()
+
+d <- data.frame(lat=c(50.659631, 50.607213, 50.608129),
+                lon=c(3.09319, 3.011473, 3.031529))
+UK + geom_point(data=d, aes(x=lon, y=lat), color="red", size=30, alpha=0.5)
+
+UK_map <- get_map(location = c(-2.65, 53.7), zoom = 5, maptype = "hybrid")
+UK_map <- ggmap(ggmap=UK_map, extent = "device", legend = "right")
+
+UK_map_1 <- UK_map +
+        ggmap(ggmap=UK_map, extent = "device", legend = "right") +
+        geom_point(data = T1_map_coord, aes(x=X, y=Y), size  = 2)
+
+UK_map_2 <- UK_map +
+  ggmap(ggmap=UK_map, extent = "device", legend = "right") +
+  geom_point(data = T2_map_coord, aes(x=X, y=Y), size  = 2)
+
+UK_map_3 <- UK_map +
+  ggmap(ggmap=UK_map, extent = "device", legend = "right") +
+  geom_point(data = T3_map_coord, aes(x=X, y=Y), size  = 2)
+
+
+
+multiplot(UK_map + geom_point(data = T1_map_coord, 
+                              aes(x=X, y=Y), size = 0.8), 
+          UK_map + geom_point(data = T2_map_coord, 
+                              aes(x=X, y=Y), size = 0.8), 
+          UK_map + geom_point(data = T3_map_coord,
+                              aes(x=X, y=Y), size = 0.8), cols = 3)
+
+
+
+
+
+
+
+multiplot <- function(..., plotlist=NULL, cols) {
+  require(grid)
+  
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+  
+  numPlots = length(plots)
+  
+  # Make the panel
+  plotCols = cols                          # Number of columns of plots
+  plotRows = ceiling(numPlots/plotCols) # Number of rows needed, calculated from # of cols
+  
+  # Set up the page
+  grid.newpage()
+  pushViewport(viewport(layout = grid.layout(plotRows, plotCols)))
+  vplayout <- function(x, y)
+    viewport(layout.pos.row = x, layout.pos.col = y)
+  
+  # Make each plot, in the correct location
+  for (i in 1:numPlots) {
+    curRow = ceiling(i/plotCols)
+    curCol = (i-1) %% plotCols + 1
+    print(plots[[i]], vp = vplayout(curRow, curCol ))
+  }
+  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+library(tidyverse)
+library(sf)
+#> Linking to GEOS 3.6.1, GDAL 2.2.3, proj.4 4.9.3
+T1_map_coord <- T1_map %>%
+  st_as_sf(coords = c("east", "north"), crs = 27700) %>%
+  st_transform(4326) %>%
+  st_coordinates() %>%
+  as_tibble()
+
+T2_map_coord <- T2_map %>%
+  st_as_sf(coords = c("east", "north"), crs = 27700) %>%
+  st_transform(4326) %>%
+  st_coordinates() %>%
+  as_tibble()
+
+T3_map_coord <- T3_map %>%
+  st_as_sf(coords = c("east", "north"), crs = 27700) %>%
+  st_transform(4326) %>%
+  st_coordinates() %>%
+  as_tibble()
