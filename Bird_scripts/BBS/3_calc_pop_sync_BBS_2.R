@@ -15,15 +15,29 @@ library(dplyr)
 
 ### add data
 final_data <- read.csv("../Data/Bird_sync_data/final_data_all_spp_BBS.csv", header=TRUE) ## 31 spp
-#woodland_bbs <- read.csv("../Data/Bird_sync_data/bbs_woodland_birds.csv", header=TRUE)
+woodland_bbs <- read.csv("../Data/Bird_sync_data/bbs_woodland_birds.csv", header=TRUE)
 site_data <- read.csv("../Data/BTO_data/pair_attr_mean_north_dist_BBS_10yrs.csv", header=TRUE) 
 
-## species 123 # number in list: 11
-## species 456 # number in list: 18
-## species 431 # number in list: 22
-## species 450 # number in list: 22
-## species 298 # number in list: 27
-## species 467 # number in list: 30
+### Create "good species list" which meet a minimum criteria of 2 filters
+woodland_bbs<-woodland_bbs[woodland_bbs$YEAR>=2000&woodland_bbs$YEAR<=2016,]
+woodland_bbs$species_code <- as.factor(woodland_bbs$species_code)
+bbs_summary_tab<-with(woodland_bbs,table(species_code,YEAR)) # 31 species
+bbs_summary_good_years<-NULL
+
+for (i in 1:nrow(bbs_summary_tab)){
+  no.good.years<-length(bbs_summary_tab[i,][bbs_summary_tab[i,]>=50])  # filter 1: 50 sites/year
+  sp<-row.names(bbs_summary_tab)[i]
+  results.temp<-data.frame(sp,no.good.years)
+  bbs_summary_good_years<-rbind(bbs_summary_good_years,results.temp)
+}
+bbs_summary_good_years
+# filter 2: only select species with >75% 'good years' (i.e. with more than 50 sites/year)
+length(2000:2016)*0.75 # 12.75
+good.species.list<-bbs_summary_good_years$sp[bbs_summary_good_years$no.good.years>12.75]
+good.species.list
+good.species.list <- droplevels(good.species.list)
+
+##### removes 2 species ==> willow tit and wood warbler (these get removed during synchrony analysis anyway)
 
 #############################
 #### calculate synchrony ####
@@ -31,15 +45,11 @@ site_data <- read.csv("../Data/BTO_data/pair_attr_mean_north_dist_BBS_10yrs.csv"
 
 spp.list <- unique(final_data$name)
 
-# spp.not.working <- as.integer(c("123", "456", "431", "450", "298", "467"))
-# # 
-# spp.working <- spp.list[!spp.list %in% c("123", "456", "431", "450", "298", "467")]
-
 final_pair_data <- NULL
 final_summ_stats <- NULL
 final_summary <- NULL
 ### split based on species ###
-for(g in spp.list[8:31]){
+for(g in spp.list[1]){
 
 # loop through spp.list 
   spp_data <- final_data[final_data$name==g,]
@@ -48,7 +58,7 @@ for(g in spp.list[8:31]){
 
   year.list<-1994:2007
 
-  for (i in year.list){ # loop through years
+  for (i in year.list[1]){ # loop through years
     start.year<-i
     mid.year<-i+4.5
     print(paste("mid.year=",mid.year))
