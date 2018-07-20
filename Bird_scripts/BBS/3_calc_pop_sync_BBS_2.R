@@ -58,7 +58,7 @@ for(g in spp.list[1]){
 
   year.list<-1994:2007
 
-  for (i in year.list[1]){ # loop through years
+  for (i in year.list[1:3]){ # loop through years
     start.year<-i
     mid.year<-i+4.5
     print(paste("mid.year=",mid.year))
@@ -137,7 +137,13 @@ for(g in spp.list[1]){
       CCF$numYears[k] <- length(na.omit((TS[,pair.list[k,1]]+TS[,pair.list[k,2]]))) ## add up number of times when sum can be done (i.e. neither is NA) 
     }
     
-    summary <- data.frame(spp=g, year=i+4.5, no.sites=nrow(CCF), sampled.sites=10000)
+    CCF1 <- CCF
+    ## rank by numYears
+    CCF1 <- arrange(CCF1, desc(numYears))
+    ## chop out rows where numYears<7
+    CCF1 <- CCF1[CCF1$numYears>6,]
+    
+    summary <- data.frame(spp=g, year=i+4.5, no.sites=nrow(CCF1), sampled.sites=10000)
     summary$skipped=ifelse(summary$no.sites<2, "yes", "no")
     summary$sampled=ifelse(summary$no.sites>=10000, "yes", "no")
     if(summary$sampled=="yes"){
@@ -151,11 +157,6 @@ for(g in spp.list[1]){
 
 write.csv(final_summary, file="../Data/Bird_sync_data/BBS_summary_8_31.csv", row.names=FALSE) 
 
-    CCF1 <- CCF
-    ## rank by numYears
-    CCF1 <- arrange(CCF1, desc(numYears))
-    ## chop out rows where numYears<7
-    CCF1 <- CCF1[CCF1$numYears>6,]
     
     # if statement to skip species which won't run
     if (nrow(CCF1)<2){
