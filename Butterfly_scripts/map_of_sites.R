@@ -190,7 +190,7 @@ site_list <- rbind(site1, site2)
 site_list <- unique(site_list) ## 709 sites
 
 pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE) 
-pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS_final.csv", header=TRUE) 
+pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) 
 
 ## number of CBC sites
 site3 <- as.data.frame(unique(pair_attr_CBC$site1))
