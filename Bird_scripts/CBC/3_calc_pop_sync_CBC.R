@@ -15,7 +15,8 @@ woodland_cbc <- read.csv("../Data/Bird_sync_data/cbc_woodland_birds.csv", header
 site_data <- read.csv("../Data/BTO_data/pair_attr_mean_north_dist_hab_sim_CBC.csv", header=TRUE)
 
 ### Create "good species list" which meet a minimum criteria of 2 filters
-woodland_cbc<-woodland_cbc[woodland_cbc$Year>=1980&woodland_cbc$Year<=2008,]
+woodland_cbc<-woodland_cbc[woodland_cbc$Year>=1980&woodland_cbc$Year<=2000,]
+woodland_cbc$species_code <- as.factor(woodland_cbc$species_code)
 cbc_summary_tab<-with(woodland_cbc,table(species_code,Year))
 cbc_summary_good_years<-NULL
 
@@ -27,9 +28,10 @@ for (i in 1:nrow(cbc_summary_tab)){
 }
 cbc_summary_good_years
 # filter 2: only select species with >75% 'good years' (i.e. with more than 50 sites/year)
-length(1980:2008)*0.75 # 21.75
-good.species.list<-cbc_summary_good_years$sp[cbc_summary_good_years$no.good.years>21.75]
+length(1980:2000)*0.75 # 15.75
+good.species.list<-cbc_summary_good_years$sp[cbc_summary_good_years$no.good.years>15.75]
 good.species.list
+good.species.list <- droplevels(good.species.list)
 
 ############## CONCLUSION => ALL 38 SPECIES MEET THE ABOVE CRITERIA, SO ISN'T NEEDED ##################
 
