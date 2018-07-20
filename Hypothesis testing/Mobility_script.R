@@ -11,14 +11,39 @@ library(lmerTest)
 library(ggsignif)
 library(ggplot2)
 library(plyr)
+library(plotrix)
 options(scipen=999)
 
 ## read in synchrony data
 pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE) 
 pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE) 
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) 
-traits <- read.csv("../Data/UKBMS_data/species.traits.full.table.csv", header=TRUE)
-######## all butterflies with mobitliy data (=32 species) #########
+wingspan <- read.csv("../Data/UKBMS_data/butterflywingspans.csv", header=TRUE)
+
+################################### AVERAGE SYNCRHONY ################################### 
+
+## merge pair attr and wingspan data
+pair_attr_1 <- merge(pair_attr, wingspan, by.x="spp", by.y="BMScode")
+
+pair_attr_1$mid.year <- as.factor(pair_attr_1$mid.year)
+pair_attr_1$pair.id <- as.character(pair_attr_1$pair.id)
+pair_attr_1$spp <- as.factor(pair_attr_1$spp)
+
+wing_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan + (1|spp) + (1|pair.id), data=pair_attr_1)
+summary(wing_model)
+anova(wing_model)
+
+wing_model2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan*Family + (1|spp) + (1|pair.id), data=pair_attr_1)
+summary(wing_model2)
+anova(wing_model2)
+
+wing_model3 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan*Sub.family + (1|spp) + (1|pair.id), data=pair_attr_1)
+summary(wing_model3)
+anova(wing_model3)
+
+##################################
+#### Mobility model for UKBMS ####
+##################################
 
 ## remove NA's ==> removes Small White butterfly which doesn't have mobility data
 pair_attr <- na.omit(pair_attr)
@@ -68,35 +93,14 @@ AIC(mobility_model2, mobility_model4)
 ## AIC values are:
 ## mobility_model2 - 1916320
 ## mobility_model4 - 1916319
-## very similar so just use 2 groups
+############################# very similar so just use 2 groups ############################# 
 
-## need to plot graph... 2 groups of mobility (low and high)
-## won't use this graph if mobility and change in synchrony is significant
-results_final_ukbms <- read.csv("../Results/Butterfly_results/results_final_sp.csv", header=TRUE)
-## merge mobility data 
-results_final_ukbms <- merge(results_final_ukbms, mobility, by.x="sp", by.y="species", all=FALSE)
-## create mobility score
-str(results_final_ukbms)
-results_final_ukbms$mobility_wil <- as.numeric(results_final_ukbms$mobility_wil)
-results_final_ukbms$mobility_score <- cut(results_final_ukbms$mobility_wil, 2, labels=FALSE)
-results_final_ukbms$mobility_score <- as.factor(results_final_ukbms$mobility_score)
+## don't plot graph because mobility and change in synchrony is also significant
 
-results_final_ukbms$mobility_score <- revalue(results_final_ukbms$mobility_score, c("1"="Low"))
-results_final_ukbms$mobility_score <- revalue(results_final_ukbms$mobility_score, c("2"="High"))
 
-## plot graph
-png("../Graphs/Mobility/Mobility_score_average_boxplots_ukbms.png", height = 120, width = 120, units = "mm", res = 300)
-ggplot(results_final_ukbms, aes(x=mobility_score, y=FCI)) +
-  geom_boxplot() +
-  labs(x="Mobility", y="Functional connectivity index") +
-  scale_y_continuous(breaks=seq(-0.2,1.2,0.1)) +
-  #geom_signif(comparisons = list(c("Low", "High")), map_signif_level = TRUE, textsize = 4, annotation=( "**"), step_increase = 0.1) +
-  theme_bw() +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-dev.off()
-
-########### CBC birds #################
+##################################
+#### Mobility model for CBC ####
+##################################
 
 ## read in bird dispersal data
 bird_dispersal <- read.csv("../Data/Woodland_bird_dispersal_Paradis1998.csv", header=TRUE)
@@ -145,7 +149,9 @@ anova(dispersal_model_cbc4)
 AIC(dispersal_model_cbc3, dispersal_model_cbc4)
 ## model 4 slightly lower AIC => therefore performs better as two groups (low and high dispersal)
 
-########### BBS birds #################
+################################
+#### Mobility model for BBS ####
+################################
 
 ## merge pair_attr with bird dispersal data
 pair_attr_BBS <- merge(pair_attr_BBS, bird_dispersal, by.x="spp", by.y="Species_code", all=FALSE)
@@ -199,12 +205,31 @@ AIC(dispersal_model_bbs3, dispersal_model_bbs4)
 
 ############### CHANGE IN SYNCHORNY #################
 
-## UKBMS butterflies
+##################################
+#### Mobility model for UKBMS ####
+##################################
+
 ## subset to only look at mid years 1985, 2000 and 2012
 pair_attr_1985 <- pair_attr[pair_attr$mid.year==1984.5,]
 pair_attr_2000 <- pair_attr[pair_attr$mid.year==1999.5,]
 pair_attr_2012 <- pair_attr[pair_attr$mid.year==2011.5,]
 pair_attr_ukbms <- rbind(pair_attr_1985, pair_attr_2000, pair_attr_2012) ## 3 years and 32 species
+## remove NA's to make sure small white is taken out
+pair_attr_ukbms <- na.omit(pair_attr_ukbms)
+length(unique(pair_attr_ukbms$spp)) # 32 species
+
+## merge wingspan data
+pair_attr_ukbms1 <- merge(pair_attr_ukbms, wingspan, by.x="spp", by.y="BMScode")
+
+pair_attr_ukbms1$mid.year <- as.factor(pair_attr_ukbms1$mid.year)
+pair_attr_ukbms1$pair.id <- as.character(pair_attr_ukbms1$pair.id)
+pair_attr_ukbms1$spp <- as.factor(pair_attr_ukbms1$spp)
+
+wing_model4 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*Wingspan + (1|spp) + (1|pair.id), data=pair_attr_ukbms1)
+summary(wing_model4)
+anova(wing_model4)
+## same result as with mobility data ==> butterflies with larger wingspan
+## increase in syncrhony between 00-12, but not 85-00
 
 pair_attr_ukbms$mid.year <- as.factor(pair_attr_ukbms$mid.year)
 pair_attr_ukbms$pair.id <- as.character(pair_attr_ukbms$pair.id)
@@ -215,22 +240,6 @@ pair_attr_ukbms$mobility_wil <- as.numeric(pair_attr_ukbms$mobility_wil)
 pair_attr_ukbms$distance <- (pair_attr_ukbms$distance - mean(na.omit(pair_attr_ukbms$distance)))/sd(na.omit(pair_attr_ukbms$distance))
 pair_attr_ukbms$mean_northing <- (pair_attr_ukbms$mean_northing - mean(na.omit(pair_attr_ukbms$mean_northing)))/sd(na.omit(pair_attr_ukbms$mean_northing))
 pair_attr_ukbms$renk_hab_sim <- (pair_attr_ukbms$renk_hab_sim - mean(na.omit(pair_attr_ukbms$renk_hab_sim)))/sd(na.omit(pair_attr_ukbms$renk_hab_sim))
-
-mob_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|spp) + (1|pair.id), data=pair_attr_ukbms)
-pair_attr_ukbms$residuals <- resid(mob_model, type="pearson")
-pair_attr_ukbms$predicted <- predict(mob_model)
-
-library(plotrix)
-summary4 <- pair_attr_ukbms %>% group_by(spp, mobility_score2, mid.year) %>% 
-  summarise_at(vars(predicted), funs(mean,std.error))
-
-ggplot(summary2, aes(x = mid.year, y = mean), group_by(mobility_score2)) +
-  geom_point(aes(color=mobility_score2), size = 1) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error, colour=mobility_score2, width=0.06))
-  #geom_line(aes(colour=mobility_score2), size=1) 
-plot(mobility_model7)
-qqnorm(sresid, cex=1.8, pch=10)
-qqline(sresid, lty=2, lwd=2)
 
 ## full model with interaction between mid year and mobility
 mobility_model5 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*mobility_wil + (1|spp) + (1|pair.id), data=pair_attr_ukbms)
@@ -268,11 +277,10 @@ AIC(mobility_model6, mobility_model7)
 ## mobility_model6 - 222980
 ## mobility_model7 - 223378.2
 ## group of 3 is better...
-## but used group of 2 above so continue with that?
+## but still continue with 2 groups of mobility as easier to interpret
 
-#### plot graph
+
 ### predict new data
-
 newdata_ukbms <- expand.grid(mean_northing=mean(pair_attr_ukbms$mean_northing), distance=mean(pair_attr_ukbms$distance), 
                        renk_hab_sim=mean(pair_attr_ukbms$renk_hab_sim), pair.id=sample(pair_attr_ukbms$pair.id,10),
                        spp=sample(pair_attr_ukbms$spp,10), mid.year=unique(pair_attr_ukbms$mid.year), 
@@ -293,17 +301,44 @@ newdata_ukbms <- data.frame(
   , thi = newdata_ukbms$lag0+1.96*sqrt(tvar)
 )
 
-colnames(newdata_ukbms)[7] <- "Mobility"
+## run model without mobility or species random effect to obtain residuals
+mob_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_ukbms)
+pair_attr_ukbms$residuals <- resid(mob_model, type="pearson")
 
-## change year values
+## create dataframe which calculates mean, SD and SE of residuals for each species
+summary_ukbms <- pair_attr_ukbms %>% group_by(spp, mobility_score2, mid.year) %>% 
+  summarise_at(vars(residuals), funs(mean,std.error))
+
+## change values
 newdata_ukbms$mid.year <- revalue(newdata_ukbms$mid.year, c("1984.5"="1985"))
 newdata_ukbms$mid.year <- revalue(newdata_ukbms$mid.year, c("1999.5"="2000"))
 newdata_ukbms$mid.year <- revalue(newdata_ukbms$mid.year, c("2011.5"="2012"))
+colnames(newdata_ukbms)[7] <- "Mobility"
 newdata_ukbms$Mobility <- revalue(newdata_ukbms$Mobility, c("1"="Low"))
 newdata_ukbms$Mobility <- revalue(newdata_ukbms$Mobility, c("2"="High"))
-pd <- position_dodge(0.1)
+## same for summary file
+summary_ukbms$mid.year <- revalue(summary_ukbms$mid.year, c("1984.5"="1985"))
+summary_ukbms$mid.year <- revalue(summary_ukbms$mid.year, c("1999.5"="2000"))
+summary_ukbms$mid.year <- revalue(summary_ukbms$mid.year, c("2011.5"="2012"))
+colnames(summary_ukbms)[2] <- "Mobility"
+summary_ukbms$Mobility <- revalue(summary_ukbms$Mobility, c("1"="Low"))
+summary_ukbms$Mobility <- revalue(summary_ukbms$Mobility, c("2"="High"))
 
-png("../Graphs/Mobility/Mobility_change_predicted_ukbms.png", height = 100, width = 120, units = "mm", res = 300)
+## plot graph with raw data residuals (+SE error bars) and fitted lines
+png("../Graphs/Mobility/Mobility_change_predicted_ukbms.png", height = 150, width = 200, units = "mm", res = 300)
+pd <- position_dodge(0.1)
+ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Mobility)) +
+  geom_point(aes(colour=Mobility), size = 1, position=pd) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error, colour=Mobility), width=0.1, position=pd) +
+  geom_line(data=newdata_ukbms, aes(x=mid.year, y=lag0, colour=Mobility), lwd=1) +
+  labs(x="Mid year of moving window", y="Population synchrony") +
+  theme_bw() +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+dev.off()
+
+## plot graph with fitted line and confidence interval error bars
+png("../Graphs/Mobility/Mobility_change_predicted_ukbms2.png", height = 100, width = 120, units = "mm", res = 300)
 ggplot(newdata_ukbms, aes(x=mid.year, y=lag0, group=Mobility)) +
   geom_point(position=pd) +
   geom_line(aes(linetype=Mobility), size=1, position=pd) +
@@ -314,7 +349,10 @@ ggplot(newdata_ukbms, aes(x=mid.year, y=lag0, group=Mobility)) +
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 dev.off()
 
-## CBC birds
+################################
+#### Mobility model for CBC ####
+################################
+
 pair_attr_cbc_1985 <- pair_attr_CBC[pair_attr_CBC$mid.year==1984.5,]
 pair_attr_cbc_1996 <- pair_attr_CBC[pair_attr_CBC$mid.year==1995.5,]
 pair_attr_cbc <- rbind(pair_attr_cbc_1985, pair_attr_cbc_1996)
@@ -344,25 +382,6 @@ pair_attr_cbc$Breeding_AM <- as.numeric(pair_attr_cbc$Breeding_AM)
 pair_attr_cbc$Breeding_AM_score2 <- cut(pair_attr_cbc$Breeding_AM, 2, labels=FALSE)
 pair_attr_cbc$Breeding_AM_score2 <- as.factor(pair_attr_cbc$Breeding_AM_score2)
 pair_attr_cbc <- na.omit(pair_attr_cbc)
-
-mob_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|spp) + (1|pair.id), data=pair_attr_cbc)
-pair_attr_cbc$residuals <- resid(mob_model)
-pair_attr_cbc$predicted <- predict(mob_model)
-
-library(plotrix)
-summary2 <- pair_attr_cbc %>% group_by(spp, Breeding_AM_score2, mid.year) %>% 
-  summarise_at(vars(predicted), funs(mean,std.error))
-
-ggplot(summary2, aes(x = mid.year, y = mean), group_by(Breeding_AM_score2)) +
-  geom_point(aes(color=Breeding_AM_score2), size = 1) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error, colour=Breeding_AM_score2, width=0.06))
-
-
-#geom_line(aes(colour=mobility_score2), size=1) 
-plot(mobility_model7)
-qqnorm(sresid, cex=1.8, pch=10)
-qqline(sresid, lty=2, lwd=2)
-
 
 dispersal_model_cbc3 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*Breeding_AM_score2 + (1|spp) + (1|pair.id), data=pair_attr_cbc)
 summary(dispersal_model_cbc3)
@@ -399,15 +418,41 @@ newdata_cbc <- data.frame(
   , thi = newdata_cbc$lag0+1.96*sqrt(tvar2)
 )
 
-## change year values
+## run model without dispersal and species random effect to obtain residuals
+dispersal_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id), data=pair_attr_cbc)
+pair_attr_cbc$residuals <- resid(dispersal_cbc)
+
+## create new dataframe to calculate mean, SD and SE of residuals for each species
+summary_cbc <- pair_attr_cbc %>% group_by(spp, Breeding_AM_score2, mid.year) %>% 
+  summarise_at(vars(residuals), funs(mean,std.error))
+
+## change values
 newdata_cbc$mid.year <- revalue(newdata_cbc$mid.year, c("1984.5"="1985"))
 newdata_cbc$mid.year <- revalue(newdata_cbc$mid.year, c("1995.5"="1996"))
 colnames(newdata_cbc)[7] <- "Dispersal"
 newdata_cbc$Dispersal <- revalue(newdata_cbc$Dispersal, c("1"="Low"))
 newdata_cbc$Dispersal <- revalue(newdata_cbc$Dispersal, c("2"="High"))
+## same for summary dataframe
+summary_cbc$mid.year <- revalue(summary_cbc$mid.year, c("1984.5"="1985"))
+summary_cbc$mid.year <- revalue(summary_cbc$mid.year, c("1995.5"="1996"))
+colnames(summary_cbc)[2] <- "Dispersal"
+summary_cbc$Dispersal <- revalue(summary_cbc$Dispersal, c("1"="Low"))
+summary_cbc$Dispersal <- revalue(summary_cbc$Dispersal, c("2"="High"))
 
+png("../Graphs/Mobility/Mobility_change_predicted_cbc.png", height = 150, width = 200, units = "mm", res = 300)
 pd <- position_dodge(0.1)
-png("../Graphs/Mobility/Mobility_change_predicted_cbc.png", height = 100, width = 120, units = "mm", res = 300)
+ggplot(summary_cbc, aes(x = mid.year, y = mean, group=Dispersal)) +
+  geom_point(aes(colour=Dispersal), size = 1, position=pd) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error, colour=Dispersal), width=0.1, position=pd) +
+  geom_line(data=newdata_cbc, aes(x=mid.year, y=lag0, colour=Dispersal), lwd=1) +
+  labs(x="Mid year of moving window", y="Population synchrony") +
+  theme_bw() +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+dev.off()
+
+png("../Graphs/Mobility/Mobility_change_predicted_cbc2.png", height = 100, width = 120, units = "mm", res = 300)
+pd <- position_dodge(0.1)
 ggplot(newdata_cbc, aes(x=mid.year, y=lag0, group=Dispersal)) +
   geom_point(position=pd) +
   geom_line(aes(linetype=Dispersal), size=1, position=pd) +
@@ -489,14 +534,42 @@ newdata_bbs <- data.frame(
   , thi = newdata_bbs$lag0+1.96*sqrt(tvar3)
 )
 
+## run model again without dispersal or species random effect to obtain residuals
+mob_model_bbs <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_bbs)
+pair_attr_bbs$residuals <- resid(mob_model_bbs)
+
+## create new dataframe to calculate mean, SD and SE of residuals for each species
+summary_bbs <- pair_attr_bbs %>% group_by(spp, Breeding_AM_score2, mid.year) %>% 
+  summarise_at(vars(residuals), funs(mean,std.error))
+
 ## change year values
 newdata_bbs$mid.year <- revalue(newdata_bbs$mid.year, c("1998.5"="1999"))
 newdata_bbs$mid.year <- revalue(newdata_bbs$mid.year, c("2011.5"="2012"))
 colnames(newdata_bbs)[7] <- "Dispersal"
 newdata_bbs$Dispersal <- revalue(newdata_bbs$Dispersal, c("1"="Low"))
 newdata_bbs$Dispersal <- revalue(newdata_bbs$Dispersal, c("2"="High"))
+## same for summary file
+summary_bbs$mid.year <- revalue(summary_bbs$mid.year, c("1998.5"="1999"))
+summary_bbs$mid.year <- revalue(summary_bbs$mid.year, c("2011.5"="2012"))
+colnames(summary_bbs)[2] <- "Dispersal"
+summary_bbs$Dispersal <- revalue(summary_bbs$Dispersal, c("1"="Low"))
+summary_bbs$Dispersal <- revalue(summary_bbs$Dispersal, c("2"="High"))
 
-png("../Graphs/Mobility/Mobility_change_predicted_bbs.png", height = 100, width = 120, units = "mm", res = 300)
+## plot graph with raw data residuals (+SE errorbars) and fitted line
+png("../Graphs/Mobility/Mobility_change_predicted_bbs.png", height = 150, width = 200, units = "mm", res = 300)
+pd <- position_dodge(0.1)
+ggplot(summary_bbs, aes(x = mid.year, y = mean, group=Dispersal)) +
+  geom_point(aes(colour=Dispersal), size = 1, position=pd) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error, colour=Dispersal), width=0.1, position=pd) +
+  geom_line(data=newdata_bbs, aes(x=mid.year, y=lag0, colour=Dispersal), lwd=1) +
+  labs(x="Mid year of moving window", y="Population synchrony") +
+  theme_bw() +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+dev.off()
+
+## plot graph with fitted line and confidence interval error bars
+png("../Graphs/Mobility/Mobility_change_predicted_bbs2.png", height = 100, width = 120, units = "mm", res = 300)
 ggplot(newdata_bbs, aes(x=mid.year, y=lag0, group=Dispersal)) +
   geom_point(position=pd) +
   geom_line(aes(linetype=Dispersal), size=1, position=pd) +
