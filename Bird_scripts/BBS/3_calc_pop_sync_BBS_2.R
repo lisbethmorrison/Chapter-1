@@ -49,7 +49,7 @@ final_pair_data <- NULL
 final_summ_stats <- NULL
 final_summary <- NULL
 ### split based on species ###
-for(g in spp.list[1]){
+for(g in spp.list){
 
 # loop through spp.list 
   spp_data <- final_data[final_data$name==g,]
@@ -58,7 +58,7 @@ for(g in spp.list[1]){
 
   year.list<-1994:2007
 
-  for (i in year.list[1:3]){ # loop through years
+  for (i in year.list){ # loop through years
     start.year<-i
     mid.year<-i+4.5
     print(paste("mid.year=",mid.year))
@@ -143,19 +143,23 @@ for(g in spp.list[1]){
     ## chop out rows where numYears<7
     CCF1 <- CCF1[CCF1$numYears>6,]
     
-    summary <- data.frame(spp=g, year=i+4.5, no.sites=nrow(CCF1), sampled.sites=10000)
-    summary$skipped=ifelse(summary$no.sites<2, "yes", "no")
-    summary$sampled=ifelse(summary$no.sites>=10000, "yes", "no")
-    if(summary$sampled=="yes"){
-      summary$percentage=(summary$sampled.sites/summary$no.sites)*100
-    }else{
-      summary$percentage=NA
-    }
-    final_summary <- rbind(final_summary,summary)
-  }
-}
-
-write.csv(final_summary, file="../Data/Bird_sync_data/BBS_summary_8_31.csv", row.names=FALSE) 
+    ###############################################################
+    ###### code to calculate % of sites which were sampled ########
+    ###############################################################
+    
+#     summary <- data.frame(spp=g, year=i+4.5, no.sites=nrow(CCF1), sampled.sites=10000)
+#     summary$skipped=ifelse(summary$no.sites<2, "yes", "no")
+#     summary$sampled=ifelse(summary$no.sites>=10000, "yes", "no")
+#     if(summary$sampled=="yes"){
+#       summary$percentage=(summary$sampled.sites/summary$no.sites)*100
+#     }else{
+#       summary$percentage=NA
+#     }
+#     final_summary <- rbind(final_summary,summary)
+#   }
+# }
+# 
+# write.csv(final_summary, file="../Data/Bird_sync_data/BBS_sites_summary.csv", row.names=FALSE) 
 
     
     # if statement to skip species which won't run
