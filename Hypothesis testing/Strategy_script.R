@@ -12,14 +12,13 @@ library(ggplot2)
 library(ggsignif)
 library(plyr)
 library(dplyr)
+library(plotrix)
 options(scipen=999)
 
 ## read data
 pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE) # butterfly pair attribute data
 pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE) # CBC pair attribute data
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) # BBS pair attribute data
-abundance_data <- read.csv("../Data/Butterfly_sync_data/abundance_data.csv", header=TRUE)
-
 
 ##############################################
 #### specialism model for ALL butterflies ####
@@ -35,10 +34,8 @@ pair_attr$specialism <- as.factor(pair_attr$specialism)
 spec_model_ukbms1 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + specialism + (1|pair.id) + (1|spp), data = pair_attr)
 summary(spec_model_ukbms1)
 ## specialists are the intercept
-## wider countryside NOT significantly different to specialists
 anova(spec_model_ukbms1)
-### very significant over effect of strategy
-## probably the regular migrants causing the significant result
+### WC higher average synchrony compared to HS
 
 ###############################################
 ########### Same for woodland birds ###########
@@ -53,15 +50,8 @@ pair_attr_CBC$start.year <- as.factor(pair_attr_CBC$start.year)
 pair_attr_CBC$pair.id <- as.character(pair_attr_CBC$pair.id)
 pair_attr_CBC$spp <- as.factor(pair_attr_CBC$spp)
 
-## merge in generalist/specialist data
-gen_spec <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", header=TRUE)
-pair_attr_CBC <- merge(pair_attr_CBC, gen_spec, by.x="spp", by.y="species_code")
-pair_attr_CBC$strategy[pair_attr_CBC$strategy == 0] <- "Specialist"
-pair_attr_CBC$strategy[pair_attr_CBC$strategy == 1] <- "Generalist"
-pair_attr_CBC$strategy <- as.factor(pair_attr_CBC$strategy)
-
-## run model with generalist (0 or 1) as fixed categorical variable
-strategy_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + strategy + (1|pair.id) + (1|spp), data = pair_attr_CBC)
+## run model with specialism as fixed categorical variable
+strategy_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + specialism + (1|pair.id) + (1|spp), data = pair_attr_CBC)
 summary(strategy_model_cbc)
 anova(strategy_model_cbc)
 ## non-significant (p=-0.63)
@@ -108,9 +98,6 @@ pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE)
 pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE)
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS_1.csv", header=TRUE)
 
-install.packages("broom")
-library(broom)
-
 #### subset only years 1985, 2000 and 2012
 pair_attr_1985 <- pair_attr[pair_attr$mid.year==1984.5,]
 pair_attr_2000 <- pair_attr[pair_attr$mid.year==1999.5,]
@@ -133,12 +120,11 @@ anova(spec_model_ukbms2)
 results_table_spec_ukbms <- data.frame(summary(spec_model_ukbms2)$coefficients[,1:5])
 write.csv(results_table_strategy_ukbms, file = "../Results/Model_outputs/change_spec_ukbms.csv", row.names=TRUE)
 
-
-## plot graph
+## predict new data
 newdata <- expand.grid(mean_northing=mean(pair_attr_ukbms$mean_northing), distance=mean(pair_attr_ukbms$distance), 
               renk_hab_sim=mean(pair_attr_ukbms$renk_hab_sim), mid.year=unique(pair_attr_ukbms$mid.year), 
-              specialism=unique(pair_attr_ukbms$specialism), pair.id=unique(pair_attr_ukbms$pair.id), 
-              spp=unique(pair_attr_ukbms$spp))
+              specialism=unique(pair_attr_ukbms$specialism), pair.id=sample(pair_attr_ukbms$pair.id,10), 
+              spp=sample(pair_attr_ukbms$spp,10))
                          
 newdata$lag0 <- predict(spec_model_ukbms2, newdata=newdata, re.form=NA)
 
@@ -155,25 +141,13 @@ newdata <- data.frame(
   , thi = newdata$lag0+1.96*sqrt(tvar2)
 )
 
+## run model without specialism or species random effect to obtain residuals
 spec_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_ukbms)
 pair_attr_ukbms$residuals <- resid(spec_ukbms)
 
-library(plotrix)
+## create dataframe which calculates mean, SD and SE of residuals for each species
 summary_ukbms <- pair_attr_ukbms %>% group_by(spp, specialism, mid.year) %>% 
   summarise_at(vars(residuals), funs(mean,std.error,sd))
-
-spec_ukbms <- ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=specialism)) +
-  geom_point(aes(colour=specialism), size = 2) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1)
-#geom_smooth(method="lm", se=FALSE, colour="black")
-spec_ukbms
-
-spec_ukbms + geom_line(data=newdata, aes(x=mid.year, y=lag0, colour=specialism), lwd=1) +
-  labs(x="Mid year of moving window", y="Population synchrony") +
-  theme_bw() +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-### doesn't look good 
 
 ## change year values
 newdata$mid.year <- revalue(newdata$mid.year, c("1984.5"="1985"))
@@ -183,13 +157,33 @@ newdata$mid.year <- revalue(newdata$mid.year, c("2011.5"="2012"))
 colnames(newdata)[5] <- "Specialism"
 newdata$Specialism <- revalue(newdata$Specialism, c("specialist"="Habitat specialist"))
 newdata$Specialism <- revalue(newdata$Specialism, c("wider.countryside"="Wider countryside"))
-levels(newdata$Specialism)
 newdata$Specialism <- factor(newdata$Specialism, levels=c("Wider countryside", "Habitat specialist"))
-levels(newdata$Specialism)
+## same as above for summary dataframe
+summary_ukbms$mid.year <- revalue(summary_ukbms$mid.year, c("1984.5"="1985"))
+summary_ukbms$mid.year <- revalue(summary_ukbms$mid.year, c("1999.5"="2000"))
+summary_ukbms$mid.year <- revalue(summary_ukbms$mid.year, c("2011.5"="2012"))
+## change strategy heading
+colnames(summary_ukbms)[2] <- "Specialism"
+summary_ukbms$Specialism <- revalue(summary_ukbms$Specialism, c("specialist"="Habitat specialist"))
+summary_ukbms$Specialism <- revalue(summary_ukbms$Specialism, c("wider.countryside"="Wider countryside"))
+summary_ukbms$Specialism <- factor(summary_ukbms$Specialism, levels=c("Wider countryside", "Habitat specialist"))
 
-## plot with error bars
+## plot graph with raw data residuals (+SE error bars) and fitted lines
+png("../Graphs/Mobility/Specialism_change_predicted_ukbms.png", height = 150, width = 200, units = "mm", res = 300)
 pd <- position_dodge(0.1)
-png("../Graphs/Specialism/Specialism_change_predicted_ukbms_nomigrants2.png", height = 100, width = 120, units = "mm", res = 300)
+ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Specialism)) +
+  geom_point(aes(colour=Specialism), size = 1, position=pd) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error, colour=Specialism), width=0.1, position=pd) +
+  geom_line(data=newdata, aes(x=mid.year, y=lag0, colour=Specialism), lwd=1) +
+  labs(x="Mid year of moving window", y="Population synchrony") +
+  theme_bw() +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+dev.off()
+
+## plot graph with fitted line and confidence interval error bars
+pd <- position_dodge(0.1)
+png("../Graphs/Specialism/Specialism_change_predicted_ukbms2.png", height = 100, width = 120, units = "mm", res = 300)
 ggplot(newdata, aes(x=mid.year, y=lag0, group=Specialism)) +
   geom_point(position=pd) +
   geom_line(aes(linetype=Specialism), size=1, position=pd) +
@@ -226,7 +220,7 @@ anova(spec_model_cbc2)
 results_table_strategy_cbc <- data.frame(summary(spec_model_cbc2)$coefficients[,1:5])
 write.csv(results_table_strategy_cbc, file = "../Results/Model_outputs/change_strategy_cbc.csv", row.names=TRUE)
 
-## plot results
+## predict new data
 newdata_cbc <- expand.grid(mean_northing=mean(pair_attr_cbc$mean_northing), distance=mean(pair_attr_cbc$distance), hab_sim=sample(pair_attr_cbc$hab_sim,1),
                        mid.year=unique(pair_attr_cbc$mid.year), specialism=unique(pair_attr_cbc$specialism),
                        pair.id=sample(pair_attr_cbc$pair.id,10), spp=sample(pair_attr_cbc$spp,10))
@@ -246,37 +240,43 @@ newdata_cbc <- data.frame(
   , thi = newdata_cbc$lag0+1.96*sqrt(tvar1)
 )
 
+## run model without specialism or species random effect to obtain residuals
 spec_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id), data=pair_attr_cbc)
 pair_attr_cbc$residuals <- resid(spec_cbc)
 
-library(plotrix)
+## create dataframe which calculates mean, SD and SE of residuals for each species
 summary_cbc <- pair_attr_cbc %>% group_by(spp, specialism, mid.year) %>% 
   summarise_at(vars(residuals), funs(mean,std.error,sd))
 
-spec_cbc <- ggplot(summary_cbc, aes(x = mid.year, y = mean, group=specialism)) +
-  geom_point(aes(colour=specialism), size = 2) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1)
-#geom_smooth(method="lm", se=FALSE, colour="black")
-spec_cbc
-
-spec_cbc + geom_line(data=newdata_cbc, aes(x=mid.year, y=lag0, colour=specialism), lwd=0.5) +
-  labs(x="Mid year of moving window", y="Population synchrony") +
-  theme_bw() +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-### doesn't look good 
-
-## change year values
+## change values
 newdata_cbc$mid.year <- revalue(newdata_cbc$mid.year, c("1984.5"="1985"))
 newdata_cbc$mid.year <- revalue(newdata_cbc$mid.year, c("1995.5"="1996"))
 colnames(newdata_cbc)[5] <- "Specialism"
 newdata_cbc$Specialism <- revalue(newdata_cbc$Specialism, c("generalist"="Generalist"))
 newdata_cbc$Specialism <- revalue(newdata_cbc$Specialism, c("specialist"="Specialist"))
+## same for summary dataframe
+summary_cbc$mid.year <- revalue(summary_cbc$mid.year, c("1984.5"="1985"))
+summary_cbc$mid.year <- revalue(summary_cbc$mid.year, c("1995.5"="1996"))
+colnames(summary_cbc)[2] <- "Specialism"
+summary_cbc$Specialism <- revalue(summary_cbc$Specialism, c("generalist"="Generalist"))
+summary_cbc$Specialism <- revalue(summary_cbc$Specialism, c("specialist"="Specialist"))
 
-## plot with error bars
+## plot graph with raw data residuals (+SE error bars) and fitted lines
+png("../Graphs/Mobility/Specialism_change_predicted_cbc.png", height = 150, width = 200, units = "mm", res = 300)
 pd <- position_dodge(0.1)
+ggplot(summary_cbc, aes(x = mid.year, y = mean, group=Specialism)) +
+  geom_point(aes(colour=Specialism), size = 1, position=pd) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error, colour=Specialism), width=0.1, position=pd) +
+  geom_line(data=newdata_cbc, aes(x=mid.year, y=lag0, colour=Specialism), lwd=1) +
+  labs(x="Mid year of moving window", y="Population synchrony") +
+  theme_bw() +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+dev.off()
 
-png("../Graphs/Specialism/Specialism_change_predicted_cbc.png", height = 100, width = 120, units = "mm", res = 300)
+## plot graph with fitted line and confidence interval error bars
+png("../Graphs/Specialism/Specialism_change_predicted_cbc2.png", height = 100, width = 120, units = "mm", res = 300)
+pd <- position_dodge(0.1)
 ggplot(newdata_cbc, aes(x=mid.year, y=lag0, group=Specialism)) +
   geom_point(position=pd) +
   geom_line(aes(linetype=Specialism), size=1, position=pd) +
@@ -310,7 +310,7 @@ anova(spec_model_bbs2)
 results_table_strategy_bbs <- data.frame(summary(spec_model_bbs2)$coefficients[,1:5])
 write.csv(results_table_strategy_bbs, file = "../Results/Model_outputs/change_strategy_bbs.csv", row.names=TRUE)
 
-## plot results
+## predict new data
 newdata_bbs <- expand.grid(mean_northing=mean(pair_attr_bbs$mean_northing), distance=mean(pair_attr_bbs$distance), renk_hab_sim=mean(pair_attr_bbs$renk_hab_sim),
                        mid.year=unique(pair_attr_bbs$mid.year), specialism=unique(pair_attr_bbs$specialism),
                        pair.id=sample(pair_attr_bbs$pair.id,10), spp=sample(pair_attr_bbs$spp,10))
@@ -329,42 +329,42 @@ newdata_bbs <- data.frame(
   , thi = newdata_bbs$lag0+1.96*sqrt(tvar3)
 )
 
+## run model without specialism or species random effect to obtain residuals
 spec_bbs <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_bbs)
 pair_attr_bbs$residuals <- resid(spec_bbs)
 
-library(plotrix)
+## create dataframe which calculates mean, SD and SE of residuals for each species
 summary_bbs <- pair_attr_bbs %>% group_by(spp, specialism, mid.year) %>% 
   summarise_at(vars(residuals), funs(mean,std.error,sd))
 
-spec_bbs <- ggplot(summary_bbs, aes(x = mid.year, y = mean, group=specialism)) +
-  geom_point(aes(colour=specialism), size = 2) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1)
-  #geom_smooth(method="lm", se=FALSE, colour="black")
-spec_bbs
+## change values
+newdata_bbs$mid.year <- revalue(newdata_bbs$mid.year, c("1998.5"="1999"))
+newdata_bbs$mid.year <- revalue(newdata_bbs$mid.year, c("2011.5"="2012"))
+colnames(newdata_bbs)[5] <- "Strategy"
+newdata_bbs$Strategy <- revalue(newdata_bbs$Strategy, c("generalist"="Generalist"))
+newdata_bbs$Strategy <- revalue(newdata_bbs$Strategy, c("specialist"="Specialist"))
+## same as above for summary dataframe
+summary_bbs$mid.year <- revalue(summary_bbs$mid.year, c("1998.5"="1999"))
+summary_bbs$mid.year <- revalue(summary_bbs$mid.year, c("2011.5"="2012"))
+colnames(summary_bbs)[2] <- "Strategy"
+summary_bbs$Strategy <- revalue(summary_bbs$Strategy, c("generalist"="Generalist"))
+summary_bbs$Strategy <- revalue(summary_bbs$Strategy, c("specialist"="Specialist"))
 
-spec_bbs + geom_line(data=newdata_bbs, aes(x=mid.year, y=lag0, colour=specialism), lwd=0.5) +
+## plot graph with raw data residuals (+SE error bars) and fitted lines
+png("../Graphs/Mobility/Mobility_change_predicted_bbs.png", height = 150, width = 200, units = "mm", res = 300)
+pd <- position_dodge(0.1)
+ggplot(summary_bbs, aes(x = mid.year, y = mean, group=Strategy)) +
+  geom_point(aes(colour=Strategy), size = 1, position=pd) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error, colour=Strategy), width=0.1, position=pd) +
+  geom_line(data=newdata_bbs, aes(x=mid.year, y=lag0, colour=Strategy), lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   theme_bw() +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-### doesn't look good 
+dev.off()
 
-
-
-
-
-
-
-## change year values
-newdata_bbs$mid.year <- revalue(newdata_bbs$mid.year, c("1998.5"="1999"))
-newdata_bbs$mid.year <- revalue(newdata_bbs$mid.year, c("2011.5"="2012"))
-## change strategy heading
-colnames(newdata_bbs)[5] <- "Strategy"
-newdata_bbs$Strategy <- revalue(newdata_bbs$Strategy, c("generalist"="Generalist"))
-newdata_bbs$Strategy <- revalue(newdata_bbs$Strategy, c("specialist"="Specialist"))
-
-### plot graph with error lines..
-png("../Graphs/Specialism/Specialism_change_predicted_bbs.png", height = 100, width = 120, units = "mm", res = 300)
+## plot graph with fitted line and confidence interval error bars
+png("../Graphs/Specialism/Specialism_change_predicted_bbs2.png", height = 100, width = 120, units = "mm", res = 300)
 ggplot(newdata_bbs, aes(x=mid.year, y=lag0, group=Strategy)) +
   geom_point(position=pd) +
   geom_line(aes(linetype=Strategy), size=1, position=pd) +
