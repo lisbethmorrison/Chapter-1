@@ -169,12 +169,13 @@ summary_ukbms$Specialism <- revalue(summary_ukbms$Specialism, c("wider.countrysi
 summary_ukbms$Specialism <- factor(summary_ukbms$Specialism, levels=c("Wider countryside", "Habitat specialist"))
 
 ## plot graph with raw data residuals (+SE error bars) and fitted lines
-png("../Graphs/Mobility/Specialism_change_predicted_ukbms.png", height = 150, width = 200, units = "mm", res = 300)
+png("../Graphs/Specialism/Specialism_change_predicted_ukbms.png", height = 150, width = 200, units = "mm", res = 300)
 pd <- position_dodge(0.1)
 ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Specialism)) +
-  geom_point(aes(colour=Specialism), size = 1, position=pd) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error, colour=Specialism), width=0.1, position=pd) +
-  geom_line(data=newdata, aes(x=mid.year, y=lag0, colour=Specialism), lwd=1) +
+  geom_point(aes(shape=Specialism), colour="grey", size = 2, position=pd) +
+  scale_shape_manual(values=c(16,4)) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position=pd) +
+  geom_line(data=newdata, aes(x=mid.year, y=lag0, linetype=Specialism), colour="black", lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   theme_bw() +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
@@ -262,12 +263,13 @@ summary_cbc$Specialism <- revalue(summary_cbc$Specialism, c("generalist"="Genera
 summary_cbc$Specialism <- revalue(summary_cbc$Specialism, c("specialist"="Specialist"))
 
 ## plot graph with raw data residuals (+SE error bars) and fitted lines
-png("../Graphs/Mobility/Specialism_change_predicted_cbc.png", height = 150, width = 200, units = "mm", res = 300)
+png("../Graphs/Specialism/Specialism_change_predicted_cbc.png", height = 150, width = 200, units = "mm", res = 300)
 pd <- position_dodge(0.1)
 ggplot(summary_cbc, aes(x = mid.year, y = mean, group=Specialism)) +
-  geom_point(aes(colour=Specialism), size = 1, position=pd) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error, colour=Specialism), width=0.1, position=pd) +
-  geom_line(data=newdata_cbc, aes(x=mid.year, y=lag0, colour=Specialism), lwd=1) +
+  geom_point(aes(shape=Specialism), colour="grey", size = 2, position=pd) +
+  scale_shape_manual(values=c(16,4)) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position=pd) +
+  geom_line(data=newdata_cbc, aes(x=mid.year, y=lag0, linetype=Specialism), lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   theme_bw() +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
@@ -351,12 +353,13 @@ summary_bbs$Strategy <- revalue(summary_bbs$Strategy, c("generalist"="Generalist
 summary_bbs$Strategy <- revalue(summary_bbs$Strategy, c("specialist"="Specialist"))
 
 ## plot graph with raw data residuals (+SE error bars) and fitted lines
-png("../Graphs/Mobility/Mobility_change_predicted_bbs.png", height = 150, width = 200, units = "mm", res = 300)
+png("../Graphs/Specialism/Specialism_change_predicted_bbs.png", height = 150, width = 200, units = "mm", res = 300)
 pd <- position_dodge(0.1)
 ggplot(summary_bbs, aes(x = mid.year, y = mean, group=Strategy)) +
-  geom_point(aes(colour=Strategy), size = 1, position=pd) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error, colour=Strategy), width=0.1, position=pd) +
-  geom_line(data=newdata_bbs, aes(x=mid.year, y=lag0, colour=Strategy), lwd=1) +
+  geom_point(aes(shape=Strategy), colour="grey", size = 2, position=pd) +
+  scale_shape_manual(values=c(16,4)) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position=pd) +
+  geom_line(data=newdata_bbs, aes(x=mid.year, y=lag0, linetype=Strategy), lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   theme_bw() +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
