@@ -377,9 +377,10 @@ summary_ukbms2$Abundance_change <- factor(summary_ukbms2$Abundance_change, level
 png("../Graphs/Abundance/Abundance_change_predicted_ukbms_00_12.png", height = 100, width = 120, units = "mm", res = 300)
 pd <- position_dodge(0.1)
 ggplot(summary_ukbms2, aes(x = mid.year, y = mean, group=Abundance_change)) +
-  geom_point(aes(colour=Abundance_change), size = 1, position=pd) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error, colour=Abundance_change), position=pd, width=0.1) +
-  geom_line(data=newdata_ukbms, aes(x=mid.year, y=lag0, colour=Abundance_change), lwd=1) +
+  geom_point(aes(shape=Abundance_change), colour="grey", size = 2, position=pd) +
+  scale_shape_manual(values=c(16,4)) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", position=pd, width=0.1) +
+  geom_line(data=newdata_ukbms, aes(x=mid.year, y=lag0, linetype=Abundance_change), lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   labs(colour="Change in abundance") +
   theme_bw() +
