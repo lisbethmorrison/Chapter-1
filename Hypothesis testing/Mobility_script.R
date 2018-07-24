@@ -328,9 +328,10 @@ summary_ukbms$Mobility <- revalue(summary_ukbms$Mobility, c("2"="High"))
 png("../Graphs/Mobility/Mobility_change_predicted_ukbms.png", height = 150, width = 200, units = "mm", res = 300)
 pd <- position_dodge(0.1)
 ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Mobility)) +
-  geom_point(aes(colour=Mobility), size = 1, position=pd) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error, colour=Mobility), width=0.1, position=pd) +
-  geom_line(data=newdata_ukbms, aes(x=mid.year, y=lag0, colour=Mobility), lwd=1) +
+  geom_point(aes(shape=Mobility), colour="grey", size = 2, position=pd) +
+  scale_shape_manual(values=c(16,4)) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position=pd) +
+  geom_line(data=newdata_ukbms, aes(x=mid.year, y=lag0, linetype=Mobility), lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   theme_bw() +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
@@ -442,9 +443,10 @@ summary_cbc$Dispersal <- revalue(summary_cbc$Dispersal, c("2"="High"))
 png("../Graphs/Mobility/Mobility_change_predicted_cbc.png", height = 150, width = 200, units = "mm", res = 300)
 pd <- position_dodge(0.1)
 ggplot(summary_cbc, aes(x = mid.year, y = mean, group=Dispersal)) +
-  geom_point(aes(colour=Dispersal), size = 1, position=pd) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error, colour=Dispersal), width=0.1, position=pd) +
-  geom_line(data=newdata_cbc, aes(x=mid.year, y=lag0, colour=Dispersal), lwd=1) +
+  geom_point(aes(shape=Dispersal), colour="grey", size = 2, position=pd) +
+  scale_shape_manual(values=c(16,4)) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position=pd) +
+  geom_line(data=newdata_cbc, aes(x=mid.year, y=lag0, linetype=Dispersal), lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   theme_bw() +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
@@ -559,9 +561,10 @@ summary_bbs$Dispersal <- revalue(summary_bbs$Dispersal, c("2"="High"))
 png("../Graphs/Mobility/Mobility_change_predicted_bbs.png", height = 150, width = 200, units = "mm", res = 300)
 pd <- position_dodge(0.1)
 ggplot(summary_bbs, aes(x = mid.year, y = mean, group=Dispersal)) +
-  geom_point(aes(colour=Dispersal), size = 1, position=pd) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error, colour=Dispersal), width=0.1, position=pd) +
-  geom_line(data=newdata_bbs, aes(x=mid.year, y=lag0, colour=Dispersal), lwd=1) +
+  geom_point(aes(shape=Dispersal), colour="grey", size = 2, position=pd) +
+  scale_shape_manual(values=c(16,4)) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position=pd) +
+  geom_line(data=newdata_bbs, aes(x=mid.year, y=lag0, linetype=Dispersal), lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   theme_bw() +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
