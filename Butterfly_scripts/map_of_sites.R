@@ -9,6 +9,12 @@
 
 rm(list=ls()) # clear R
 
+
+library(ggmap)
+library(ggplot2)
+library(tidyverse)
+library(sf)
+
 ## add data
 pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE)
 site_data <- read.csv("../Data/UKBMS_data/pair_attr_mean_northing_dist_sim.csv", header = TRUE)
@@ -171,81 +177,91 @@ T3.map <- blighty(place="set.British.Isles") +
 dev.off()
 
 
-#### number of woodland sites
-pair_attr_wood <- subset(pair_attr[pair_attr$HABITAT=="Woodland",])
 
-site1_wood <- as.data.frame(unique(pair_attr_wood$site1))
-site2_wood <- as.data.frame(unique(pair_attr_wood$site2))
-colnames(site1_wood)[1] <- "site"
-colnames(site2_wood)[1] <- "site"
-site_list <- rbind(site1_wood, site2_wood)
-site_list <- unique(site_list)
 
-## number of all sites
-site1 <- as.data.frame(unique(pair_attr$site1))
-site2 <- as.data.frame(unique(pair_attr$site2))
-colnames(site1)[1] <- "site"
-colnames(site2)[1] <- "site"
-site_list <- rbind(site1, site2)
-site_list <- unique(site_list) ## 709 sites
 
+
+
+
+
+
+
+
+######################### MAPS USING GGMAP ###############################
+## load data
+pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE)
 pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE) 
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) 
 
-## number of CBC sites
-site3 <- as.data.frame(unique(pair_attr_CBC$site1))
-site4 <- as.data.frame(unique(pair_attr_CBC$site2))
-colnames(site3)[1] <- "site"
-colnames(site4)[1] <- "site"
-site_list2 <- rbind(site3, site4)
-site_list2 <- unique(site_list2) ## 106 sites
-
-## number of BBS sites
-site5 <- as.data.frame(unique(pair_attr_BBS$site1))
-site6 <- as.data.frame(unique(pair_attr_BBS$site2))
-colnames(site5)[1] <- "site"
-colnames(site6)[1] <- "site"
-site_list3 <- rbind(site5, site6)
-site_list3 <- unique(site_list3) ## 2499 sites
-
-
-
-library(ggmap)
-library(ggplot2)
-UK <- map_data(map = "world", region = "UK") # changed map to "world"
-ggplot(data = UK, aes(x = long, y = lat, group = group)) + 
-  geom_polygon() +
-  coord_map()
-
-d <- data.frame(lat=c(50.659631, 50.607213, 50.608129),
-                lon=c(3.09319, 3.011473, 3.031529))
-UK + geom_point(data=d, aes(x=lon, y=lat), color="red", size=30, alpha=0.5)
-
+## create initial UK map
 UK_map <- get_map(location = c(-2.65, 53.7), zoom = 5, maptype = "hybrid")
 UK_map <- ggmap(ggmap=UK_map, extent = "device", legend = "right")
+UK_map
 
-UK_map_1 <- UK_map +
-        ggmap(ggmap=UK_map, extent = "device", legend = "right") +
-        geom_point(data = T1_map_coord, aes(x=X, y=Y), size  = 2)
+## number of UKBMS sites
+site1 <- unique(subset(pair_attr[c(2,9,10)]))
+site2 <- unique(subset(pair_attr[c(3,11,12)]))
+colnames(site1) <- c("site", "east", "north")
+colnames(site2) <- c("site", "east", "north")
+site_list <- rbind(site1, site2)
+site_list <- unique(site_list) ## 709 sites
+## change easting/northing to coordinates
+UKBMS_map_coord <- site_list %>%
+  st_as_sf(coords = c("east", "north"), crs = 27700) %>%
+  st_transform(4326) %>%
+  st_coordinates() %>%
+  as_tibble()
+## UKBMS sites as add points
+UKBMS_map <- UK_map +
+  geom_point(data = UKBMS_map_coord, aes(x=X, y=Y), size  = 1.5)
+UKBMS_map
 
-UK_map_2 <- UK_map +
-  ggmap(ggmap=UK_map, extent = "device", legend = "right") +
-  geom_point(data = T2_map_coord, aes(x=X, y=Y), size  = 2)
+## number of CBC sites
+site3 <- unique(subset(pair_attr_CBC[c(2,9,10)]))
+site4 <- unique(subset(pair_attr_CBC[c(3,11,12)]))
+colnames(site3) <- c("site", "east", "north")
+colnames(site4) <- c("site", "east", "north")
+site_list2 <- rbind(site3, site4)
+site_list2 <- unique(site_list2) ## 106 sites
+## change easting/northing to coordinates
+CBC_map_coord <- site_list2 %>%
+  st_as_sf(coords = c("east", "north"), crs = 27700) %>%
+  st_transform(4326) %>%
+  st_coordinates() %>%
+  as_tibble()
+## CBC sites as add points
+CBC_map <- UK_map +
+  geom_point(data = CBC_map_coord, aes(x=X, y=Y), size  = 1.5)
+CBC_map
 
-UK_map_3 <- UK_map +
-  ggmap(ggmap=UK_map, extent = "device", legend = "right") +
-  geom_point(data = T3_map_coord, aes(x=X, y=Y), size  = 2)
 
+## number of BBS sites
+site5 <- unique(subset(pair_attr_BBS[c(2,9,10)]))
+site6 <- unique(subset(pair_attr_BBS[c(3,11,12)]))
+colnames(site5) <- c("site", "east", "north")
+colnames(site6) <- c("site", "east", "north")
+site_list3 <- rbind(site5, site6)
+site_list3 <- unique(site_list3) ## 2499 sites
+## change easting/northing to coordinates
+BBS_map_coord <- site_list3 %>%
+  st_as_sf(coords = c("east", "north"), crs = 27700) %>%
+  st_transform(4326) %>%
+  st_coordinates() %>%
+  as_tibble()
+## CBC sites as add points
+BBS_map <- UK_map +
+  geom_point(data = BBS_map_coord, aes(x=X, y=Y), size  = 1)
+BBS_map
 
-
-multiplot(UK_map + geom_point(data = T1_map_coord, 
-                              aes(x=X, y=Y), size = 0.8), 
-          UK_map + geom_point(data = T2_map_coord, 
-                              aes(x=X, y=Y), size = 0.8), 
-          UK_map + geom_point(data = T3_map_coord,
-                              aes(x=X, y=Y), size = 0.8), cols = 3)
-
-
+## save all 3 maps as one
+png("../Graphs/all_maps.png", height = 200, width = 250, units = "mm", res = 300)
+multiplot(UK_map + geom_point(data = UKBMS_map_coord, 
+                              aes(x=X, y=Y), size = 0.3), 
+          UK_map + geom_point(data = CBC_map_coord, 
+                              aes(x=X, y=Y), size = 0.3), 
+          UK_map + geom_point(data = BBS_map_coord,
+                              aes(x=X, y=Y), size = 0.3), cols = 3)
+dev.off()
 
 
 
@@ -278,37 +294,3 @@ multiplot <- function(..., plotlist=NULL, cols) {
   
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-library(tidyverse)
-library(sf)
-#> Linking to GEOS 3.6.1, GDAL 2.2.3, proj.4 4.9.3
-T1_map_coord <- T1_map %>%
-  st_as_sf(coords = c("east", "north"), crs = 27700) %>%
-  st_transform(4326) %>%
-  st_coordinates() %>%
-  as_tibble()
-
-T2_map_coord <- T2_map %>%
-  st_as_sf(coords = c("east", "north"), crs = 27700) %>%
-  st_transform(4326) %>%
-  st_coordinates() %>%
-  as_tibble()
-
-T3_map_coord <- T3_map %>%
-  st_as_sf(coords = c("east", "north"), crs = 27700) %>%
-  st_transform(4326) %>%
-  st_coordinates() %>%
-  as_tibble()
