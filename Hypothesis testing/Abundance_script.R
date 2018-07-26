@@ -33,6 +33,8 @@ WCBS_data <- read.csv("../Data/UKBMS_data/WCBS_data.csv", header=TRUE)
 WCBS_data <- WCBS_data[-c(3,5:7,9:11,13:15,17:19,21:23,25:27,29:31,33:35,37:38)] ## left with abundance from 09-17
 ## take the average abundance over time
 WCBS_data$average_abundance <- rowMeans(subset(WCBS_data, select=c(2:10), na.rm=TRUE)) ## this is our measure of 'commonness'
+## save dataframe
+write.csv(WCBS_data, file="../Data/Butterfly_sync_data/Average_abundance_UKBMS.csv", row.names=FALSE)
 
 ## merge the two datasets
 pair_attr <- merge(pair_attr, WCBS_data, by.x="spp", by.y="Species_code", all=FALSE)
