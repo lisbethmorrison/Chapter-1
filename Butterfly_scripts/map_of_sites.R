@@ -194,7 +194,7 @@ pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRU
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) 
 
 ## create initial UK map
-UK_map <- get_map(location = c(-2.65, 53.7), zoom = 5, maptype = "hybrid")
+UK_map <- get_map(location = c(-2.65, 53.7), zoom = 5, maptype = "satellite")
 UK_map <- ggmap(ggmap=UK_map, extent = "device", legend = "right")
 UK_map
 
@@ -253,20 +253,7 @@ BBS_map <- UK_map +
   geom_point(data = BBS_map_coord, aes(x=X, y=Y), size  = 1)
 BBS_map
 
-## save all 3 maps as one
-png("../Graphs/all_maps.png", height = 200, width = 250, units = "mm", res = 300)
-multiplot(UK_map + geom_point(data = UKBMS_map_coord, 
-                              aes(x=X, y=Y), size = 0.3), 
-          UK_map + geom_point(data = CBC_map_coord, 
-                              aes(x=X, y=Y), size = 0.3), 
-          UK_map + geom_point(data = BBS_map_coord,
-                              aes(x=X, y=Y), size = 0.3), cols = 3)
-dev.off()
-
-
-
-
-
+## multiplot function to plot maps on same file
 multiplot <- function(..., plotlist=NULL, cols) {
   require(grid)
   
@@ -293,4 +280,20 @@ multiplot <- function(..., plotlist=NULL, cols) {
   }
   
 }
+
+
+## save all 3 maps as one
+png("../Graphs/all_maps.png", height = 200, width = 250, units = "mm", res = 300)
+multiplot(UK_map + geom_point(data = UKBMS_map_coord, 
+                              aes(x=X, y=Y), size = 0.3), 
+          UK_map + geom_point(data = CBC_map_coord, 
+                              aes(x=X, y=Y), size = 0.3), 
+          UK_map + geom_point(data = BBS_map_coord,
+                              aes(x=X, y=Y), size = 0.3), cols = 3)
+dev.off()
+
+
+
+
+
 
