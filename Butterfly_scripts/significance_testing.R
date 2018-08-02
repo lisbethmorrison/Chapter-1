@@ -515,21 +515,21 @@ results_final_late <- results_final_late[,-c(1:2)]
 results_final_overall <- results_final_overall[,-c(1:2)]
 
 ## create early comparison data frame
-results_final_early <- data.frame(comparison="1985-2000", change=unique(results_table_early$change), no_species=c(18,10,1), total_species=29)
+results_final_early <- data.frame(comparison="1985-2000", change=unique(results_final_early$change), no_species=c(18,10,1), total_species=29)
 # nrow(results_table_early[results_table_early$change=="No change",]) ## 10 species unchanged
 # nrow(results_table_early[results_table_early$change=="Decrease",]) ## 18 species decreasing
 # nrow(results_table_early[results_table_early$change=="Increase",]) ## 1 species increasing
 results_final_early$percentage <- (results_final_early$no_species / results_final_early$total_species)*100
 
 ## create late comparison data frame
-results_final_late <- data.frame(comparison="2000-2012", change=unique(results_table_late$change), no_species=c(23,6,3), total_species=32)
+results_final_late <- data.frame(comparison="2000-2012", change=unique(results_final_late$change), no_species=c(23,6,3), total_species=32)
 # nrow(results_table_late[results_table_late$change=="No change",]) ## 6 species unchanged
 # nrow(results_table_late[results_table_late$change=="Decrease",]) ## 3 species decreasing
 # nrow(results_table_late[results_table_late$change=="Increase",]) ## 23 species increasing
 results_final_late$percentage <- (results_final_late$no_species / results_final_late$total_species)*100
 
 ## create overall comparison data frame
-results_final_overall <- data.frame(comparison="1985-2012", change=unique(results_table_overall$change), no_species=c(9,13,5), total_species=27)
+results_final_overall <- data.frame(comparison="1985-2012", change=unique(results_final_overall$change), no_species=c(9,13,5), total_species=27)
 # nrow(results_table_overall[results_table_overall$change=="No change",]) ## 5 species unchanged
 # nrow(results_table_overall[results_table_overall$change=="Decrease",]) ## 9 species decreasing
 # nrow(results_table_overall[results_table_overall$change=="Increase",]) ## 13 species increasing
@@ -563,6 +563,21 @@ ggplot(data=model_comp_results, aes(x=comparison, y=percentage, fill=change)) +
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
 dev.off()
 
+## same plot but without overall change
+## remove overall change
+model_comp_results <- model_comp_results[!model_comp_results$comparison == "1985-2012",]
+png("../Graphs/Model_comps/Model_comp_results_all_spp2.png", height = 100, width = 120, units = "mm", res = 300)
+ggplot(data=model_comp_results, aes(x=comparison, y=percentage, fill=change)) +
+  geom_bar(stat="identity", width=0.4) +
+  labs(y="Percentage of species", x="", fill="") +
+  scale_fill_manual(values = c("#339900", "#999999", "#990000")) +
+  theme_bw() +
+  theme(axis.text.x=element_text(colour = "black")) +
+  theme(axis.text.y=element_text(colour = "black")) +
+  scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
+dev.off()
 
 #### produce graph for percentage of specialists and generalists 
 ## add specialist/generalist data
