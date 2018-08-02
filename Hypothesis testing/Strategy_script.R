@@ -123,8 +123,8 @@ write.csv(results_table_strategy_ukbms, file = "../Results/Model_outputs/change_
 ## predict new data
 newdata <- expand.grid(mean_northing=mean(pair_attr_ukbms$mean_northing), distance=mean(pair_attr_ukbms$distance), 
               renk_hab_sim=mean(pair_attr_ukbms$renk_hab_sim), mid.year=unique(pair_attr_ukbms$mid.year), 
-              specialism=unique(pair_attr_ukbms$specialism), pair.id=sample(pair_attr_ukbms$pair.id,10), 
-              spp=sample(pair_attr_ukbms$spp,10))
+              specialism=unique(pair_attr_ukbms$specialism), pair.id=sample(pair_attr_ukbms$pair.id,100), 
+              spp=unique(pair_attr_ukbms$spp))
                          
 newdata$lag0 <- predict(spec_model_ukbms2, newdata=newdata, re.form=NA)
 
@@ -141,13 +141,30 @@ newdata <- data.frame(
   , thi = newdata$lag0+1.96*sqrt(tvar2)
 )
 
-## run model without specialism or species random effect to obtain residuals
+## run model without specialism or species random effect but with other confounding effects (mobility+abundance) to obtain residuals
+## first read in abundance file
+abundance_results <- read.csv("../Results/Butterfly_results/abundance_results_00_12.csv", header=TRUE)
+## merge files
+pair_attr_ukbms <- merge(pair_attr_ukbms, abundance_results, by.x="spp", by.y="Species.code", all=FALSE)
+## change mobility into two groups
+pair_attr_ukbms$mobility_wil <- as.numeric(pair_attr_ukbms$mobility_wil)
+pair_attr_ukbms$mobility_score2 <- cut(pair_attr_ukbms$mobility_wil, 2, labels=FALSE)
+pair_attr_ukbms$mobility_score2 <- as.factor(pair_attr_ukbms$mobility_score2)
+pair_attr_ukbms <- na.omit(pair_attr_ukbms) ## remove NAs 
+
 spec_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_ukbms)
 pair_attr_ukbms$residuals <- resid(spec_ukbms)
+## check mean synchrony of each group
+group_by(pair_attr_ukbms, specialism) %>% summarize(m = mean(lag0)) ## WC mean = 0.265, HS mean = 0.195
+## put mean of each group into pair_attr dataframe
+pair_attr_ukbms <- ddply(pair_attr_ukbms, "specialism", transform, spec_mean = mean(lag0))
+## add mean to each residual
+pair_attr_ukbms$residuals2 <- pair_attr_ukbms$residuals + pair_attr_ukbms$spec_mean
+
 
 ## create dataframe which calculates mean, SD and SE of residuals for each species
 summary_ukbms <- pair_attr_ukbms %>% group_by(spp, specialism, mid.year) %>% 
-  summarise_at(vars(residuals), funs(mean,std.error,sd))
+  summarise_at(vars(residuals2), funs(mean,std.error,sd))
 
 ## change year values
 newdata$mid.year <- revalue(newdata$mid.year, c("1984.5"="1985"))
@@ -155,32 +172,53 @@ newdata$mid.year <- revalue(newdata$mid.year, c("1999.5"="2000"))
 newdata$mid.year <- revalue(newdata$mid.year, c("2011.5"="2012"))
 ## change strategy heading
 colnames(newdata)[5] <- "Specialism"
-newdata$Specialism <- revalue(newdata$Specialism, c("specialist"="Habitat specialist"))
-newdata$Specialism <- revalue(newdata$Specialism, c("wider.countryside"="Wider countryside"))
-newdata$Specialism <- factor(newdata$Specialism, levels=c("Wider countryside", "Habitat specialist"))
+newdata$Specialism <- revalue(newdata$Specialism, c("specialist"="Specialist"))
+newdata$Specialism <- revalue(newdata$Specialism, c("wider.countryside"="Generalist"))
+newdata$Specialism <- factor(newdata$Specialism, levels=c("Generalist", "Specialist"))
 ## same as above for summary dataframe
 summary_ukbms$mid.year <- revalue(summary_ukbms$mid.year, c("1984.5"="1985"))
 summary_ukbms$mid.year <- revalue(summary_ukbms$mid.year, c("1999.5"="2000"))
 summary_ukbms$mid.year <- revalue(summary_ukbms$mid.year, c("2011.5"="2012"))
 ## change strategy heading
 colnames(summary_ukbms)[2] <- "Specialism"
-summary_ukbms$Specialism <- revalue(summary_ukbms$Specialism, c("specialist"="Habitat specialist"))
-summary_ukbms$Specialism <- revalue(summary_ukbms$Specialism, c("wider.countryside"="Wider countryside"))
-summary_ukbms$Specialism <- factor(summary_ukbms$Specialism, levels=c("Wider countryside", "Habitat specialist"))
+summary_ukbms$Specialism <- revalue(summary_ukbms$Specialism, c("specialist"="Specialist"))
+summary_ukbms$Specialism <- revalue(summary_ukbms$Specialism, c("wider.countryside"="Generalist"))
+summary_ukbms$Specialism <- factor(summary_ukbms$Specialism, levels=c("Generalist", "Specialist"))
 
 ## plot graph with raw data residuals (+SE error bars) and fitted lines
-png("../Graphs/Specialism/Specialism_change_predicted_ukbms.png", height = 80, width = 120, units = "mm", res = 300)
-pd <- position_dodge(0.2)
+png("../Graphs/Specialism/Specialism_change_predicted_ukbms.png", height = 120, width = 150, units = "mm", res = 300)
 ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Specialism)) +
-  geom_point(aes(shape=Specialism), colour="grey", size = 2, position=pd) +
+  geom_point(aes(shape=Specialism), colour="grey", size = 2, position = myjit) +
   scale_shape_manual(values=c(16,4)) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position=pd) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position = myjit) +
   geom_line(data=newdata, aes(x=mid.year, y=lag0, linetype=Specialism), colour="black", lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   theme_bw() +
-  theme(text = element_text(size = 10), panel.border = element_blank(), panel.grid.major = element_blank(),
+  theme(text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 dev.off()
+
+
+myjit <- ggproto("fixJitter", PositionDodge,
+                 width = 0.5,
+                 dodge.width = 0.15,
+                 jit = NULL,
+                 compute_panel =  function (self, data, params, scales) 
+                 {
+                   
+                   #Generate Jitter if not yet
+                   if(is.null(self$jit) ) {
+                     self$jit <-jitter(rep(0, nrow(data)), amount=self$dodge.width)
+                   }
+                   
+                   data <- ggproto_parent(PositionDodge, self)$compute_panel(data, params, scales)
+                   
+                   data$x <- data$x + self$jit
+                   #For proper error extensions
+                   if("xmin" %in% colnames(data)) data$xmin <- data$xmin + self$jit
+                   if("xmax" %in% colnames(data)) data$xmax <- data$xmax + self$jit
+                   data
+                 } )
 
 ## plot graph with fitted line and confidence interval error bars
 pd <- position_dodge(0.1)
