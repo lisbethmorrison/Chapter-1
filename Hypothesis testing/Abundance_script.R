@@ -83,14 +83,14 @@ summary_ukbms <- pair_attr %>% group_by(spp, average_abundance) %>%
   summarise_at(vars(residuals), funs(mean,std.error,sd))
 
 ## plot graph with raw data residuals (+SE error bars) and fitted line
-png("../Graphs/Abundance/Common_average_predicted_ukbms.png", height = 100, width = 120, units = "mm", res = 300)
+png("../Graphs/Abundance/Common_average_predicted_ukbms.png", height = 80, width = 120, units = "mm", res = 300)
 ggplot(summary_ukbms, aes(x = average_abundance, y = mean)) +
   geom_point(size = 1, colour="grey") +
   geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey") +
   geom_line(data=newdata_ukbms, aes(x=average_abundance, y=lag0), colour="black", lwd=0.5) +
   labs(x="Average population abundance", y="Population synchrony") +
   theme_bw() +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+  theme(text = element_text(size = 10), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 dev.off()
 
@@ -131,7 +131,7 @@ anova(common_model_cbc)
 ## predict new data to plot graph
 newdata_cbc <- expand.grid(mean_northing=mean(pair_attr_CBC$mean_northing), distance=mean(pair_attr_CBC$distance), 
                        hab_sim=mean(pair_attr_CBC$hab_sim), pair.id=sample(pair_attr_CBC$pair.id,10),
-                       mid.year=mean(pair_attr_CBC$mid.year), spp=sample(pair_attr_CBC$spp,10),
+                       mid.year=mean(pair_attr_CBC$mid.year), spp=unique(pair_attr_CBC$spp),
                        pop_estimate=unique(pair_attr_CBC$pop_estimate))
 newdata_cbc$lag0 <- predict(common_model_cbc, newdata=newdata_cbc, re.form=NA)
 
@@ -148,23 +148,39 @@ newdata_cbc <- data.frame(
   , thi = newdata_cbc$lag0+1.96*sqrt(tvar2)
 )
 
-## model without abundance and species random effect to get residuals for graph
+## model without abundance and species random effect but with specialism and dispersal distance to get residuals for graph
+## read in dispersal data
+bird_dispersal <- read.csv("../Data/Woodland_bird_dispersal_Paradis1998.csv", header=TRUE)
+## merage datasets
+pair_attr_CBC <- merge(pair_attr_CBC, bird_dispersal, by.x="spp", by.y="Species_code")
+## change dispersal distance into 2 groups and remove NAs
+pair_attr_CBC <- na.omit(pair_attr_CBC)
+pair_attr_CBC$Breeding_AM <- as.numeric(pair_attr_CBC$Breeding_AM)
+pair_attr_CBC$Breeding_AM_score2 <- cut(pair_attr_CBC$Breeding_AM, 2, labels=FALSE)
+pair_attr_CBC$Breeding_AM_score2 <- as.factor(pair_attr_CBC$Breeding_AM_score2)
+
 model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id), data = pair_attr_CBC)
 pair_attr_CBC$residuals <- resid(model_cbc)
 
+group_by(pair_attr_CBC, pop_estimate) %>% summarize(m = mean(lag0)) ## low mean = 0.0256, high mean = 0.0307
+## put mean of each group into pair_attr dataframe
+pair_attr_CBC <- ddply(pair_attr_CBC, "pop_estimate", transform, abund_mean = mean(lag0))
+## add mean to each residual
+pair_attr_CBC$residuals2 <- pair_attr_CBC$residuals + pair_attr_CBC$abund_mean
+
 ## create new dataframe to calculate mean, SD and SE of residuals for each species
 summary_cbc <- pair_attr_CBC %>% group_by(spp, pop_estimate) %>% 
-  summarise_at(vars(residuals), funs(mean,std.error,sd))
+  summarise_at(vars(residuals2), funs(mean,std.error,sd))
 
 ## plot graph with raw data residuals (+SE error bars) and fitted line
-png("../Graphs/Abundance/Common_average_predicted_cbc.png", height = 150, width = 200, units = "mm", res = 300)
+png("../Graphs/Abundance/Common_average_predicted_cbc.png", height = 120, width = 150, units = "mm", res = 300)
 ggplot(summary_cbc, aes(x = pop_estimate, y = mean)) +
-  geom_point(size = 1, colour="grey") +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey") +
-  geom_line(data=newdata_cbc, aes(x=pop_estimate, y=lag0), colour="black", lwd=0.5) +
+  geom_point(size = 2, colour="grey") +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), width=0.1, colour="grey") +
+  geom_line(data=newdata_cbc, aes(x=pop_estimate, y=lag0), colour="black", lwd=1) +
   labs(x="Average population abundance", y="Population synchrony") +
   theme_bw() +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+  theme(text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 dev.off()
 
@@ -253,6 +269,8 @@ abundance_results$significance <- ifelse(abundance_results$p<0.05, "yes", "no")
 ## therefore negative difference == species has decrease in abundance between early and late years
 abundance_results$mean_change_abund <- abundance_results$mean_y - abundance_results$mean_x
 abundance_results$ab_change_85_00 <- ifelse(abundance_results$mean_change_abund>0, "increase", "decrease")                                                               
+## save abundance results
+write.csv(abundance_results, file="../Results/Butterfly_results/abundance_results_85_00.csv", row.names=FALSE)
 
 ################ Interaction between mid-year and abundance change ####################
 ## UKBMS butterflies
@@ -304,6 +322,8 @@ abundance_results$significance <- ifelse(abundance_results$p<0.05, "yes", "no")
 ## therefore negative difference == species has decrease in abundance between early and late years
 abundance_results$mean_change_abund <- abundance_results$mean_y - abundance_results$mean_x
 abundance_results$ab_change_00_12 <- ifelse(abundance_results$mean_change_abund>0, "increase", "decrease")                                                               
+## save abundance results
+write.csv(abundance_results, file="../Results/Butterfly_results/abundance_results_00_12.csv", row.names=FALSE)
 
 ################ Interaction between mid-year and abundance change ####################
 ## UKBMS butterflies
@@ -333,8 +353,8 @@ r.squaredGLMM(abund_model2)
 
 ### predict new data to plot graph
 newdata_ukbms <- expand.grid(mean_northing=mean(pair_attr_ukbms$mean_northing), distance=mean(pair_attr_ukbms$distance), 
-                             renk_hab_sim=mean(pair_attr_ukbms$renk_hab_sim), pair.id=sample(pair_attr_ukbms$pair.id,10),
-                             spp=sample(pair_attr_ukbms$spp,10), mid.year=unique(pair_attr_ukbms$mid.year), 
+                             renk_hab_sim=mean(pair_attr_ukbms$renk_hab_sim), pair.id=sample(pair_attr_ukbms$pair.id,100),
+                             spp=unique(pair_attr_ukbms$spp), mid.year=unique(pair_attr_ukbms$mid.year), 
                              ab_change_00_12=unique(pair_attr_ukbms$ab_change_00_12))
 newdata_ukbms$lag0 <- predict(abund_model2, newdata=newdata_ukbms, re.form=NA)
 
@@ -352,13 +372,25 @@ newdata_ukbms <- data.frame(
   , thi = newdata_ukbms$lag0+1.96*sqrt(tvar)
 )
 
-## run model without abundance and species random effect to obtain residuals
+## run model without abundance and species random effect (but with specialism and mobility) to obtain residuals
+## first remove NA's (small white has no mobility data)
+pair_attr_ukbms <- na.omit(pair_attr_ukbms)
+## change mobility into 2 groups
+pair_attr_ukbms$mobility_wil <- as.numeric(pair_attr_ukbms$mobility_wil)
+pair_attr_ukbms$mobility_score2 <- cut(pair_attr_ukbms$mobility_wil, 2, labels=FALSE)
+pair_attr_ukbms$mobility_score2 <- as.factor(pair_attr_ukbms$mobility_score2)
+
 abund_model_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_ukbms)
 pair_attr_ukbms$residuals <- resid(abund_model_ukbms)
+group_by(pair_attr_ukbms, ab_change_00_12) %>% summarize(m = mean(lag0)) ## decrease=0.25, increase=0.286
+## put mean of each group into pair_attr dataframe
+pair_attr_ukbms <- ddply(pair_attr_ukbms, "ab_change_00_12", transform, abund_mean = mean(lag0))
+## add mean to each residual
+pair_attr_ukbms$residuals2 <- pair_attr_ukbms$residuals + pair_attr_ukbms$abund_mean
 
 ## create new dataframe to calculate mean, SD and SE of residuals for each species
 summary_ukbms2 <- pair_attr_ukbms %>% group_by(spp, ab_change_00_12, mid.year) %>% 
-  summarise_at(vars(residuals), funs(mean,std.error,sd))
+  summarise_at(vars(residuals2), funs(mean,std.error,sd))
 
 ## change year values and abundance variable names
 newdata_ukbms$mid.year <- revalue(newdata_ukbms$mid.year, c("1999.5"="2000"))
@@ -376,19 +408,40 @@ summary_ukbms2$Abundance_change <- revalue(summary_ukbms2$Abundance_change, c("i
 summary_ukbms2$Abundance_change <- factor(summary_ukbms2$Abundance_change, levels=c("Increase", "Decrease"))
 
 ## plot graph with raw data residuals (+SE error bars) and fitted line
-png("../Graphs/Abundance/Abundance_change_predicted_ukbms_00_12.png", height = 100, width = 120, units = "mm", res = 300)
-pd <- position_dodge(0.1)
+png("../Graphs/Abundance/Abundance_change_predicted_ukbms_00_12.png", height = 120, width = 150, units = "mm", res = 300)
 ggplot(summary_ukbms2, aes(x = mid.year, y = mean, group=Abundance_change)) +
-  geom_point(aes(shape=Abundance_change), colour="grey", size = 2, position=pd) +
+  geom_point(aes(shape=Abundance_change), colour="grey", size = 2, position=myjit) +
   scale_shape_manual(values=c(16,4)) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", position=pd, width=0.1) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", position=myjit, width=0.1) +
   geom_line(data=newdata_ukbms, aes(x=mid.year, y=lag0, linetype=Abundance_change), lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
-  labs(colour="Change in abundance") +
+  labs(shape="Change in abundance", linetype="Change in abundance") +
   theme_bw() +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+  theme(text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 dev.off()
+
+myjit <- ggproto("fixJitter", PositionDodge,
+                 width = 0.6,
+                 dodge.width = 0.15,
+                 jit = NULL,
+                 compute_panel =  function (self, data, params, scales) 
+                 {
+                   
+                   #Generate Jitter if not yet
+                   if(is.null(self$jit) ) {
+                     self$jit <-jitter(rep(0, nrow(data)), amount=self$dodge.width)
+                   }
+                   
+                   data <- ggproto_parent(PositionDodge, self)$compute_panel(data, params, scales)
+                   
+                   data$x <- data$x + self$jit
+                   #For proper error extensions
+                   if("xmin" %in% colnames(data)) data$xmin <- data$xmin + self$jit
+                   if("xmax" %in% colnames(data)) data$xmax <- data$xmax + self$jit
+                   data
+                 } )
+
 
 ## plot graph with fitted line and shaded confidence intervals
 png("../Graphs/Abundance/Abundance_change_predicted_ukbms_00_12_2.png", height = 100, width = 120, units = "mm", res = 300)
