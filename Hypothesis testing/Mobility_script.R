@@ -11,6 +11,7 @@ library(lmerTest)
 library(ggsignif)
 library(ggplot2)
 library(plyr)
+library(dplyr)
 library(plotrix)
 options(scipen=999)
 
@@ -32,14 +33,33 @@ pair_attr_1$spp <- as.factor(pair_attr_1$spp)
 wing_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan + (1|spp) + (1|pair.id), data=pair_attr_1)
 summary(wing_model)
 anova(wing_model)
+## wingspan is non-significant (p=0.33)
 
-wing_model2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan*Family + (1|spp) + (1|pair.id), data=pair_attr_1)
+wing_model2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan + Family + (1|spp) + (1|pair.id), data=pair_attr_1)
 summary(wing_model2)
 anova(wing_model2)
+## neither family nor wingspan are significant 
 
-wing_model3 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan*Sub.family + (1|spp) + (1|pair.id), data=pair_attr_1)
+wing_model3 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan + Sub.family + (1|spp) + (1|pair.id), data=pair_attr_1)
 summary(wing_model3)
 anova(wing_model3)
+## neither sub-family nor wingspan are significant
+
+wing_model4 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (Wingspan|Sub.family) + (1|spp) + (1|pair.id), data=pair_attr_1)
+anova(wing_model4)
+## doesn't work ==> model failed to converge
+
+wing_model5 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan + (1|Sub.family) + (1|spp) + (1|pair.id), data=pair_attr_1)
+anova(wing_model5)
+## wingspan still not significant 
+
+wing_model6 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan*Sub.family + (1|spp) + (1|pair.id), data=pair_attr_1)
+anova(wing_model6)
+## interaction is significant
+
+## AIC of all models - which wingspan/sub-family model performs best?
+AIC(wing_model3, wing_model4, wing_model5)
+## for now wing_model5 has the lowest AIC
 
 ##################################
 #### Mobility model for UKBMS ####
@@ -325,7 +345,7 @@ summary_ukbms$Mobility <- revalue(summary_ukbms$Mobility, c("1"="Low"))
 summary_ukbms$Mobility <- revalue(summary_ukbms$Mobility, c("2"="High"))
 
 ## plot graph with raw data residuals (+SE error bars) and fitted lines
-png("../Graphs/Mobility/Mobility_change_predicted_ukbms.png", height = 150, width = 200, units = "mm", res = 300)
+png("../Graphs/Mobility/Mobility_change_predicted_ukbms.png", height = 80, width = 120, units = "mm", res = 300)
 pd <- position_dodge(0.1)
 ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Mobility)) +
   geom_point(aes(shape=Mobility), colour="grey", size = 2, position=pd) +
@@ -334,7 +354,7 @@ ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Mobility)) +
   geom_line(data=newdata_ukbms, aes(x=mid.year, y=lag0, linetype=Mobility), lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   theme_bw() +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+  theme(text = element_text(size = 10), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 dev.off()
 
@@ -440,7 +460,7 @@ colnames(summary_cbc)[2] <- "Dispersal"
 summary_cbc$Dispersal <- revalue(summary_cbc$Dispersal, c("1"="Low"))
 summary_cbc$Dispersal <- revalue(summary_cbc$Dispersal, c("2"="High"))
 
-png("../Graphs/Mobility/Mobility_change_predicted_cbc.png", height = 150, width = 200, units = "mm", res = 300)
+png("../Graphs/Mobility/Mobility_change_predicted_cbc.png", height = 80, width = 120, units = "mm", res = 300)
 pd <- position_dodge(0.1)
 ggplot(summary_cbc, aes(x = mid.year, y = mean, group=Dispersal)) +
   geom_point(aes(shape=Dispersal), colour="grey", size = 2, position=pd) +
@@ -449,7 +469,7 @@ ggplot(summary_cbc, aes(x = mid.year, y = mean, group=Dispersal)) +
   geom_line(data=newdata_cbc, aes(x=mid.year, y=lag0, linetype=Dispersal), lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   theme_bw() +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+  theme(text = element_text(size = 10), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 dev.off()
 
@@ -519,7 +539,7 @@ AIC(dispersal_model_bbs2, dispersal_model_bbs3)
 ### predict new data
 newdata_bbs <- expand.grid(mean_northing=mean(pair_attr_bbs$mean_northing), distance=mean(pair_attr_bbs$distance), 
                       renk_hab_sim=mean(pair_attr_bbs$renk_hab_sim), mid.year=unique(pair_attr_bbs$mid.year), 
-                      pair.id=sample(pair_attr_bbs$pair.id,10), spp=sample(pair_attr_bbs$spp,10),
+                      pair.id=sample(pair_attr_bbs$pair.id,100), spp=unique(pair_attr_bbs$spp),
                       Breeding_AM_score2=unique(pair_attr_bbs$Breeding_AM_score2))
 newdata_bbs$lag0 <- predict(dispersal_model_bbs3, newdata=newdata_bbs, re.form=NA)
 
@@ -540,9 +560,15 @@ newdata_bbs <- data.frame(
 mob_model_bbs <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_bbs)
 pair_attr_bbs$residuals <- resid(mob_model_bbs)
 
+group_by(pair_attr_bbs, Breeding_AM_score2) %>% summarize(m = mean(lag0)) ## low mean = 0.0256, high mean = 0.0307
+## put mean of each group into pair_attr dataframe
+pair_attr_bbs <- ddply(pair_attr_bbs, "Breeding_AM_score2", transform, dispersal_mean = mean(lag0))
+## add mean to each residual
+pair_attr_bbs$residuals2 <- pair_attr_bbs$residuals + pair_attr_bbs$dispersal_mean
+
 ## create new dataframe to calculate mean, SD and SE of residuals for each species
 summary_bbs <- pair_attr_bbs %>% group_by(spp, Breeding_AM_score2, mid.year) %>% 
-  summarise_at(vars(residuals), funs(mean,std.error))
+  summarise_at(vars(residuals2), funs(mean,std.error))
 
 ## change year values
 newdata_bbs$mid.year <- revalue(newdata_bbs$mid.year, c("1998.5"="1999"))
@@ -558,18 +584,40 @@ summary_bbs$Dispersal <- revalue(summary_bbs$Dispersal, c("1"="Low"))
 summary_bbs$Dispersal <- revalue(summary_bbs$Dispersal, c("2"="High"))
 
 ## plot graph with raw data residuals (+SE errorbars) and fitted line
-png("../Graphs/Mobility/Mobility_change_predicted_bbs.png", height = 150, width = 200, units = "mm", res = 300)
-pd <- position_dodge(0.1)
+png("../Graphs/Mobility/Mobility_change_predicted_bbs.png", height = 120, width = 150, units = "mm", res = 300)
 ggplot(summary_bbs, aes(x = mid.year, y = mean, group=Dispersal)) +
-  geom_point(aes(shape=Dispersal), colour="grey", size = 2, position=pd) +
+  geom_point(aes(shape=Dispersal), colour="grey", size = 2, position=myjit) +
   scale_shape_manual(values=c(16,4)) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position=pd) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position=myjit) +
   geom_line(data=newdata_bbs, aes(x=mid.year, y=lag0, linetype=Dispersal), lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
+  scale_y_continuous(breaks=seq(-0.2,0.3,0.05)) +
   theme_bw() +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+  theme(text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 dev.off()
+
+
+myjit <- ggproto("fixJitter", PositionDodge,
+                 width = 0.4,
+                 dodge.width = 0.1,
+                 jit = NULL,
+                 compute_panel =  function (self, data, params, scales) 
+                 {
+                   
+                   #Generate Jitter if not yet
+                   if(is.null(self$jit) ) {
+                     self$jit <-jitter(rep(0, nrow(data)), amount=self$dodge.width)
+                   }
+                   
+                   data <- ggproto_parent(PositionDodge, self)$compute_panel(data, params, scales)
+                   
+                   data$x <- data$x + self$jit
+                   #For proper error extensions
+                   if("xmin" %in% colnames(data)) data$xmin <- data$xmin + self$jit
+                   if("xmax" %in% colnames(data)) data$xmax <- data$xmax + self$jit
+                   data
+                 } )
 
 ## plot graph with fitted line and confidence interval error bars
 png("../Graphs/Mobility/Mobility_change_predicted_bbs2.png", height = 100, width = 120, units = "mm", res = 300)
