@@ -186,16 +186,21 @@ summary_ukbms$Specialism <- revalue(summary_ukbms$Specialism, c("wider.countrysi
 summary_ukbms$Specialism <- factor(summary_ukbms$Specialism, levels=c("Generalist", "Specialist"))
 
 ## plot graph with raw data residuals (+SE error bars) and fitted lines
-png("../Graphs/Specialism/Specialism_change_predicted_ukbms.png", height = 120, width = 150, units = "mm", res = 300)
+png("../Graphs/Specialism/Specialism_change_predicted_ukbms.png", height = 120, width = 180, units = "mm", res = 300)
 ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Specialism)) +
-  geom_point(aes(shape=Specialism), colour="grey", size = 2, position = myjit) +
-  scale_shape_manual(values=c(16,4)) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position = myjit) +
+  geom_point(aes(shape=Specialism), colour="grey66", size = 2, position = myjit) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey66", width=0.2, position = myjit) +
   geom_line(data=newdata, aes(x=mid.year, y=lag0, linetype=Specialism), colour="black", lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   theme_bw() +
-  theme(text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+  theme(legend.key = element_rect(size = 6), text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.margin=margin(c(-15,20,-5,0))) +
+  scale_shape_manual(name="Biotype specialism", 
+                     labels=c("Generalist", "Specialist"), values=c(16,4)) +
+  scale_linetype_manual(name=" ",
+                        labels=c("Generalist", "Specialist"), values=c(1,2)) +
+  guides(shape = guide_legend(override.aes = list(size = 4)))
+
 dev.off()
 
 
