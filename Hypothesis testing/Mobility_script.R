@@ -30,6 +30,11 @@ pair_attr_1$mid.year <- as.factor(pair_attr_1$mid.year)
 pair_attr_1$pair.id <- as.character(pair_attr_1$pair.id)
 pair_attr_1$spp <- as.factor(pair_attr_1$spp)
 
+## change wingspan into 3 groups (small, med, large)
+pair_attr_1$Wingspan <- as.numeric(pair_attr_1$Wingspan)
+pair_attr_1$Wingspan_group <- cut(pair_attr_1$Wingspan, 3, labels=FALSE)
+pair_attr_1$Wingspan_group <- as.factor(pair_attr_1$Wingspan_group)
+
 wing_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan + (1|spp) + (1|pair.id), data=pair_attr_1)
 summary(wing_model)
 anova(wing_model)
@@ -56,9 +61,67 @@ anova(wing_model5)
 wing_model6 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan*Sub.family + (1|spp) + (1|pair.id), data=pair_attr_1)
 anova(wing_model6)
 ## interaction is significant
+## but warning: fixed-effect model matrix is rank deficient so dropping 3 columns / coefficients
+## this is because 3 sub-families only have one wingspan, so can't model this
+## Coliadinae, Limenitidinae, and Lycaeninae
+## remove these sub-families and run model again
+pair_attr_1 <- pair_attr_1[!pair_attr_1$Sub.family=="Coliadinae",]
+pair_attr_1 <- pair_attr_1[!pair_attr_1$Sub.family=="Limenitidinae",]
+pair_attr_1 <- pair_attr_1[!pair_attr_1$Sub.family=="Lycaeninae",]
+## run model again
+wing_model7 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan*Sub.family + (1|spp) + (1|pair.id), data=pair_attr_1)
+anova(wing_model7)
+summary(wing_model7)
+
+## plot result
+newdata_wing <- expand.grid(mean_northing=mean(pair_attr_1$mean_northing), distance=mean(pair_attr_1$distance), 
+                             renk_hab_sim=mean(pair_attr_1$renk_hab_sim), pair.id=sample(pair_attr_1$pair.id,100),
+                             spp=unique(pair_attr_1$spp), mid.year=unique(pair_attr_1$mid.year), 
+                             Wingspan=unique(pair_attr_1$Wingspan), Sub.family=unique(pair_attr_1$Sub.family))
+
+newdata_wing$lag0 <- predict(wing_model7, newdata=newdata_wing, re.form=NA)
+
+mm <- model.matrix(terms(wing_model7), newdata_wing)
+pvar <- diag(mm %*% tcrossprod(vcov(wing_model7),mm))
+tvar <- pvar+VarCorr(wing_model7)$spp[1]+VarCorr(wing_model7)$pair.id[1]
+cmult <- 2
+
+newdata_ukbms <- data.frame(
+  newdata_ukbms
+  , plo = newdata_ukbms$lag0-1.96*sqrt(pvar)
+  , phi = newdata_ukbms$lag0+1.96*sqrt(pvar)
+  , tlo = newdata_ukbms$lag0-1.96*sqrt(tvar)
+  , thi = newdata_ukbms$lag0+1.96*sqrt(tvar)
+)
+
+## run model without mobility or species random effect to obtain residuals
+wing_mod <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_1)
+pair_attr_1$residuals <- resid(wing_mod, type="pearson")
+## check mean synchrony of each group
+group_by(pair_attr_1, Wingspan) %>% summarize(m = mean(lag0)) ## WC mean = 0.265, HS mean = 0.195
+## put mean of each group into pair_attr dataframe
+pair_attr_1 <- ddply(pair_attr_1, "Wingspan", transform, wing_mean = mean(lag0))
+## add mean to each residual
+pair_attr_1$residuals2 <- pair_attr_1$residuals + pair_attr_1$wing_mean
+
+## create dataframe which calculates mean, SD and SE of residuals for each species
+summary_wing2 <- pair_attr_1 %>% group_by(spp, Wingspan, Sub.family) %>% 
+  summarise_at(vars(residuals2), funs(mean,std.error))
+
+summary_wing2 <- summary_wing2[!summary_wing2$Sub.family=="Coliadinae",]
+summary_wing2 <- summary_wing2[!summary_wing2$Sub.family=="Limenitidinae",]
+summary_wing2 <- summary_wing2[!summary_wing2$Sub.family=="Lycaeninae",]
+
+ggplot(summary_wing2, aes(x = Wingspan, y = mean, colour=Sub.family)) +
+  geom_point(aes(colour=Sub.family), size = 2) +
+  #geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error, colour=Sub.family), width=0.2) +
+  geom_line(data=newdata_wing, aes(x=Wingspan, y=lag0, colour=Sub.family), lwd=1) +
+  theme_bw() +
+  theme(text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 
 ## AIC of all models - which wingspan/sub-family model performs best?
-AIC(wing_model3, wing_model4, wing_model5)
+AIC(wing_model3, wing_model4, wing_model5, wing_model6)
 ## for now wing_model5 has the lowest AIC
 
 ##################################
