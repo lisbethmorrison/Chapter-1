@@ -141,17 +141,7 @@ newdata <- data.frame(
   , thi = newdata$lag0+1.96*sqrt(tvar2)
 )
 
-## run model without specialism or species random effect but with other confounding effects (mobility+abundance) to obtain residuals
-## first read in abundance file
-abundance_results <- read.csv("../Results/Butterfly_results/abundance_results_00_12.csv", header=TRUE)
-## merge files
-pair_attr_ukbms <- merge(pair_attr_ukbms, abundance_results, by.x="spp", by.y="Species.code", all=FALSE)
-## change mobility into two groups
-pair_attr_ukbms$mobility_wil <- as.numeric(pair_attr_ukbms$mobility_wil)
-pair_attr_ukbms$mobility_score2 <- cut(pair_attr_ukbms$mobility_wil, 2, labels=FALSE)
-pair_attr_ukbms$mobility_score2 <- as.factor(pair_attr_ukbms$mobility_score2)
-pair_attr_ukbms <- na.omit(pair_attr_ukbms) ## remove NAs 
-
+## run model without specialism or species random effect to obtain residuals
 spec_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_ukbms)
 pair_attr_ukbms$residuals <- resid(spec_ukbms)
 ## check mean synchrony of each group
@@ -186,24 +176,36 @@ summary_ukbms$Specialism <- revalue(summary_ukbms$Specialism, c("wider.countrysi
 summary_ukbms$Specialism <- factor(summary_ukbms$Specialism, levels=c("Generalist", "Specialist"))
 
 ## plot graph with raw data residuals (+SE error bars) and fitted lines
-png("../Graphs/Specialism/Specialism_change_predicted_ukbms.png", height = 120, width = 180, units = "mm", res = 300)
-ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Specialism)) +
+png("../Graphs/Specialism/Specialism_change_predicted_ukbms.png", height = 150, width = 180, units = "mm", res = 300)
+butterfly_spec <- ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Specialism)) +
   geom_point(aes(shape=Specialism), colour="grey66", size = 2, position = myjit) +
   geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey66", width=0.2, position = myjit) +
-  geom_line(data=newdata, aes(x=mid.year, y=lag0, linetype=Specialism), colour="black", lwd=1) +
+  geom_line(data=newdata, aes(x=mid.year, y=lag0, linetype=Specialism), colour="black", lwd=0.5) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   theme_bw() +
-  theme(legend.key = element_rect(size = 6), text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.margin=margin(c(-15,20,-5,0))) +
+  theme(legend.key.width = unit(0.8,"cm"), legend.key = element_rect(size = 2), text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.margin=margin(c(-15,20,-5,0)),
+        axis.text.x=element_text(colour="black"), axis.text.y = element_text(colour="black")) +
   scale_shape_manual(name="Biotype specialism", 
                      labels=c("Generalist", "Specialist"), values=c(16,4)) +
   scale_linetype_manual(name=" ",
                         labels=c("Generalist", "Specialist"), values=c(1,2)) +
-  guides(shape = guide_legend(override.aes = list(size = 4)))
+  guides(shape = guide_legend(override.aes = list(size = 3))) +
+  guides(linetype = guide_legend(override.aes = list(size = 0.5)))
+  
+butterfly_spec
 
 dev.off()
 
+install.packages("ggpubr")
+library(ggpubr)
+png("../Graphs/FINAL/Figure3.png", height = 200, width = 110, units = "mm", res = 300)
+ggarrange(butterfly_spec, butterfly_abund, 
+          labels = c("(a)", "(b)"), font.label = list(size = 10, color ="black"),
+          ncol = 1, nrow = 2)
+dev.off()
 
+############ jitter code #################
 myjit <- ggproto("fixJitter", PositionDodge,
                  width = 0.5,
                  dodge.width = 0.15,
