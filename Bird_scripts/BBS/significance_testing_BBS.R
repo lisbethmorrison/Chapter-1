@@ -147,32 +147,55 @@ levels(results_final_overall$change)
 results_final_overall$change <- factor(results_final_overall$change, levels=c("Increase", "No change", "Decrease"))
 levels(results_final_overall$change)
 
-######## input the CBC model comparison percentages to create barchart
+######## input the CBC and UKBMS model comparison percentages to create barchart (Figure 2 for paper)
 
+model_comp_UKBMS <- read.csv("../Results/Butterfly_results/model_comp_percentages.csv", header=TRUE)
 model_comp_CBC <- read.csv("../Results/Bird_results/model_comp_percentages_CBC.csv", header=TRUE)
 model_comp_BBS <- read.csv("../Results/Bird_results/model_comp_percentages_BBS.csv", header=TRUE)
 
 ## add in scheme column
 model_comp_CBC$comparison <- "1985-1996"
 model_comp_BBS$comparison <- "1999-2012"
+## remove overall comparison for UKBMS
+model_comp_UKBMS <- model_comp_UKBMS[!model_comp_UKBMS$comparison == "1985-2012", ]
 
-model_comp <- rbind(model_comp_BBS, model_comp_CBC)
-model_comp$comparison <- factor(model_comp$comparison, levels=c("1985-1996", "1999-2012"))
-model_comp$change <- factor(model_comp$change, levels=c("Increase", "No change", "Decrease"))
+model_comp_birds <- rbind(model_comp_BBS, model_comp_CBC)
+model_comp_birds$comparison <- factor(model_comp_birds$comparison, levels=c("1985-1996", "1999-2012"))
+model_comp_birds$change <- factor(model_comp_birds$change, levels=c("Increase", "No change", "Decrease"))
+model_comp_UKBMS$change <- factor(model_comp_UKBMS$change, levels=c("Increase", "No change", "Decrease"))
 
-## pretty graph
+## birds graph
 png("../Graphs/Model_comps/Model_comp_results_CBC_BBS.png", height = 100, width = 120, units = "mm", res = 300)
-ggplot(data=model_comp, aes(x=comparison, y=percentage, fill=change)) +
-  geom_bar(stat="identity", width=0.4) +
+birds <- ggplot(data=model_comp_birds, aes(x=comparison, y=percentage, fill=change)) +
+  geom_bar(stat="identity", width=0.7) +
   labs(y="Percentage of species", x="", fill="") +
   scale_fill_manual(values = c("#339900", "#999999", "#990000")) +
   theme_bw() +
   theme(axis.text.x=element_text(colour = "black")) +
   theme(axis.text.y=element_text(colour = "black")) +
   scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+  theme(text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
+birds
 dev.off()
 
+## butterfly graph
+butterfly <- ggplot(data=model_comp_UKBMS, aes(x=comparison, y=percentage, fill=change)) +
+  geom_bar(stat="identity", width=0.7) +
+  labs(y="Percentage of species", x="", fill="") +
+  scale_fill_manual(values = c("#339900", "#999999", "#990000")) +
+  theme_bw() +
+  theme(axis.text.x=element_text(colour = "black")) +
+  theme(axis.text.y=element_text(colour = "black")) +
+  scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
+  theme(text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
+butterfly
 
-
+### put both graphs together and save
+library(ggpubr)
+png("../Graphs/FINAL/Figure2.png", height = 100, width = 110, units = "mm", res = 300)
+ggarrange(butterfly, birds, 
+          labels = c("(a)", "(b)"), common.legend = TRUE, legend = "right",
+          font.label = list(size = 10, color ="black"), ncol = 2, nrow = 1)
+dev.off()
