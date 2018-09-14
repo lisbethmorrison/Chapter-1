@@ -548,7 +548,10 @@ ggplot(newdata_cbc, aes(x=mid.year, y=lag0, group=Dispersal)) +
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 dev.off()
 
-## BBS birds
+###################################################################
+####################### BBS birds #################################
+###################################################################
+
 pair_attr_bbs_1999 <- pair_attr_BBS[pair_attr_BBS$mid.year==1998.5,]
 pair_attr_bbs_2012 <- pair_attr_BBS[pair_attr_BBS$mid.year==2011.5,]
 pair_attr_bbs <- rbind(pair_attr_bbs_1999, pair_attr_bbs_2012)
@@ -645,25 +648,38 @@ summary_bbs$mid.year <- revalue(summary_bbs$mid.year, c("2011.5"="2012"))
 colnames(summary_bbs)[2] <- "Dispersal"
 summary_bbs$Dispersal <- revalue(summary_bbs$Dispersal, c("1"="Low"))
 summary_bbs$Dispersal <- revalue(summary_bbs$Dispersal, c("2"="High"))
+## reorder levels
+levels(summary_bbs$Dispersal)
+summary_bbs$Dispersal <- factor(summary_bbs$Dispersal, levels=c("High", "Low"))
+levels(summary_bbs$Dispersal)
+levels(newdata_bbs$Dispersal)
+newdata_bbs$Dispersal <- factor(newdata_bbs$Dispersal, levels=c("High", "Low"))
+levels(newdata_bbs$Dispersal)
 
 ## plot graph with raw data residuals (+SE errorbars) and fitted line
-png("../Graphs/Mobility/Mobility_change_predicted_bbs.png", height = 120, width = 150, units = "mm", res = 300)
+png("../Graphs/Mobility/Mobility_change_predicted_bbs.png", height = 100, width = 110, units = "mm", res = 300)
 ggplot(summary_bbs, aes(x = mid.year, y = mean, group=Dispersal)) +
-  geom_point(aes(shape=Dispersal), colour="grey", size = 2, position=myjit) +
-  scale_shape_manual(values=c(16,4)) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position=myjit) +
-  geom_line(data=newdata_bbs, aes(x=mid.year, y=lag0, linetype=Dispersal), lwd=1) +
+  geom_point(aes(shape=Dispersal), colour="grey66", size = 2, position=myjit) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey66", width=0.2, position=myjit) +
+  geom_line(data=newdata_bbs, aes(x=mid.year, y=lag0, linetype=Dispersal), lwd=0.5) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   scale_y_continuous(breaks=seq(-0.2,0.3,0.05)) +
   theme_bw() +
-  theme(text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+  theme(legend.key.width = unit(0.8,"cm"), legend.key = element_rect(size = 2), text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.margin=margin(c(-10,20,-80,0)),
+        axis.text.x=element_text(colour="black"), axis.text.y = element_text(colour="black")) +
+  scale_linetype_manual(name=" ",
+                        labels=c("High", "Low"), values=c(1,2)) +
+  scale_shape_manual(name="Mobility", 
+                     labels=c("High", "Low"), values=c(16,4)) +
+  guides(shape = guide_legend(override.aes = list(size = 3))) +
+  guides(linetype = guide_legend(override.aes = list(size = 0.5)))
 dev.off()
 
 
 myjit <- ggproto("fixJitter", PositionDodge,
-                 width = 0.4,
-                 dodge.width = 0.1,
+                 width = 0.5,
+                 dodge.width = 0.15,
                  jit = NULL,
                  compute_panel =  function (self, data, params, scales) 
                  {
