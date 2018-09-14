@@ -73,12 +73,54 @@ FCI_plot_scaled <- ggplot(results_final_all_spp, aes(x = parameter, y = rescaled
   scale_x_continuous(breaks=seq(1985,2012,3)) +
   geom_hline(yintercept = 100, linetype = "dashed") +
   theme_bw() +
-  theme(text = element_text(size = 14)) +
+  theme(text = element_text(size = 10)) +
   labs(size=3) +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 FCI_plot_scaled
 ggsave("../Graphs/Connectivity_plots/FCI_plot_all_spp_scaled.png", plot = FCI_plot_scaled, width=7, height=5)
+
+############### plot with all 3 temporal synchrony graphs for ms #########################
+results_final_all_spp_BBS <- read.csv("../Results/Bird_results/results_final_all_spp_BBS_final.csv", header=TRUE)
+results_final_all_spp_CBC <- read.csv("../Results/Bird_results/results_final_all_spp_CBC.csv", header=TRUE)
+
+FCI_BBS <- ggplot(results_final_all_spp_BBS, aes(x = parameter, y = rescaled_FCI)) +
+  stat_smooth(colour="black", method=loess, se=FALSE) +
+  geom_errorbar(aes(ymin = rescaled_FCI - rescaled_sd, ymax = rescaled_FCI + rescaled_sd), width=0.2, size = 0.5) +
+  geom_point(size=2) + 
+  labs(x = "Mid-year of moving window", y = "Population synchrony") +
+  scale_y_continuous(breaks=seq(-20,180,20)) +
+  scale_x_continuous(breaks=seq(1999,2012,3)) +
+  theme_bw() +
+  theme(text = element_text(size = 10)) +
+  geom_hline(yintercept = 100, linetype = "dashed") +
+  labs(size=3) +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+FCI_BBS
+
+FCI_CBC <- ggplot(results_final_all_spp_CBC, aes(x = parameter, y = rescaled_FCI)) +
+  stat_smooth(colour="black", method=loess, se=FALSE) +
+  geom_errorbar(aes(ymin = rescaled_FCI - rescaled_sd, ymax = rescaled_FCI + rescaled_sd), width=0.2, size = 0.5) +
+  geom_point(size=2) + 
+  labs(x = "Mid-year of moving window", y = "Population synchrony") +
+  scale_y_continuous(breaks=seq(0,180,20)) +
+  scale_x_continuous(breaks=seq(1985,1996,3)) +
+  theme_bw() +
+  theme(text = element_text(size = 10)) +
+  geom_hline(yintercept = 100, linetype = "dashed") +
+  labs(size=3) +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+FCI_CBC
+
+library(ggpubr)
+
+png("../Graphs/FINAL/FigureS1.png", height = 250, width = 220, units = "mm", res = 300)
+ggarrange(FCI_plot_scaled,                                                 
+      ggarrange(FCI_BBS, FCI_CBC, ncol = 2, labels = c("(b)", "(c)"), font.label = list(size = 12, color ="black")), 
+      nrow = 2, labels = "(a)", font.label = list(size = 10, color ="black")) 
+dev.off()
 
 ##### method to obtain smoothed values with 95% confidence intervals for indicator
 loess_model <- loess(rescaled_FCI~parameter, data=results_final_all_spp)
