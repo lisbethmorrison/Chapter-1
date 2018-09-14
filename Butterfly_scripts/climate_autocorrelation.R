@@ -80,7 +80,6 @@ colnames(climate.autocorr)[12] <- "northing"
 ## calculate moran's I ##
 #########################
 
-install.packages("ape")
 library(ape)
 
 ############################
