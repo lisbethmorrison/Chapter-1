@@ -42,22 +42,62 @@ length(unique(pair_attr$spp)) # 32 species (Grizzled Skipper doesn't have abunda
 summary(pair_attr)
 
 ## run model
-## scale average_abundance first (and other variables)
-pair_attr$average_abundance <- (pair_attr$average_abundance - mean(na.omit(pair_attr$average_abundance)))/sd(na.omit(pair_attr$average_abundance))
+## scale variables
 pair_attr$distance <- (pair_attr$distance - mean(na.omit(pair_attr$distance)))/sd(na.omit(pair_attr$distance))
 pair_attr$mean_northing <- (pair_attr$mean_northing - mean(na.omit(pair_attr$mean_northing)))/sd(na.omit(pair_attr$mean_northing))
 pair_attr$renk_hab_sim <- (pair_attr$renk_hab_sim - mean(na.omit(pair_attr$renk_hab_sim)))/sd(na.omit(pair_attr$renk_hab_sim))
 
+## log population abundance 
+pair_attr$pop_estimate_log <- log(pair_attr$average_abundance)
+pair_attr$pop_estimate_sqrt <- sqrt(pair_attr$average_abundance)
+pair_attr$pop_est_stand <- (pair_attr$average_abundance - mean(na.omit(pair_attr$average_abundance)))/sd(na.omit(pair_attr$average_abundance))
+
+hist(pair_attr$average_abundance)
+hist(pair_attr$pop_est_stand)
+hist(pair_attr$pop_estimate_log)
+hist(pair_attr$pop_estimate_sqrt)
+
 ### full model with average_abundance as a measure of commonness
-common_model_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + average_abundance + (1|pair.id) + (1|spp), data = pair_attr)
+common_model_ukbms1 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + average_abundance + (1|pair.id) + (1|spp), data = pair_attr)
+common_model_ukbms2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + pop_est_stand + (1|pair.id) + (1|spp), data = pair_attr)
+common_model_ukbms3 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + pop_estimate_log + (1|pair.id) + (1|spp), data = pair_attr)
+common_model_ukbms4 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + pop_estimate_sqrt + (1|pair.id) + (1|spp), data = pair_attr)
+
+summary(common_model_ukbms1) # p=0.038, but giving errors about scaling
+summary(common_model_ukbms2) # p=0.038, same result just no errors with scaling
+summary(common_model_ukbms3) # p=0.00077 
+summary(common_model_ukbms4) # p=0.0037
+hist(resid(common_model_ukbms1))
+hist(resid(common_model_ukbms2))
+hist(resid(common_model_ukbms3))
+hist(resid(common_model_ukbms4))
+
+
 summary(common_model_ukbms)
 anova(common_model_ukbms)
 ## significant, p=0.039 (positive relationship)
 
 ### split average abundance into two groups
 pair_attr$average_abundance <- as.numeric(pair_attr$average_abundance)
-pair_attr$rare_common <- cut(pair_attr$average_abundance, 2, labels=FALSE)
+pair_attr$rare_common <- cut(pair_attr$average_abundance, 2, labels=c("rare", "common"))
 pair_attr$rare_common <- as.factor(pair_attr$rare_common)
+
+library(Hmisc) # cut2
+pair_attr$rare_common2 <- cut2(pair_attr$average_abundance, g=2)
+
+## rare common by species
+rare_common_ukbms <- pair_attr[c(16,30,31,32)]
+rare_common_ukbms <- unique(rare_common_ukbms)
+rare_common_ukbms <- arrange(rare_common_ukbms, as.numeric(average_abundance))
+rare_common_ukbms$difference <- c(0, diff(rare_common_ukbms$average_abundance))
+
+mean(rare_common_ukbms$average_abundance[rare_common_ukbms$rare_common2=="[2526.00,15339]"]) # 7075.75
+mean(rare_common_ukbms$average_abundance[rare_common_ukbms$rare_common2=="[   1.67, 2526)"]) # 381.1481
+mean(rare_common_ukbms$average_abundance[rare_common_ukbms$rare_common=="common"]) # 12517.5
+mean(rare_common_ukbms$average_abundance[rare_common_ukbms$rare_common=="rare"]) # 1357.285
+## 11160.215 difference for cut
+## 6694.6019 difference for cut2
+## cut has largest difference between means == better option
 
 common_model_ukbms2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + rare_common + (1|pair.id) + (1|spp), data = pair_attr)
 summary(common_model_ukbms2)
@@ -67,14 +107,14 @@ anova(common_model_ukbms2)
 
 ## predict data to plot graphs
 newdata_ukbms <- expand.grid(mean_northing=mean(pair_attr$mean_northing), distance=mean(pair_attr$distance), 
-                             renk_hab_sim=mean(pair_attr$renk_hab_sim), pair.id=sample(pair_attr$pair.id,10),
-                             mid.year=mean(pair_attr$mid.year), spp=sample(pair_attr$spp,10),
-                             average_abundance=unique(pair_attr$average_abundance))
-newdata_ukbms$lag0 <- predict(common_model_ukbms, newdata=newdata_ukbms, re.form=NA)
+                             renk_hab_sim=mean(pair_attr$renk_hab_sim), pair.id=sample(pair_attr$pair.id,100),
+                             mid.year=mean(pair_attr$mid.year), spp=unique(pair_attr$spp),
+                             pop_est_stand=unique(pair_attr$pop_est_stand))
+newdata_ukbms$lag0 <- predict(common_model_ukbms2, newdata=newdata_ukbms, re.form=NA)
 
-mm <- model.matrix(terms(common_model_ukbms), newdata_ukbms)
-pvar <- diag(mm %*% tcrossprod(vcov(common_model_ukbms),mm))
-tvar <- pvar+VarCorr(common_model_ukbms)$spp[1]+VarCorr(common_model_ukbms)$pair.id[1]
+mm <- model.matrix(terms(common_model_ukbms2), newdata_ukbms)
+pvar <- diag(mm %*% tcrossprod(vcov(common_model_ukbms2),mm))
+tvar <- pvar+VarCorr(common_model_ukbms2)$spp[1]+VarCorr(common_model_ukbms2)$pair.id[1]
 cmult <- 2
 
 newdata_ukbms <- data.frame(
@@ -134,6 +174,11 @@ pair_attr_CBC$mean_northing <- (pair_attr_CBC$mean_northing - mean(na.omit(pair_
 pair_attr_CBC <- pair_attr_CBC[-c(21:22,24:26)]
 summary(pair_attr_CBC)
 
+hist(pair_attr_CBC$pop_estimate)
+hist(pair_attr_CBC$pop_estimate_standardise)
+hist(pair_attr_CBC$pop_estimate_log)
+hist(pair_attr_CBC$pop_estimate_sqrt)
+
 ### full model with pop_estimate as a measure of commonness
 common_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + pop_estimate_log + (1|pair.id) + (1|spp), data = pair_attr_CBC)
 summary(common_model_cbc)
@@ -165,7 +210,7 @@ hist(resid(common_model_cbc2)) ## normally distributed too
 newdata_cbc <- expand.grid(mean_northing=mean(pair_attr_CBC$mean_northing), distance=mean(pair_attr_CBC$distance), 
                        hab_sim=mean(pair_attr_CBC$hab_sim), pair.id=sample(pair_attr_CBC$pair.id,10),
                        mid.year=mean(pair_attr_CBC$mid.year), spp=unique(pair_attr_CBC$spp),
-                       pop_estimate=unique(pair_attr_CBC$pop_estimate))
+                       pop_estimate_log=unique(pair_attr_CBC$pop_estimate_log))
 newdata_cbc$lag0 <- predict(common_model_cbc, newdata=newdata_cbc, re.form=NA)
 
 mm2 <- model.matrix(terms(common_model_cbc), newdata_cbc)
@@ -185,25 +230,25 @@ newdata_cbc <- data.frame(
 model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id), data = pair_attr_CBC)
 pair_attr_CBC$residuals <- resid(model_cbc)
 
-group_by(pair_attr_CBC, pop_estimate) %>% summarize(m = mean(lag0)) ## low mean = 0.0256, high mean = 0.0307
+group_by(pair_attr_CBC, pop_estimate_log) %>% summarize(m = mean(lag0)) ## low mean = 0.0256, high mean = 0.0307
 ## put mean of each group into pair_attr dataframe
-pair_attr_CBC <- ddply(pair_attr_CBC, "pop_estimate", transform, abund_mean = mean(lag0))
+pair_attr_CBC <- ddply(pair_attr_CBC, "pop_estimate_log", transform, abund_mean = mean(lag0))
 ## add mean to each residual
 pair_attr_CBC$residuals2 <- pair_attr_CBC$residuals + pair_attr_CBC$abund_mean
 
 ## create new dataframe to calculate mean, SD and SE of residuals for each species
-summary_cbc <- pair_attr_CBC %>% group_by(spp, pop_estimate) %>% 
+summary_cbc <- pair_attr_CBC %>% group_by(spp, pop_estimate_log) %>% 
   summarise_at(vars(residuals2), funs(mean,std.error,sd))
 
 ## plot graph with raw data residuals (+SE error bars) and fitted line
-png("../Graphs/Abundance/Common_average_predicted_cbc.png", height = 120, width = 150, units = "mm", res = 300)
-ggplot(summary_cbc, aes(x = pop_estimate, y = mean)) +
-  geom_point(size = 2, colour="grey") +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), width=0.1, colour="grey") +
-  geom_line(data=newdata_cbc, aes(x=pop_estimate, y=lag0), colour="black", lwd=1) +
-  labs(x="Average population abundance", y="Population synchrony") +
+png("../Graphs/Abundance/Common_average_predicted_cbc.png", height = 100, width = 110, units = "mm", res = 300)
+ggplot(summary_cbc, aes(x = pop_estimate_log, y = mean)) +
+  geom_point(size = 2, colour="grey66") +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), width=0.2, colour="grey66") +
+  geom_line(data=newdata_cbc, aes(x=pop_estimate_log, y=lag0), colour="black", lwd=1) +
+  labs(x="(log) Average population abundance", y="Population synchrony") +
   theme_bw() +
-  theme(text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
+  theme(text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 dev.off()
 
@@ -222,9 +267,26 @@ dev.off()
 
 ## same model with two groups (rare and common)
 pair_attr_CBC$pop_estimate <- as.numeric(pair_attr_CBC$pop_estimate)
-pair_attr_CBC$rare_common <- cut(pair_attr_CBC$pop_estimate, 2, labels=FALSE)
+pair_attr_CBC$rare_common <- cut(pair_attr_CBC$pop_estimate, breaks=2, labels=c("rare", "common"))
 pair_attr_CBC$rare_common <- as.factor(pair_attr_CBC$rare_common)
 
+library(Hmisc) # cut2
+pair_attr_CBC$rare_common3 <- cut2(pair_attr_CBC$pop_estimate, g=2)
+
+## rare common by species
+rare_common_spp <- pair_attr_CBC[c(19,23,27,28)]
+rare_common_spp <- unique(rare_common_spp)
+rare_common_spp <- arrange(rare_common_spp, as.numeric(pop_estimate))
+rare_common_spp$difference <- c(0, diff(rare_common_spp$pop_estimate))
+
+mean(rare_common_spp$pop_estimate[rare_common_spp$rare_common3=="[2200000,7700000]"]) # 4350000
+mean(rare_common_spp$pop_estimate[rare_common_spp$rare_common3=="[   3400,2200000)"]) # 278487
+mean(rare_common_spp$pop_estimate[rare_common_spp$rare_common=="common"]) # 6100000
+mean(rare_common_spp$pop_estimate[rare_common_spp$rare_common=="rare"]) # 622414.8
+## 5477585.2 difference for cut
+## 4071513 difference for cut2
+## cut has largest difference between means == better option
+  
 common_model_cbc2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + rare_common + (1|pair.id) + (1|spp), data = pair_attr_CBC)
 summary(common_model_cbc2)
 anova(common_model_cbc2)
@@ -320,21 +382,38 @@ pair_attr_BBS <- pair_attr_BBS[-c(19:20,22:24)]
 summary(pair_attr_BBS)
 
 ## rescale variables
-pair_attr_BBS$pop_estimate <- (pair_attr_BBS$pop_estimate - mean(na.omit(pair_attr_BBS$pop_estimate)))/sd(na.omit(pair_attr_BBS$pop_estimate))
+pair_attr_BBS$pop_estimate_log <- log(pair_attr_BBS$pop_estimate)
 pair_attr_BBS$distance <- (pair_attr_BBS$distance - mean(na.omit(pair_attr_BBS$distance)))/sd(na.omit(pair_attr_BBS$distance))
 pair_attr_BBS$mean_northing <- (pair_attr_BBS$mean_northing - mean(na.omit(pair_attr_BBS$mean_northing)))/sd(na.omit(pair_attr_BBS$mean_northing))
 pair_attr_BBS$renk_hab_sim <- (pair_attr_BBS$renk_hab_sim - mean(na.omit(pair_attr_BBS$renk_hab_sim)))/sd(na.omit(pair_attr_BBS$renk_hab_sim))
 
 ### full model with pop_estimate as a measure of commonness
-common_model_bbs <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + pop_estimate + (1|pair.id) + (1|spp), data = pair_attr_BBS)
-anova(common_model_bbs)
-summary(common_model_bbs)
+common_model_bbs2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + pop_estimate_log + (1|pair.id) + (1|spp), data = pair_attr_BBS)
+anova(common_model_bbs2)
+summary(common_model_bbs2)
 ## non-significant
 
 ### split average abundance into two groups
 pair_attr_BBS$pop_estimate <- as.numeric(pair_attr_BBS$pop_estimate)
-pair_attr_BBS$rare_common <- cut(pair_attr_BBS$pop_estimate, 2, labels=FALSE)
+pair_attr_BBS$rare_common <- cut(pair_attr_BBS$pop_estimate, 2, labels=c("rare", "common"))
 pair_attr_BBS$rare_common <- as.factor(pair_attr_BBS$rare_common)
+
+library(Hmisc) # cut2
+pair_attr_BBS$rare_common2 <- cut2(pair_attr_BBS$pop_estimate, g=2)
+
+## rare common by species
+rare_common_bbs  <- pair_attr_BBS[c(17,19,20,21)]
+rare_common_bbs <- unique(rare_common_bbs)
+rare_common_bbs <- arrange(rare_common_bbs, as.numeric(pop_estimate))
+rare_common_bbs$difference <- c(0, diff(rare_common_bbs$pop_estimate))
+
+mean(rare_common_bbs$pop_estimate[rare_common_bbs$rare_common2=="[2500000,7700000]"]) # 5050000
+mean(rare_common_bbs$pop_estimate[rare_common_bbs$rare_common2=="[   4300,2500000)"]) # 592461.1
+mean(rare_common_bbs$pop_estimate[rare_common_bbs$rare_common=="common"]) # 6100000
+mean(rare_common_bbs$pop_estimate[rare_common_bbs$rare_common=="rare"]) # 828215
+## 5271785 difference for cut
+## 4457538.9 difference for cut2
+## cut has largest difference between means == better option
 
 common_model_bbs2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + rare_common + (1|pair.id) + (1|spp), data = pair_attr_BBS)
 summary(common_model_bbs2)
