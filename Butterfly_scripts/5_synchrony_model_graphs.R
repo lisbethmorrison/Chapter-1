@@ -122,6 +122,70 @@ ggarrange(FCI_plot_scaled,
       nrow = 2, labels = "(a)", font.label = list(size = 10, color ="black")) 
 dev.off()
 
+####### also add in percentage change bar graphs for ms ########
+model_comp_UKBMS <- read.csv("../Results/Butterfly_results/model_comp_percentages.csv", header=TRUE)
+model_comp_CBC <- read.csv("../Results/Bird_results/model_comp_percentages_CBC.csv", header=TRUE)
+model_comp_BBS <- read.csv("../Results/Bird_results/model_comp_percentages_BBS.csv", header=TRUE)
+
+model_comp_CBC$comparison <- "1985-1996"
+model_comp_BBS$comparison <- "1999-2012"
+
+model_comp_birds <- rbind(model_comp_BBS, model_comp_CBC)
+model_comp_birds$comparison <- factor(model_comp_birds$comparison, levels=c("1985-1996", "1999-2012"))
+model_comp_birds$change <- factor(model_comp_birds$change, levels=c("Increase", "No change", "Decrease"))
+model_comp_UKBMS$change <- factor(model_comp_UKBMS$change, levels=c("Increase", "No change", "Decrease"))
+
+butterfly <- ggplot(data=model_comp_UKBMS, aes(x=comparison, y=percentage, fill=change)) +
+  geom_bar(stat="identity", width=0.7) +
+  labs(y="Percentage of species", x="", fill="") +
+  scale_fill_manual(values = c("#339900", "#999999", "#990000")) +
+  theme_bw() +
+  theme(axis.text.x=element_text(colour = "black")) +
+  theme(axis.text.y=element_text(colour = "black")) +
+  scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
+  theme(legend.position="bottom",legend.direction="horizontal") +
+  guides(fill = guide_legend(override.aes = list(size = 1))) +
+  theme(text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
+butterfly
+
+birds <- ggplot(data=model_comp_birds, aes(x=comparison, y=percentage, fill=change)) +
+  geom_bar(stat="identity", width=0.7) +
+  labs(y="Percentage of species", x="", fill="") +
+  scale_fill_manual(values = c("#339900", "#999999", "#990000")) +
+  theme_bw() +
+  theme(axis.text.x=element_text(colour = "black")) +
+  theme(axis.text.y=element_text(colour = "black")) +
+  guides(fill = guide_legend(override.aes = list(size = 6))) +
+  scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
+  theme(legend.position="top") +
+  theme(text = element_text(size = 8), panel.border = element_blank(), 
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
+birds
+
+#### put all 5 graphs together somehow....
+library(ggpubr)
+library(gridExtra)
+
+## create percentage plots with shared legend
+get_legend<-function(myggplot){
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+legend <- get_legend(butterfly)
+butterfly <- butterfly + theme(legend.position="none")
+birds <- birds + theme(legend.position="none")
+
+percentages <- grid.arrange(butterfly, legend, birds, ncol=1, nrow = 3, widths = c(2.7), heights = c(2.5, 0.4, 2.5))
+
+png("../Graphs/FINAL/test1.png", height = 150, width = 173, units = "mm", res = 300)
+grid.arrange(FCI_plot_scaled, percentages,
+             FCI_CBC, FCI_BBS, 
+             layout_matrix=cbind(c(1,3), c(1,4), c(2,2)), nrow=2)
+dev.off()
+
 ##### method to obtain smoothed values with 95% confidence intervals for indicator
 loess_model <- loess(rescaled_FCI~parameter, data=results_final_all_spp)
 loess_predict <- predict(loess_model, se=T)
