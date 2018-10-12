@@ -566,7 +566,7 @@ dev.off()
 ## same plot but without overall change
 ## remove overall change
 model_comp_results <- model_comp_results[!model_comp_results$comparison == "1985-2012",]
-png("../Graphs/Model_comps/Model_comp_results_all_spp2.png", height = 100, width = 120, units = "mm", res = 300)
+png("../Graphs/Model_comps/Model_comp_results_all_spp3.png", height = 100, width = 120, units = "mm", res = 300)
 ggplot(data=model_comp_results, aes(x=comparison, y=percentage, fill=change)) +
   geom_bar(stat="identity", width=0.4) +
   labs(y="Percentage of species", x="", fill="") +
@@ -574,8 +574,9 @@ ggplot(data=model_comp_results, aes(x=comparison, y=percentage, fill=change)) +
   theme_bw() +
   theme(axis.text.x=element_text(colour = "black")) +
   theme(axis.text.y=element_text(colour = "black")) +
-  scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+  scale_y_continuous(breaks = seq(0,100,20), expand = c(0, 0)) +
+  theme(text = element_text(size = 16)) +
+  theme(legend.margin=margin(c(-15,40,-5,-20)), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
 dev.off()
 
