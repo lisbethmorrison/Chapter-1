@@ -162,8 +162,16 @@ anova(mobility_model3)
 
 ## run model with 2 groups (high and low) of mobility 
 pair_attr$mobility_wil <- as.numeric(pair_attr$mobility_wil)
-pair_attr$mobility_score2 <- cut(pair_attr$mobility_wil, 2, labels=FALSE)
+pair_attr$mobility_score2 <- cut(pair_attr$mobility_wil, 2, labels=c("low", "high"))
 pair_attr$mobility_score2 <- as.factor(pair_attr$mobility_score2)
+
+pair_attr$mobility_score3 <- cut2(pair_attr$mobility_wil, g=2)
+
+mobility_spp <- pair_attr[c(16,18,20,21)]
+mobility_spp <- unique(mobility_spp)
+mobility_spp <- arrange(mobility_spp, as.numeric(mobility_wil))
+mobility_spp$difference <- c(0, diff(mobility_spp$mobility_wil))
+
 
 mobility_model4 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + mobility_score2 + (1|spp) + (1|pair.id), data=pair_attr)
 summary(mobility_model4)
@@ -220,8 +228,23 @@ anova(dispersal_model_cbc3)
 
 ## split breeding_AM into 2 groups and compare
 pair_attr_CBC$Breeding_AM <- as.numeric(pair_attr_CBC$Breeding_AM)
-pair_attr_CBC$Breeding_AM_score2 <- cut(pair_attr_CBC$Breeding_AM, 2, labels=FALSE)
+pair_attr_CBC$Breeding_AM_score2 <- cut(pair_attr_CBC$Breeding_AM, 2, labels=c("low", "high"))
 pair_attr_CBC$Breeding_AM_score2 <- as.factor(pair_attr_CBC$Breeding_AM_score2)
+
+pair_attr_CBC$Breeding_AM_score3 <- cut2(pair_attr_CBC$Breeding_AM, g=2)
+
+mobility_cbc <- pair_attr_CBC[c(19,36,43,44)]
+mobility_cbc <- unique(mobility_cbc)
+mobility_cbc <- arrange(mobility_cbc, as.numeric(Breeding_AM))
+mobility_cbc$difference <- c(0, diff(mobility_cbc$Breeding_AM))
+
+mean(mobility_cbc$Breeding_AM[mobility_cbc$Breeding_AM_score3=="[3.2,27.5]"]) # 10.28
+mean(mobility_cbc$Breeding_AM[mobility_cbc$Breeding_AM_score3=="[0.8, 3.2)"]) # 2.07
+mean(mobility_cbc$Breeding_AM[mobility_cbc$Breeding_AM_score2=="low"]) # 3.21
+mean(mobility_cbc$Breeding_AM[mobility_cbc$Breeding_AM_score2=="high"]) # 19.53
+## 16.32 difference for cut
+## 8.21 difference for cut2
+## cut has largest difference between means == better option
 
 dispersal_model_cbc4 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + Breeding_AM_score2 + (1|spp) + (1|pair.id), data=pair_attr_CBC)
 summary(dispersal_model_cbc4)
