@@ -105,4 +105,3 @@ site_years <- site_years[!site_years$year_diff<10,]
 
 ## save file
 write.csv(site_years, file="../Data/Bird_sync_data/sites_10_yrs_data.csv", row.names=FALSE)
-
