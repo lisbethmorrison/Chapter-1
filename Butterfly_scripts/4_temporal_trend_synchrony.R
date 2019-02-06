@@ -11,6 +11,7 @@ rm(list=ls()) # clear R
 
 library(lme4)
 library(lmerTest)
+library(broom)
 
 ################################
 ## CREATE PAIR ATTRIBUTE DATA ##
@@ -100,7 +101,25 @@ pair_attr$pair.id <- as.character(pair_attr$pair.id)
 length(unique(pair_attr$spp)) ## 33 species
 
 ## model without intercept
+start_time <- Sys.time()
 all_spp_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
+end_time <- Sys.time()
+end_time - start_time # 7.3 mins
+
+## bootstrap this model (10 times)
+start_time <- Sys.time()
+b_par<-bootMer(x=all_spp_model,FUN=fixef,nsim=10, use.u = FALSE, type="parametric")
+end_time <- Sys.time()
+end_time - start_time # 34.4 mins...
+## this will take 56 hours to run 1000 simulations
+
+mixed_boot_coefs <- function(fit){
+  unlist(coef(fit))
+}
+
+broom::augment(all_spp_model, pair_attr)
+print(b_par)
+
 ### save results for northing, distance and hab sim
 fixed_results <- data.frame(summary(all_spp_model)$coefficients[,1:5])
 fixed_results$parameter <- paste(row.names(fixed_results))
