@@ -13,6 +13,7 @@ library(ggplot2)
 library(plyr)
 library(dplyr)
 library(plotrix)
+library(parallel)
 options(scipen=999)
 
 ## read in synchrony data
@@ -20,6 +21,7 @@ pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE)
 pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE) 
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) 
 wingspan <- read.csv("../Data/UKBMS_data/butterflywingspans.csv", header=TRUE)
+bird_dispersal <- read.csv("../Data/Woodland_bird_dispersal_Paradis1998.csv", header=TRUE)
 
 ################################### AVERAGE SYNCRHONY ################################### 
 
@@ -165,15 +167,11 @@ pair_attr$mobility_wil <- as.numeric(pair_attr$mobility_wil)
 pair_attr$mobility_score2 <- cut(pair_attr$mobility_wil, 2, labels=c("low", "high"))
 pair_attr$mobility_score2 <- as.factor(pair_attr$mobility_score2)
 
-pair_attr$mobility_score3 <- cut2(pair_attr$mobility_wil, g=2)
-
-mobility_spp <- pair_attr[c(16,18,20,21)]
-mobility_spp <- unique(mobility_spp)
-mobility_spp <- arrange(mobility_spp, as.numeric(mobility_wil))
-mobility_spp$difference <- c(0, diff(mobility_spp$mobility_wil))
-
-
+start_time <- Sys.time()
 mobility_model4 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + mobility_score2 + (1|spp) + (1|pair.id), data=pair_attr)
+end_time <- Sys.time()
+end_time - start_time ## 7.64mins 
+
 summary(mobility_model4)
 anova(mobility_model4)
 ## significant (p=0.011)
@@ -194,7 +192,6 @@ AIC(mobility_model2, mobility_model4)
 ##################################
 
 ## read in bird dispersal data
-bird_dispersal <- read.csv("../Data/Woodland_bird_dispersal_Paradis1998.csv", header=TRUE)
 length(unique(bird_dispersal$Species_code)) ## only 23 species have dispersal data
 
 ## merge pair_attr with bird dispersal data
@@ -230,21 +227,6 @@ anova(dispersal_model_cbc3)
 pair_attr_CBC$Breeding_AM <- as.numeric(pair_attr_CBC$Breeding_AM)
 pair_attr_CBC$Breeding_AM_score2 <- cut(pair_attr_CBC$Breeding_AM, 2, labels=c("low", "high"))
 pair_attr_CBC$Breeding_AM_score2 <- as.factor(pair_attr_CBC$Breeding_AM_score2)
-
-pair_attr_CBC$Breeding_AM_score3 <- cut2(pair_attr_CBC$Breeding_AM, g=2)
-
-mobility_cbc <- pair_attr_CBC[c(19,36,43,44)]
-mobility_cbc <- unique(mobility_cbc)
-mobility_cbc <- arrange(mobility_cbc, as.numeric(Breeding_AM))
-mobility_cbc$difference <- c(0, diff(mobility_cbc$Breeding_AM))
-
-mean(mobility_cbc$Breeding_AM[mobility_cbc$Breeding_AM_score3=="[3.2,27.5]"]) # 10.28
-mean(mobility_cbc$Breeding_AM[mobility_cbc$Breeding_AM_score3=="[0.8, 3.2)"]) # 2.07
-mean(mobility_cbc$Breeding_AM[mobility_cbc$Breeding_AM_score2=="low"]) # 3.21
-mean(mobility_cbc$Breeding_AM[mobility_cbc$Breeding_AM_score2=="high"]) # 19.53
-## 16.32 difference for cut
-## 8.21 difference for cut2
-## cut has largest difference between means == better option
 
 dispersal_model_cbc4 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + Breeding_AM_score2 + (1|spp) + (1|pair.id), data=pair_attr_CBC)
 summary(dispersal_model_cbc4)
@@ -369,7 +351,11 @@ pair_attr_ukbms$mobility_wil <- as.numeric(pair_attr_ukbms$mobility_wil)
 pair_attr_ukbms$mobility_score2 <- cut(pair_attr_ukbms$mobility_wil, 2, labels=FALSE)
 pair_attr_ukbms$mobility_score2 <- as.factor(pair_attr_ukbms$mobility_score2)
 
+start_time <- Sys.time()
 mobility_model7 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*mobility_score2 + (1|spp) + (1|pair.id), data=pair_attr_ukbms)
+end_time <- Sys.time()
+end_time - start_time ## 22.9 seconds
+
 summary(mobility_model7)
 anova(mobility_model7)
 ## interaction is  significant (p=0.00399)
@@ -490,7 +476,11 @@ pair_attr_cbc$Breeding_AM_score2 <- cut(pair_attr_cbc$Breeding_AM, 2, labels=FAL
 pair_attr_cbc$Breeding_AM_score2 <- as.factor(pair_attr_cbc$Breeding_AM_score2)
 pair_attr_cbc <- na.omit(pair_attr_cbc)
 
+start_time <- Sys.time()
 dispersal_model_cbc3 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*Breeding_AM_score2 + (1|spp) + (1|pair.id), data=pair_attr_cbc)
+end_time <- Sys.time()
+end_time - start_time ## 4.87 seconds
+
 summary(dispersal_model_cbc3)
 anova(dispersal_model_cbc3)
 ## interaction is significant (p=0.0418)
@@ -498,12 +488,78 @@ anova(dispersal_model_cbc3)
 results_table_dispersal_cbc <- data.frame(summary(dispersal_model_cbc3)$coefficients[,1:5])
 write.csv(results_table_dispersal_cbc, file = "../Results/Model_outputs/change_dispersal_cbc.csv", row.names=TRUE)
 
-#### compare models with 3 groups and 2 groups
-AIC(dispersal_model_cbc2, dispersal_model_cbc3)
-## AIC values are:
-## mobility_model6 - 12779.42
-## mobility_model7 - 12770.79
-## group of 2 is better
+## save main (true) model results
+main_result_table <- data.frame(anova(dispersal_model_cbc3)[,5:6]) ## save anova table from main model
+main_result_table$i <- 0 ## make i column with zeros 
+main_result_table$parameter <- paste(row.names(main_result_table)) ## move row.names to parameter column
+rownames(main_result_table) <- 1:nrow(main_result_table) ## change row names to numbers
+## remove rows with mean northing, distance, hab sim and mid year F values (only interested in abundance F values)
+main_result_table <- main_result_table[ !(main_result_table$parameter %in% c("mean_northing", "distance", "hab_sim", "mid.year", "Breeding_AM_score2")), ]
+
+library(foreach)
+library(doParallel)
+library(snow)
+cores=detectCores()
+cl <- makeCluster(cores[1]-1) #not to overload your computer
+registerDoParallel(cl)
+
+### parallel ###
+## run model 999 times
+perm_cbc_mob <- NULL
+system.time(
+foreach (i=1:trials, .packages='lme4', .combine = combine) %dopar% {
+  print(i)
+  pair_attr_cbc$mob_shuffle <- sample(pair_attr_cbc$Breeding_AM_score2) ## randomly shuffle abundance change varaible
+  abund_model_cbc_shuffle <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*mob_shuffle + (1|pair.id) + (1|spp), data = pair_attr_cbc)
+  ## run model with shuffled variable
+  ## save results
+  results_table_temp <- data.frame(anova(abund_model_cbc_shuffle)[,5:6],i)
+  perm_cbc_mob<-rbind(perm_cbc_mob,results_table_temp)
+  }
+)
+stopCluster(cl)
+
+
+### non-parallel ###
+## run model 999 times
+perm_cbc_mob <- NULL
+system.time(
+  for (i in 1:9) {
+    print(i)
+  pair_attr_cbc$mob_shuffle <- sample(pair_attr_cbc$Breeding_AM_score2) ## randomly shuffle abundance change varaible
+  abund_model_cbc_shuffle <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*mob_shuffle + (1|pair.id) + (1|spp), data = pair_attr_cbc)
+  ## run model with shuffled variable
+  ## save results
+  results_table_temp <- data.frame(anova(abund_model_cbc_shuffle)[,5:6],i)
+  perm_cbc_mob<-rbind(perm_cbc_mob,results_table_temp)
+  }
+) ## 33.16 seconds (9 runs)
+
+perm_cbc_mob$parameter <- paste(row.names(perm_cbc_mob)) ## move row.names to parameter column
+rownames(perm_cbc_mob) <- 1:nrow(perm_cbc_mob) ## change row names to numbers
+## remove rows with mean northing, distance, hab sim and mid year F values (only interested in abundance F values)
+perm_cbc_mob <- perm_cbc_mob[-grep("mean_northing", perm_cbc_mob$parameter),]
+perm_cbc_mob <- perm_cbc_mob[-grep("distance", perm_cbc_mob$parameter),]
+perm_cbc_mob <- perm_cbc_mob[-grep("hab_sim", perm_cbc_mob$parameter),]
+perm_cbc_mob <- perm_cbc_mob[-grep("mid.year", perm_cbc_mob$parameter),]
+
+final_results_table <- rbind(main_result_table, perm_cbc_mob) ## bind the two data frames together
+
+F_value <- with(final_results_table, final_results_table$F.value[final_results_table$i==0]) ## true F value from main model
+hist(final_results_table$F.value) + abline(v=F_value, col="red") ## plot distribution of F values with vertical line (true F value)
+
+## save file
+write.csv(final_results_table, file = "../Results/Model_outputs/perm_change_mob_cbc.csv", row.names=TRUE)
+
+## Calculate p value
+number_of_permutations <- 1000
+final_results_table2 <- final_results_table[!final_results_table$i==0,] ## remove true value to calc. p value
+diff.observed <- main_result_table$F.value ## true F value
+
+# P-value is the fraction of how many times the permuted difference is equal or more extreme than the observed difference
+pvalue = sum(abs(final_results_table2$F.value) >= abs(diff.observed)) / number_of_permutations
+pvalue ## 0.023 significant
+
 
 ### predict new data
 newdata_cbc <- expand.grid(mean_northing=mean(pair_attr_cbc$mean_northing), distance=mean(pair_attr_cbc$distance), 
@@ -584,7 +640,7 @@ pair_attr_bbs$mid.year <- as.factor(pair_attr_bbs$mid.year)
 pair_attr_bbs$pair.id <- as.character(pair_attr_bbs$pair.id)
 pair_attr_bbs$spp <- as.factor(pair_attr_bbs$spp)
 
-###### run model with strategy and year interaction
+###### run model with mobility and year interaction
 dispersal_model_bbs1 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*Natal_AM + (1|pair.id) + (1|spp), data = pair_attr_bbs)
 summary(dispersal_model_bbs1)
 ## intercept is mid.year 1999
@@ -610,13 +666,66 @@ pair_attr_bbs$Breeding_AM <- as.numeric(pair_attr_bbs$Breeding_AM)
 pair_attr_bbs$Breeding_AM_score2 <- cut(pair_attr_bbs$Breeding_AM, 2, labels=FALSE)
 pair_attr_bbs$Breeding_AM_score2 <- as.factor(pair_attr_bbs$Breeding_AM_score2)
 
+start_time <- Sys.time()
 dispersal_model_bbs3 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*Breeding_AM_score2 + (1|spp) + (1|pair.id), data=pair_attr_bbs)
+end_time <- Sys.time()
+end_time - start_time ## 34 seconds
+
 summary(dispersal_model_bbs3)
 anova(dispersal_model_bbs3)
 ## interaction is very significant (p<0.000001)
 ## save model output
 results_table_dispersal_bbs <- data.frame(summary(dispersal_model_bbs3)$coefficients[,1:5])
 write.csv(results_table_dispersal_bbs, file = "../Results/Model_outputs/change_dispersal_bbs.csv", row.names=TRUE)
+
+## save main (true) model results
+main_result_table <- data.frame(anova(dispersal_model_bbs3)[,5:6]) ## save anova table from main model
+main_result_table$i <- 0 ## make i column with zeros 
+main_result_table$parameter <- paste(row.names(main_result_table)) ## move row.names to parameter column
+rownames(main_result_table) <- 1:nrow(main_result_table) ## change row names to numbers
+## remove rows with mean northing, distance, hab sim and mid year F values (only interested in abundance F values)
+main_result_table <- main_result_table[ !(main_result_table$parameter %in% c("mean_northing", "distance", "renk_hab_sim", "mid.year", "Breeding_AM_score2")), ]
+
+## run model 999 times
+perm_bbs_mob <- NULL
+start_time <- Sys.time()
+for (i in 1:999){
+  print(i)
+  pair_attr_bbs$mob_shuffle <- sample(pair_attr_bbs$Breeding_AM_score2) ## randomly shuffle abundance change varaible
+  abund_model_bbs_shuffle <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*mob_shuffle + (1|pair.id) + (1|spp), data = pair_attr_bbs)
+  ## run model with shuffled variable
+  ## save results
+  results_table_temp <- data.frame(anova(abund_model_bbs_shuffle)[,5:6],i)
+  perm_bbs_mob<-rbind(perm_bbs_mob,results_table_temp)
+}
+end_time <- Sys.time()
+end_time - start_time ## 8.81 hours to do 999 runs
+
+perm_bbs_mob$parameter <- paste(row.names(perm_bbs_mob)) ## move row.names to parameter column
+rownames(perm_bbs_mob) <- 1:nrow(perm_bbs_mob) ## change row names to numbers
+## remove rows with mean northing, distance, hab sim and mid year F values (only interested in abundance F values)
+perm_bbs_mob <- perm_bbs_mob[-grep("mean_northing", perm_bbs_mob$parameter),]
+perm_bbs_mob <- perm_bbs_mob[-grep("distance", perm_bbs_mob$parameter),]
+perm_bbs_mob <- perm_bbs_mob[-grep("hab_sim", perm_bbs_mob$parameter),]
+perm_bbs_mob <- perm_bbs_mob[-grep("mid.year", perm_bbs_mob$parameter),]
+
+final_results_table <- rbind(main_result_table, perm_bbs_mob) ## bind the two data frames together
+
+F_value <- with(final_results_table, final_results_table$F.value[final_results_table$i==0]) ## true F value from main model
+hist(final_results_table$F.value) + abline(v=F_value, col="red") ## plot distribution of F values with vertical line (true F value)
+
+## save file
+write.csv(final_results_table, file = "../Results/Model_outputs/perm_change_mob_bbs.csv", row.names=TRUE)
+
+## Calculate p value
+number_of_permutations <- 1000
+final_results_table2 <- final_results_table[!final_results_table$i==0,] ## remove true value to calc. p value
+diff.observed <- main_result_table$F.value ## true F value
+
+# P-value is the fraction of how many times the permuted difference is equal or more extreme than the observed difference
+pvalue = sum(abs(final_results_table2$F.value) >= abs(diff.observed)) / number_of_permutations
+pvalue ## 0 (exactly) significant
+
 
 #### compare models with 3 groups and 2 groups
 AIC(dispersal_model_bbs2, dispersal_model_bbs3)

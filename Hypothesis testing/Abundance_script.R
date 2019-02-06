@@ -46,63 +46,19 @@ summary(pair_attr)
 pair_attr$distance <- (pair_attr$distance - mean(na.omit(pair_attr$distance)))/sd(na.omit(pair_attr$distance))
 pair_attr$mean_northing <- (pair_attr$mean_northing - mean(na.omit(pair_attr$mean_northing)))/sd(na.omit(pair_attr$mean_northing))
 pair_attr$renk_hab_sim <- (pair_attr$renk_hab_sim - mean(na.omit(pair_attr$renk_hab_sim)))/sd(na.omit(pair_attr$renk_hab_sim))
-
-## log population abundance 
-pair_attr$pop_estimate_log <- log(pair_attr$average_abundance)
-pair_attr$pop_estimate_sqrt <- sqrt(pair_attr$average_abundance)
 pair_attr$pop_est_stand <- (pair_attr$average_abundance - mean(na.omit(pair_attr$average_abundance)))/sd(na.omit(pair_attr$average_abundance))
-
-hist(pair_attr$average_abundance)
-hist(pair_attr$pop_est_stand)
-hist(pair_attr$pop_estimate_log)
-hist(pair_attr$pop_estimate_sqrt)
 
 ### full model with average_abundance as a measure of commonness
 common_model_ukbms1 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + average_abundance + (1|pair.id) + (1|spp), data = pair_attr)
+
+start_time <- Sys.time()
 common_model_ukbms2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + pop_est_stand + (1|pair.id) + (1|spp), data = pair_attr)
-common_model_ukbms3 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + pop_estimate_log + (1|pair.id) + (1|spp), data = pair_attr)
-common_model_ukbms4 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + pop_estimate_sqrt + (1|pair.id) + (1|spp), data = pair_attr)
+end_time <- Sys.time()
+end_time - start_time ## 22.9 seconds
 
-summary(common_model_ukbms1) # p=0.038, but giving errors about scaling
-summary(common_model_ukbms2) # p=0.038, same result just no errors with scaling
-summary(common_model_ukbms3) # p=0.00077 
-summary(common_model_ukbms4) # p=0.0037
-hist(resid(common_model_ukbms1))
-hist(resid(common_model_ukbms2))
-hist(resid(common_model_ukbms3))
-hist(resid(common_model_ukbms4))
-
-
-summary(common_model_ukbms)
-anova(common_model_ukbms)
-## significant, p=0.039 (positive relationship)
-
-### split average abundance into two groups
-pair_attr$average_abundance <- as.numeric(pair_attr$average_abundance)
-pair_attr$rare_common <- cut(pair_attr$average_abundance, 2, labels=c("rare", "common"))
-pair_attr$rare_common <- as.factor(pair_attr$rare_common)
-
-library(Hmisc) # cut2
-pair_attr$rare_common2 <- cut2(pair_attr$average_abundance, g=2)
-
-## rare common by species
-rare_common_ukbms <- pair_attr[c(16,30,31,32)]
-rare_common_ukbms <- unique(rare_common_ukbms)
-rare_common_ukbms <- arrange(rare_common_ukbms, as.numeric(average_abundance))
-rare_common_ukbms$difference <- c(0, diff(rare_common_ukbms$average_abundance))
-
-mean(rare_common_ukbms$average_abundance[rare_common_ukbms$rare_common2=="[2526.00,15339]"]) # 7075.75
-mean(rare_common_ukbms$average_abundance[rare_common_ukbms$rare_common2=="[   1.67, 2526)"]) # 381.1481
-mean(rare_common_ukbms$average_abundance[rare_common_ukbms$rare_common=="common"]) # 12517.5
-mean(rare_common_ukbms$average_abundance[rare_common_ukbms$rare_common=="rare"]) # 1357.285
-## 11160.215 difference for cut
-## 6694.6019 difference for cut2
-## cut has largest difference between means == better option
-
-common_model_ukbms2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + rare_common + (1|pair.id) + (1|spp), data = pair_attr)
 summary(common_model_ukbms2)
 anova(common_model_ukbms2)
-### now not significant (p=0.27)
+## significant, p=0.039 (positive relationship)
 
 
 ## predict data to plot graphs
@@ -166,45 +122,74 @@ pair_attr_CBC <- merge(pair_attr_CBC, bird_common, by.x="spp", by.y="species_cod
 
 ## rescale variables
 pair_attr_CBC$pop_estimate_log <- log(pair_attr_CBC$pop_estimate)
-pair_attr_CBC$pop_estimate_sqrt <- sqrt(pair_attr_CBC$pop_estimate)
-pair_attr_CBC$pop_estimate_standardise <- (pair_attr_CBC$pop_estimate - mean(na.omit(pair_attr_CBC$pop_estimate)))/sd(na.omit(pair_attr_CBC$pop_estimate))
-pair_attr_CBC$distance <- (pair_attr_CBC$distance - mean(na.omit(pair_attr_CBC$distance)))/sd(na.omit(pair_attr_CBC$distance))
-pair_attr_CBC$mean_northing <- (pair_attr_CBC$mean_northing - mean(na.omit(pair_attr_CBC$mean_northing)))/sd(na.omit(pair_attr_CBC$mean_northing))
-## remove columns not needed (region, season, unit, year)
-pair_attr_CBC <- pair_attr_CBC[-c(21:22,24:26)]
-summary(pair_attr_CBC)
+# pair_attr_CBC$pop_estimate_sqrt <- sqrt(pair_attr_CBC$pop_estimate)
+# pair_attr_CBC$pop_estimate_standardise <- (pair_attr_CBC$pop_estimate - mean(na.omit(pair_attr_CBC$pop_estimate)))/sd(na.omit(pair_attr_CBC$pop_estimate))
+# pair_attr_CBC$distance <- (pair_attr_CBC$distance - mean(na.omit(pair_attr_CBC$distance)))/sd(na.omit(pair_attr_CBC$distance))
+# pair_attr_CBC$mean_northing <- (pair_attr_CBC$mean_northing - mean(na.omit(pair_attr_CBC$mean_northing)))/sd(na.omit(pair_attr_CBC$mean_northing))
+# ## remove columns not needed (region, season, unit, year)
+# pair_attr_CBC <- pair_attr_CBC[-c(21:22,24:26)]
+# summary(pair_attr_CBC)
 
 hist(pair_attr_CBC$pop_estimate)
 hist(pair_attr_CBC$pop_estimate_standardise)
 hist(pair_attr_CBC$pop_estimate_log)
 hist(pair_attr_CBC$pop_estimate_sqrt)
 
-### full model with pop_estimate as a measure of commonness
+### main model with pop_estimate as a measure of commonness
+start_time <- Sys.time()
 common_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + pop_estimate_log + (1|pair.id) + (1|spp), data = pair_attr_CBC)
-summary(common_model_cbc)
-anova(common_model_cbc)
-## significant (p=0.0018)
-## check residuals
-par(mfrow = c(1,1))
-plot(common_model_cbc)
+end_time <- Sys.time()
+end_time - start_time ## 26.14 seconds
 
-### check distribution of population estimate
-hist(pair_attr_CBC$pop_estimate) # left skew
-hist(pair_attr_CBC$pop_estimate_log) ## right skew
-hist(pair_attr_CBC$pop_estimate_standardise) ## left skew
-hist(pair_attr_CBC$pop_estimate_sqrt) ## no skew, but no bell curve
+## save main (true) model results
+main_result_table <- data.frame(anova(common_model_cbc)[,5:6]) ## save anova table from main model
+main_result_table$i <- 0 ## make i column with zeros 
+main_result_table$parameter <- paste(row.names(main_result_table)) ## move row.names to parameter column
+rownames(main_result_table) <- 1:nrow(main_result_table) ## change row names to numbers
+## remove rows with mean northing, distance, hab sim and mid year F values (only interested in abundance F values)
+main_result_table <- main_result_table[ !(main_result_table$parameter %in% c("mean_northing", "distance", "hab_sim", "mid.year")), ]
 
-qqnorm(pair_attr_CBC$pop_estimate)
-qqline(pair_attr_CBC$pop_estimate) ## not normally distributed 
-qqnorm(pair_attr_CBC$pop_estimate_log)
-qqline(pair_attr_CBC$pop_estimate_log) ## bit better
-qqnorm(pair_attr_CBC$pop_estimate_standardise)
-qqline(pair_attr_CBC$pop_estimate_standardise) ## still not normal - left skew
-qqnorm(pair_attr_CBC$pop_estimate_sqrt)
-qqline(pair_attr_CBC$pop_estimate_sqrt) ## still left skew, but best fit out of all options
+## run model 999 times
+perm_cbc_abund <- NULL
+start_time <- Sys.time()
+for (i in 1:999){
+  print(i)
+  pair_attr_CBC$abund_shuffle <- sample(pair_attr_CBC$pop_estimate_log) ## randomly shuffle pop_estimate variable
+  common_model_cbc_shuffle <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + abund_shuffle + (1|pair.id) + (1|spp), data = pair_attr_CBC)
+  ## run model with shuffled variable
+  ## save results
+  results_table_temp <- data.frame(anova(common_model_cbc_shuffle)[,5:6],i)
+  perm_cbc_abund<-rbind(perm_cbc_abund,results_table_temp)
+  }
+end_time <- Sys.time()
+end_time - start_time ## 6.3 hours (999 runs)
 
-hist(resid(common_model_cbc)) ## normally distributed
-hist(resid(common_model_cbc2)) ## normally distributed too
+final_results_table <- rbind(main_result_table, perm_cbc_abund) ## bind the two data frames together
+
+final_results_table$parameter <- paste(row.names(final_results_table)) ## move row.names to parameter column
+rownames(final_results_table) <- 1:nrow(final_results_table) ## change row names to numbers
+
+## remove rows with mean northing, distance, hab sim and mid year F values (only interested in abundance F values)
+final_results_table <- final_results_table[!grep("mean_northing", final_results_table$parameter),]
+final_results_table <- final_results_table[!grep("distance", final_results_table$parameter),]
+final_results_table <- final_results_table[!grep("hab_sim", final_results_table$parameter),]
+final_results_table <- final_results_table[!grep("mid.year", final_results_table$parameter),]
+
+F_value <- with(final_results_table, final_results_table$F.value[final_results_table$i==0]) ## true F value from main model
+hist(final_results_table$F.value) + abline(v=F_value, col="red") ## plot distribution of F values with vertical line (true F value)
+
+## save file
+write.csv(final_results_table, file = "../Results/Model_outputs/perm_average_abund_cbc.csv", row.names=TRUE)
+
+## Calculate p value
+number_of_permutations <- 1000
+final_results_table2 <- final_results_table[!final_results_table$i==0,] ## remove true value to calc. p value
+diff.observed <- main_result_table$F.value ## true F value
+  
+# P-value is the fraction of how many times the permuted difference is equal or more extreme than the observed difference
+pvalue = sum(abs(final_results_table2$F.value) >= abs(diff.observed)) / number_of_permutations
+pvalue ## 0.005
+
 
 ## predict new data to plot graph
 newdata_cbc <- expand.grid(mean_northing=mean(pair_attr_CBC$mean_northing), distance=mean(pair_attr_CBC$distance), 
@@ -547,7 +532,11 @@ pair_attr_ukbms$renk_hab_sim <- (pair_attr_ukbms$renk_hab_sim - mean(na.omit(pai
 pair_attr_ukbms <- merge(pair_attr_ukbms, abundance_results, by.x="spp", by.y="Species.code", all=FALSE)
 
 ## full model with interaction between mid year and mobility
+start_time <- Sys.time()
 abund_model2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*ab_change_00_12 + (1|spp) + (1|pair.id), data=pair_attr_ukbms)
+end_time <- Sys.time()
+end_time - start_time ## 22.23 seconds
+
 summary(abund_model2)
 anova(abund_model2)
 ## very significant interaction (p<0.00001)
@@ -720,10 +709,61 @@ pair_attr_cbc <- merge(pair_attr_cbc, abundance_results_cbc, by.x="spp", by.y="s
 pair_attr_cbc <- pair_attr_cbc[-c(21:25)]
 
 ###### run model with strategy and year interaction
+start_time <- Sys.time()
 abund_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*ab_change_85_96 + (1|pair.id) + (1|spp), data = pair_attr_cbc)
+end_time <- Sys.time()
+end_time - start_time ## 3.994 seconds
+
 summary(abund_model_cbc)
 anova(abund_model_cbc)
-## mid.year*ab_change_85_96 interaction is NON-significant overall
+
+## save main (true) model results
+main_result_table <- data.frame(anova(abund_model_cbc)[,5:6]) ## save anova table from main model
+main_result_table$i <- 0 ## make i column with zeros 
+main_result_table$parameter <- paste(row.names(main_result_table)) ## move row.names to parameter column
+rownames(main_result_table) <- 1:nrow(main_result_table) ## change row names to numbers
+## remove rows with mean northing, distance, hab sim and mid year F values (only interested in abundance F values)
+main_result_table <- main_result_table[ !(main_result_table$parameter %in% c("mean_northing", "distance", "hab_sim", "mid.year", "ab_change_85_96")), ]
+
+## run model 999 times
+perm_cbc_abund <- NULL
+start_time <- Sys.time()
+for (i in 1:999){
+  print(i)
+  pair_attr_cbc$abund_shuffle <- sample(pair_attr_cbc$ab_change_85_96) ## randomly shuffle abundance change varaible
+  abund_model_cbc_shuffle <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*abund_shuffle + (1|pair.id) + (1|spp), data = pair_attr_cbc)
+  ## run model with shuffled variable
+  ## save results
+  results_table_temp <- data.frame(anova(abund_model_cbc_shuffle)[,5:6],i)
+  perm_cbc_abund<-rbind(perm_cbc_abund,results_table_temp)
+}
+end_time <- Sys.time()
+end_time - start_time ## 59mins to do 999 runs
+
+perm_cbc_abund$parameter <- paste(row.names(perm_cbc_abund)) ## move row.names to parameter column
+rownames(perm_cbc_abund) <- 1:nrow(perm_cbc_abund) ## change row names to numbers
+## remove rows with mean northing, distance, hab sim and mid year F values (only interested in abundance F values)
+perm_cbc_abund <- perm_cbc_abund[-grep("mean_northing", perm_cbc_abund$parameter),]
+perm_cbc_abund <- perm_cbc_abund[-grep("distance", perm_cbc_abund$parameter),]
+perm_cbc_abund <- perm_cbc_abund[-grep("hab_sim", perm_cbc_abund$parameter),]
+perm_cbc_abund <- perm_cbc_abund[-grep("mid.year", perm_cbc_abund$parameter),]
+
+final_results_table <- rbind(main_result_table, perm_cbc_abund) ## bind the two data frames together
+
+F_value <- with(final_results_table, final_results_table$F.value[final_results_table$i==0]) ## true F value from main model
+hist(final_results_table$F.value) + abline(v=F_value, col="red") ## plot distribution of F values with vertical line (true F value)
+
+## save file
+write.csv(final_results_table, file = "../Results/Model_outputs/perm_change_abund_cbc.csv", row.names=TRUE)
+
+## Calculate p value
+number_of_permutations <- 1000
+final_results_table2 <- final_results_table[!final_results_table$i==0,] ## remove true value to calc. p value
+diff.observed <- main_result_table$F.value ## true F value
+
+# P-value is the fraction of how many times the permuted difference is equal or more extreme than the observed difference
+pvalue = sum(abs(final_results_table2$F.value) >= abs(diff.observed)) / number_of_permutations
+pvalue ## 0.024
 
 ################################################################################
 ################################# BBS BIRDS ####################################

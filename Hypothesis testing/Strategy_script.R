@@ -31,7 +31,17 @@ pair_attr$pair.id <- as.character(pair_attr$pair.id)
 pair_attr$spp <- as.factor(pair_attr$spp)
 pair_attr$specialism <- as.factor(pair_attr$specialism)
 
+start_time <- Sys.time()
 spec_model_ukbms1 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + specialism + (1|pair.id) + (1|spp), data = pair_attr)
+end_time <- Sys.time()
+end_time - start_time ## 7.36 mins
+
+## try and reshuffle specialism variable
+pair_attr$specialism_shuffle <- sample(pair_attr$specialism)
+
+### run 9 models 
+ 
+
 summary(spec_model_ukbms1)
 ## specialists are the intercept
 anova(spec_model_ukbms1)
@@ -111,7 +121,11 @@ pair_attr_ukbms$spp <- as.factor(pair_attr_ukbms$spp)
 pair_attr_ukbms$specialism <- as.factor(pair_attr_ukbms$specialism)
 
 ###### run model with strategy and year interaction (without migrants)
+start_time <- Sys.time()
 spec_model_ukbms2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*specialism + (1|pair.id) + (1|spp), data = pair_attr_ukbms)
+end_time <- Sys.time()
+end_time - start_time ## 22 seconds
+
 summary(spec_model_ukbms2)
 ## intercept is mid.year 1985 and wider countryside species
 anova(spec_model_ukbms2)
@@ -348,7 +362,65 @@ pair_attr_bbs$spp <- as.factor(pair_attr_bbs$spp)
 pair_attr_bbs$specialism <- as.factor(pair_attr_bbs$specialism)
 
 ###### run model with strategy and year interaction
+start_time <- Sys.time()
 spec_model_bbs2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*specialism + (1|pair.id) + (1|spp), data = pair_attr_bbs)
+end_time <- Sys.time()
+end_time - start_time ## 39 seconds
+
+## save main (true) model results
+main_result_table <- data.frame(anova(spec_model_bbs2)[,5:6]) ## save anova table from main model
+main_result_table$i <- 0 ## make i column with zeros 
+main_result_table$parameter <- paste(row.names(main_result_table)) ## move row.names to parameter column
+rownames(main_result_table) <- 1:nrow(main_result_table) ## change row names to numbers
+## remove rows with mean northing, distance, hab sim and mid year F values (only interested in abundance F values)
+main_result_table <- main_result_table[ !(main_result_table$parameter %in% c("mean_northing", "distance", "renk_hab_sim", "mid.year", "specialism")), ]
+
+## run model 999 times
+perm_bbs_spec <- NULL
+start_time <- Sys.time()
+for (i in 1:999){
+  print(i)
+  pair_attr_bbs$spec_shuffle <- sample(pair_attr_bbs$specialism) ## randomly shuffle abundance change varaible
+  spec_model_bbs_shuffle <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*spec_shuffle + (1|pair.id) + (1|spp), data = pair_attr_bbs)
+  ## run model with shuffled variable
+  ## save results
+  results_table_temp <- data.frame(anova(spec_model_bbs_shuffle)[,5:6],i)
+  perm_bbs_spec<-rbind(perm_bbs_spec,results_table_temp)
+}
+end_time <- Sys.time()
+end_time - start_time ## 8.81 hours to do 999 runs
+
+perm_bbs_spec$parameter <- paste(row.names(perm_bbs_spec)) ## move row.names to parameter column
+rownames(perm_bbs_spec) <- 1:nrow(perm_bbs_spec) ## change row names to numbers
+## remove rows with mean northing, distance, hab sim and mid year F values (only interested in abundance F values)
+perm_bbs_spec <- perm_bbs_spec[-grep("mean_northing", perm_bbs_spec$parameter),]
+perm_bbs_spec <- perm_bbs_spec[-grep("distance", perm_bbs_spec$parameter),]
+perm_bbs_spec <- perm_bbs_spec[-grep("hab_sim", perm_bbs_spec$parameter),]
+perm_bbs_spec <- perm_bbs_spec[-grep("mid.year", perm_bbs_spec$parameter),]
+
+final_results_table <- rbind(main_result_table, perm_bbs_spec) ## bind the two data frames together
+
+F_value <- with(final_results_table, final_results_table$F.value[final_results_table$i==0]) ## true F value from main model
+hist(final_results_table$F.value) + abline(v=F_value, col="red") ## plot distribution of F values with vertical line (true F value)
+
+## save file
+write.csv(final_results_table, file = "../Results/Model_outputs/perm_change_spec_bbs.csv", row.names=TRUE)
+
+## Calculate p value
+number_of_permutations <- 1000
+final_results_table2 <- final_results_table[!final_results_table$i==0,] ## remove true value to calc. p value
+diff.observed <- main_result_table$F.value ## true F value
+
+# P-value is the fraction of how many times the permuted difference is equal or more extreme than the observed difference
+pvalue = sum(abs(final_results_table2$F.value) >= abs(diff.observed)) / number_of_permutations
+pvalue ## 0 (exactly) significant
+
+
+
+
+
+
+
 summary(spec_model_bbs2)
 ## intercept is mid.year 1999 and generalists
 anova(spec_model_bbs2)
