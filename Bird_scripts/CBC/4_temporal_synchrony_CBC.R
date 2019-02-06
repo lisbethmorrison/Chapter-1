@@ -76,7 +76,22 @@ pair_attr$mid.year <- as.factor(pair_attr$mid.year)
 ################################################
 
 ## model without intercept
-all_spp_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
+start_time <- Sys.time()
+all_spp_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
+end_time <- Sys.time()
+end_time - start_time # 36.7 seconds
+
+## bootstrap this model
+start_time <- Sys.time()
+boot_cbc<-bootMer(x=all_spp_model_cbc,FUN=fixef,nsim=100, use.u = FALSE, type="parametric")
+end_time <- Sys.time()
+end_time - start_time # 18.9 mins
+## this will take ~180mins (3hrs) to run 1000 simulations
+
+std.err <- apply(boot_cbc$t, 2, sd)
+CI.lower <- pred - std.err*1.96
+CI.upper <- pred + std.err*1.96
+
 ### save results for northing, distance and hab sim
 fixed_results <- data.frame(summary(all_spp_model)$coefficients[,1:5])
 fixed_results$parameter <- paste(row.names(fixed_results))
