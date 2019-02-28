@@ -80,7 +80,7 @@ for (g in spp_list){ # loop for each species #
 
 ## 31 species and 6139 sites
 
-### drop sites with <50% zero counts ###
+### drop sites with >50% zero counts ###
 good_year_data <- zero_count_data[zero_count_data$good_years>5,]
 final_data$rec_id <- paste(final_data$name, final_data$site, sep="_")
 good_year_data$rec_id <- paste(good_year_data$species_code, good_year_data$site_code, sep="_")

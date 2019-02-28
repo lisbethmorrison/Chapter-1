@@ -48,6 +48,8 @@ for (j in site.list){
 		# convert to growth rate
 		if(length(temp.table[temp.table$YEAR==i,"SINDEX"]) + length(temp.table[temp.table$YEAR==(i-1),"SINDEX"]) < 2){		# if there is less than two years of data
 			gr <- c(gr,NA) # gr gets NA
+		} else if (temp.table[temp.table$YEAR==(i-1), "SINDEX"] == 1){ ## if previous year == 1 (i.e. no count made), gr = NA to avoid synchrony being calculated on string of zeros
+		  gr <- c(gr, NA) # gr gets NA
 		} else {
 			gr <- c(gr, (log(temp.table[temp.table$YEAR==i,"SINDEX"]) - log(temp.table[temp.table$YEAR==(i-1),"SINDEX"]))) # else gr gets the log growth rate calculation
 		}
@@ -78,13 +80,16 @@ final_data <- rbind(final_data, new_butterfly_final)   #  all species data
 
 } # end g in species
 
-### drop sites with <50% zero counts ###
-good_year_data <- zero_count_data[zero_count_data$good_years>5,]
-final_data$rec_id <- paste(final_data$name, final_data$site, sep="_")
-good_year_data$rec_id <- paste(good_year_data$SPECIES, good_year_data$SITE, sep="_")
 
-final_data <- final_data[final_data$rec_id%in%good_year_data$rec_id,]
-## 59 species and 1055 sites
+## this filter has been removed
+# ### drop sites with >50% zero counts ###
+# good_year_data <- zero_count_data[zero_count_data$good_years>5,] ## dataframe with species & site combo with more than 5 years of non-zero counts
+# final_data$rec_id <- paste(final_data$name, final_data$site, sep="_")
+# good_year_data$rec_id <- paste(good_year_data$SPECIES, good_year_data$SITE, sep="_")
+# 
+# final_data <- final_data[final_data$rec_id%in%good_year_data$rec_id,]
+# ## 59 species and 1055 sites
 
 write.csv(final_data, file = "../Data/Butterfly_sync_data/final_data_all_spp.csv", row.names = FALSE)
-
+length(unique(final_data$name)) # 60 species
+length(unique(final_data$site)) # 2415

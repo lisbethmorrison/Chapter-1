@@ -51,6 +51,8 @@ for (g in spp_list){ # loop for each species #
       # convert to growth rate
       if(length(temp.table[temp.table$Year==i,"Count"]) + length(temp.table[temp.table$Year==(i-1),"Count"]) < 2){		# if there is less than two years of data
         gr <- c(gr,NA) # gr gets NA
+      } else if (temp.table[temp.table$Year==(i-1), "Count"] == 1){ ## if previous year == 1 (i.e. no count made), gr = NA to avoid synchrony being calculated on string of zeros
+        gr <- c(gr, NA) # gr gets NA
       } else {
         gr <- c(gr, (log(temp.table[temp.table$Year==i,"Count"]) - log(temp.table[temp.table$Year==(i-1),"Count"]))) # else gr gets the log growth rate calculation
       }
@@ -83,8 +85,8 @@ for (g in spp_list){ # loop for each species #
 
 ## 38 species and 411 sites
 
-### drop sites with <50% zero counts ###
-good_year_data <- zero_count_data[zero_count_data$good_years>5,]
+### drop sites with >50% zero counts ###
+good_year_data <- zero_count_data[zero_count_data$good_years>5,] ## dataframe with species & site combo with more than 5 years of non-zero counts
 final_data$rec_id <- paste(final_data$name, final_data$site, sep="_")
 good_year_data$rec_id <- paste(good_year_data$species_code, good_year_data$Pcode, sep="_")
 
