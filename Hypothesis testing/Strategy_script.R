@@ -388,7 +388,7 @@ for (i in 1:999){
   perm_bbs_spec<-rbind(perm_bbs_spec,results_table_temp)
 }
 end_time <- Sys.time()
-end_time - start_time ## 8.81 hours to do 999 runs
+end_time - start_time ## 9.4 hours to do 999 runs
 
 perm_bbs_spec$parameter <- paste(row.names(perm_bbs_spec)) ## move row.names to parameter column
 rownames(perm_bbs_spec) <- 1:nrow(perm_bbs_spec) ## change row names to numbers
@@ -413,7 +413,7 @@ diff.observed <- main_result_table$F.value ## true F value
 
 # P-value is the fraction of how many times the permuted difference is equal or more extreme than the observed difference
 pvalue = sum(abs(final_results_table2$F.value) >= abs(diff.observed)) / number_of_permutations
-pvalue ## 0 (exactly) significant
+pvalue ## 0.047
 
 
 
