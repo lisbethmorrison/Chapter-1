@@ -34,13 +34,13 @@ b.data.summary.good.years
 length(1980:2016)*0.75
 good.species.list<-b.data.summary.good.years$sp[b.data.summary.good.years$no.good.years>27.75]
 good.species.list
-good.species.list <- droplevels(good.species.list)
+good.species.list <- droplevels(good.species.list) ## 37 species 
 
 final_pair_data <- NULL
 final_summ_stats <- NULL
 
 ### split based on species ###
-for (g in good.species.list[12]){ # loop through spp.list 
+for (g in good.species.list){ # loop through spp.list 
    spp_data <- final_data[final_data$name==g,]
   total_comp <- NULL
 print(paste("species",g))    
