@@ -476,10 +476,9 @@ pair_attr_cbc$Breeding_AM_score2 <- cut(pair_attr_cbc$Breeding_AM, 2, labels=FAL
 pair_attr_cbc$Breeding_AM_score2 <- as.factor(pair_attr_cbc$Breeding_AM_score2)
 pair_attr_cbc <- na.omit(pair_attr_cbc)
 
-start_time <- Sys.time()
-dispersal_model_cbc3 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*Breeding_AM_score2 + (1|spp) + (1|pair.id), data=pair_attr_cbc)
-end_time <- Sys.time()
-end_time - start_time ## 4.87 seconds
+system.time(
+  dispersal_model_cbc3 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*Breeding_AM_score2 + (1|spp) + (1|pair.id), data=pair_attr_cbc)
+)## 4.1 seconds
 
 summary(dispersal_model_cbc3)
 anova(dispersal_model_cbc3)
@@ -489,7 +488,7 @@ results_table_dispersal_cbc <- data.frame(summary(dispersal_model_cbc3)$coeffici
 write.csv(results_table_dispersal_cbc, file = "../Results/Model_outputs/change_dispersal_cbc.csv", row.names=TRUE)
 
 ## save main (true) model results
-main_result_table <- data.frame(anova(dispersal_model_cbc3)[,5:6]) ## save anova table from main model
+main_result_table <- data.frame(anova(dispersal_model_cbc3)[5]) ## save anova table from main model
 main_result_table$i <- 0 ## make i column with zeros 
 main_result_table$parameter <- paste(row.names(main_result_table)) ## move row.names to parameter column
 rownames(main_result_table) <- 1:nrow(main_result_table) ## change row names to numbers
@@ -498,52 +497,56 @@ main_result_table <- main_result_table[ !(main_result_table$parameter %in% c("me
 
 library(foreach)
 library(doParallel)
-library(snow)
 cores=detectCores()
 cl <- makeCluster(cores[1]-1) #not to overload your computer
 registerDoParallel(cl)
 
 ### parallel ###
 ## run model 999 times
-perm_cbc_mob <- NULL
-system.time(
-foreach (i=1:trials, .packages='lme4', .combine = combine) %dopar% {
+n_sims <- 999
+para_start_time = Sys.time()
+cbc_mob_para <- foreach (i=1:n_sims,  .combine=rbind, .packages='lme4') %dopar% {
   print(i)
   pair_attr_cbc$mob_shuffle <- sample(pair_attr_cbc$Breeding_AM_score2) ## randomly shuffle abundance change varaible
-  abund_model_cbc_shuffle <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*mob_shuffle + (1|pair.id) + (1|spp), data = pair_attr_cbc)
+  model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*mob_shuffle + (1|pair.id) + (1|spp), data = pair_attr_cbc)
   ## run model with shuffled variable
   ## save results
-  results_table_temp <- data.frame(anova(abund_model_cbc_shuffle)[,5:6],i)
-  perm_cbc_mob<-rbind(perm_cbc_mob,results_table_temp)
+  anoresult<-anova(model)
+  data.frame(anoresult, i=i)
   }
-)
 stopCluster(cl)
+para_end_time = Sys.time()
+para_run_time = para_end_time - para_start_time
+print(paste0("TOTAL RUN TIME: ", para_run_time)) ## 9.618 minutes for 999 runs!
 
+# ### non-parallel ###
+# seq_start_time = Sys.time()
+# seq <- foreach (i=1:n_sims,  .combine=rbind, .packages='lme4') %do% {
+#   print(i)
+#   pair_attr_cbc$mob_shuffle <- my_sample(pair_attr_cbc$Breeding_AM_score2) ## randomly shuffle abundance change varaible
+#   model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*mob_shuffle + (1|pair.id) + (1|spp), data = pair_attr_cbc)
+#   ## run model with shuffled variable
+#   ## save results
+#   anoresult<-anova(model)
+#   data.frame(x=anoresult, i=i)
+#   #anoresult<-anova(parallel)
+#   #perm_cbc_mob <- rbind(perm_cbc_mob, parallel)
+# }
+# stopCluster(cl)
+# seq_end_time = Sys.time()
+# seq_run_time = seq_end_time - seq_start_time
+# print(paste0("TOTAL RUN TIME: ", seq_run_time)) ## 35.395 seconds for 9 runs
 
-### non-parallel ###
-## run model 999 times
-perm_cbc_mob <- NULL
-system.time(
-  for (i in 1:9) {
-    print(i)
-  pair_attr_cbc$mob_shuffle <- sample(pair_attr_cbc$Breeding_AM_score2) ## randomly shuffle abundance change varaible
-  abund_model_cbc_shuffle <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*mob_shuffle + (1|pair.id) + (1|spp), data = pair_attr_cbc)
-  ## run model with shuffled variable
-  ## save results
-  results_table_temp <- data.frame(anova(abund_model_cbc_shuffle)[,5:6],i)
-  perm_cbc_mob<-rbind(perm_cbc_mob,results_table_temp)
-  }
-) ## 33.16 seconds (9 runs)
-
-perm_cbc_mob$parameter <- paste(row.names(perm_cbc_mob)) ## move row.names to parameter column
-rownames(perm_cbc_mob) <- 1:nrow(perm_cbc_mob) ## change row names to numbers
+cbc_mob_para$parameter <- paste(row.names(cbc_mob_para)) ## move row.names to parameter column
+rownames(cbc_mob_para) <- 1:nrow(cbc_mob_para) ## change row names to numbers
+cbc_mob_para <- cbc_mob_para[,-c(1:3)] ## remove unnecessary columns
 ## remove rows with mean northing, distance, hab sim and mid year F values (only interested in abundance F values)
-perm_cbc_mob <- perm_cbc_mob[-grep("mean_northing", perm_cbc_mob$parameter),]
-perm_cbc_mob <- perm_cbc_mob[-grep("distance", perm_cbc_mob$parameter),]
-perm_cbc_mob <- perm_cbc_mob[-grep("hab_sim", perm_cbc_mob$parameter),]
-perm_cbc_mob <- perm_cbc_mob[-grep("mid.year", perm_cbc_mob$parameter),]
+cbc_mob_para <- cbc_mob_para[-grep("mean_northing", cbc_mob_para$parameter),]
+cbc_mob_para <- cbc_mob_para[-grep("distance", cbc_mob_para$parameter),]
+cbc_mob_para <- cbc_mob_para[-grep("hab_sim", cbc_mob_para$parameter),]
+cbc_mob_para <- cbc_mob_para[-grep("mid.year", cbc_mob_para$parameter),]
 
-final_results_table <- rbind(main_result_table, perm_cbc_mob) ## bind the two data frames together
+final_results_table <- rbind(main_result_table, cbc_mob_para) ## bind the two data frames together
 
 F_value <- with(final_results_table, final_results_table$F.value[final_results_table$i==0]) ## true F value from main model
 hist(final_results_table$F.value) + abline(v=F_value, col="red") ## plot distribution of F values with vertical line (true F value)
@@ -558,7 +561,7 @@ diff.observed <- main_result_table$F.value ## true F value
 
 # P-value is the fraction of how many times the permuted difference is equal or more extreme than the observed difference
 pvalue = sum(abs(final_results_table2$F.value) >= abs(diff.observed)) / number_of_permutations
-pvalue ## 0.023 significant
+pvalue ## 0.031 significant
 
 
 ### predict new data
