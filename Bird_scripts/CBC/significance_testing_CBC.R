@@ -90,12 +90,15 @@ for (i in spp.list){
   p_attr <- pair_attr_comp[pair_attr_comp$spp==i,]
   
   # if loop (if nrow when start.year=1980 is <20 the skip that species)
-  # if(nrow(p_attr[p_attr$start.year=="1980",]) < 20){
-  #   print(paste("skip species",i))
-  #   next 
-  #   
-  # } else {
-  #   
+  if(nrow(p_attr[p_attr$start.year=="1980",]) < 20){
+    print(paste("skip species",i))
+    next
+
+  } else if(length(unique(p_attr$pair.id))==nrow(p_attr)) {
+    print(paste("skip species",i))
+    next
+  }
+
     model_comp <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id), REML=FALSE, data = pair_attr_comp[pair_attr_comp$spp==i,])
     summary(model_comp)
     anova(model_comp)
@@ -104,7 +107,8 @@ for (i in spp.list){
     results_table_temp <- data.frame(summary(model_comp)$coefficients[,1:5],i)
     results_table <-rbind(results_table,results_table_temp)
     
-  }
+
+}
   
 
 ## Add REML=FALSE because you should use ML (maximum likelihood) when comparing models that differ in their fixed effects
@@ -129,17 +133,17 @@ results_table$parameter <- 1996
 ## classify each species as either no change (insignificant p value), decreasing (negative estimte), or increasing (positive estimate)
 results_table <- results_table %>% group_by(species) %>% mutate(change = ifelse(p_value>0.05, "No change", ifelse(p_value<0.05 & Estimate<0, "Decrease", "Increase")))
 
-nrow(results_table[results_table$change=="No change",]) ## 22 species unchanged
-nrow(results_table[results_table$change=="Decrease",]) ## 3 species decreasing
-nrow(results_table[results_table$change=="Increase",]) ## 6 species increasing
+nrow(results_table[results_table$change=="No change",]) ## 23 species unchanged
+nrow(results_table[results_table$change=="Decrease",]) ## 1 species decreasing
+nrow(results_table[results_table$change=="Increase",]) ## 1 species increasing
 
 ## make final table
-results_final <- results_table[,c(1,5,6,8)]
+results_final <- results_table[,c(1,5,6,8)] ## 25 species analysed (3 skipped)
 
 ## save results
 write.csv(results_final, file="../Results/Bird_results/model_comp_results_CBC.csv", row.names=FALSE)
 
-results_final_overall <- data.frame(change=unique(results_final$change), no_species=c(6,22,3), total_species=31)
+results_final_overall <- data.frame(change=unique(results_final$change), no_species=c(1,23,1), total_species=25)
 results_final_overall$percentage <- (results_final_overall$no_species / results_final_overall$total_species)*100
 
 ## save file

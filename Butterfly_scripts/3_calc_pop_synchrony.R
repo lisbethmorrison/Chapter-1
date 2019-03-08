@@ -13,7 +13,7 @@ rm(list=ls()) # clear R
 library(plyr)
 
 ### add data
-final_data <- read.csv("../Data/Butterfly_sync_data/final_data_all_spp.csv", header = TRUE) # add growth rate data
+final_data <- read.csv("../Data/Butterfly_sync_data/final_data_all_spp_zeros.csv", header = TRUE) # add growth rate data
 b_data <- read.csv("../Data/Butterfly_sync_data/b_data.csv", header = TRUE) # add butterfly count data
 site_data <- read.csv("../Data/UKBMS_data/pair_attr_mean_northing_dist_sim.csv", header = TRUE) # site data
 
@@ -40,7 +40,7 @@ final_pair_data <- NULL
 final_summ_stats <- NULL
 
 ### split based on species ###
-for (g in good.species.list){ # loop through spp.list 
+for (g in good.species.list[33]){ # loop through spp.list 
    spp_data <- final_data[final_data$name==g,]
   total_comp <- NULL
 print(paste("species",g))    
@@ -77,14 +77,6 @@ for (i in year.list){ # loop through years
     
     ###############################
     # cross-correlation functions #
-    
-    # pair.list <- NULL             # calculates combination between all the pairs of sites
-    # for(k in 1:(num.ts-1)){
-    #   pair.list <- rbind(pair.list, cbind(rep(k, num.ts-k), (k+1):num.ts))
-    # } # end k in num.ts-1
-    # nrow(pair.list) 
-    # 
-    
     pair.list <- t(combn(1:num.ts,2))
     nrow(pair.list)
     
@@ -139,21 +131,19 @@ for (i in year.list){ # loop through years
       try(CCF[k,-ncol(CCF)] <- ccf(TS[,pair.list[k,1]], TS[,pair.list[k,2]], lag.max=max.lag, na.action=na.exclude, plot=F, type="correlation")$acf, silent=T) ## use try to prevent crashes if no data
     } ## this will take a long time!!! ## end k in nrow(pair.list)
     
-    # CCF1 <- CCF
-    # ## rank by numYears
-    # CCF1 <- arrange(CCF1, desc(numYears))
-    # ## chop out rows where numYears<7
-    # CCF1 <- CCF1[CCF1$numYears>6,]
-    # CCF1 <- na.omit(CCF1)
-    # 
-    # # if statement to skip species which won't run
-    # if (nrow(CCF1)<2){
-    #   print(paste("skip species", g, "year", i+4.5))
-    #   next
-    # }
-    # #hist(CCF$lag0)
-    # #hist(CCF$numYears)
-    
+    CCF1 <- CCF
+    ## rank by numYears
+    CCF1 <- arrange(CCF1, desc(numYears))
+    ## chop out rows where numYears<7
+    CCF1 <- CCF1[CCF1$numYears>6,]
+    CCF1 <- na.omit(CCF1)
+
+    # if statement to skip species which won't run
+    if (nrow(CCF1)<2){
+      #print(paste("skip species", g, "year", i+4.5))
+      next
+    }
+
     pair.attr <- pair.list ## matrix to hold attributes of pairs...
     colnames(pair.attr) <- c("site1","site2")
     pair.attr <- cbind(pair.attr, CCF)     ### add in correlation scores and number of comparisons at each site.
@@ -161,10 +151,10 @@ for (i in year.list){ # loop through years
     
     ###  correct site numbers ### 
     pair.attr <- merge(pair.attr, site_match, by.x="site1", by.y="TS_name")  
-    pair.attr <- pair.attr[,c("site_name", "site2", "lag0", "numYears")]
+    pair.attr <- pair.attr[,c("site_name", "site2", "lag0", "numYears", "skip")]
     names(pair.attr) <- gsub("site_name", "site1", names(pair.attr))
     pair.attr <- merge(pair.attr, site_match, by.x="site2", by.y="TS_name")  
-    pair.attr <- pair.attr[,c("site1", "site_name", "lag0", "numYears")]
+    pair.attr <- pair.attr[,c("site1", "site_name", "lag0", "numYears", "skip")]
     names(pair.attr) <- gsub("site_name", "site2", names(pair.attr))
     
     ### drop sites comparisons with <7 years of survey data in common 
@@ -202,63 +192,50 @@ head(final_summ_stats)
 
 summary(final_pair_data)
 
-################################################################################
-## ran synchrony script twice, reading in both scripts ready to bind together ##
-################################################################################
+final_pair_data_summ <- count(final_summ_stats$spp) ## nrow of each species
+## only include species with complete time series (i.e. nrow=28)
+final_pair_data_summ <- final_pair_data_summ[final_pair_data_summ$freq>=28,] ## 31 species (6 species removed)
+## merge back into final_pair_data
+final_pair_data <- merge(final_pair_data, final_pair_data_summ, by.="spp", by.y="x", all=FALSE)
+length(unique(final_pair_data$spp)) ## 31 species
+## 3 more species get removed in script 4 
 
-#write.csv(final_pair_data, file = "final_pair_data_110_to_123_spp.csv", row.names = FALSE)
-#write.csv(final_summ_stats, file = "final_summ_stats_110_to_123_spp.csv", row.names = FALSE)
+write.csv(final_pair_data, file="../Data/Butterfly_sync_data/final_pair_data_all_spp_zeros.csv", row.names=FALSE) ## save final pair data for all 37 species
 
-#final_pair_data_2_to_106_spp <- read.csv("final_pair_data_2_to_106_spp.csv", header=TRUE)
-#final_pair_data_110_to_123_spp <- read.csv("final_pair_data_110_to_123_spp.csv", header=TRUE)
+write.csv(final_summ_stats, file="../Data/Butterfly_sync_data/final_summ_stats_all_spp_zeros.csv", row.names=FALSE) ## save final summ stats for all 37 species
 
-## rbind the two scripts together and check ##
-#final_pair_data <- rbind(final_pair_data_2_to_106_spp, final_pair_data_110_to_123_spp)
-#head(final_pair_data)
-#summary(final_pair_data)
-
-## do same for final_summ_stats ##
-#final_summ_stats_2_to_106_spp <- read.csv("final_summ_stats_2_to_106_spp.csv", header=TRUE)
-#final_summ_stats_110_to_123_spp <- read.csv("final_summ_stats_110_to_123_spp.csv", header=TRUE)
-#final_summ_stats <- rbind(final_summ_stats_2_to_106_spp, final_summ_stats_110_to_123_spp) ## rbind the two together
-
-
-write.csv(final_pair_data, file="../Data/Butterfly_sync_data/final_pair_data_all_spp.csv", row.names=FALSE) ## save final pair data for all 37 species
-
-write.csv(final_summ_stats, file="../Data/Butterfly_sync_data/final_summ_stats_all_spp.csv", row.names=FALSE) ## save final summ stats for all 37 species
-
-###########################
-## abundance calculation ##
-###########################
-
-abundance.results <- NULL
-
-for (g in good.species.list){ # loop for each species #
-  
-  species.tab<-b_data[b_data$SPECIES==g,] 
-  head(species.tab)
-  print(paste("species",g))
-  
-  # create a table to assess how much data in each year for that species
-  # then select only years that fulfill a minumum data criteria
-  # allocate those years to 'year.list'     
-  
-  year.list <-1980:2007   # temp until above steps are complete
-  
-  for (i in year.list){
-    
-    start.year<-i
-    mid.year<-i+4.5
-    print(paste("mid.year=",mid.year))
-    end.year<-i+9
-    species.10.yr.data<-species.tab[species.tab$YEAR>=start.year&species.tab$YEAR<=end.year,]
-    
-    species<-g
-    abundance.index <- mean(species.10.yr.data$SINDEX)
-    results.temp<-data.frame(start.year,mid.year,end.year,abundance.index,species)
-    abundance.results<-rbind(abundance.results,results.temp)
-    
-  }
-}
-
-write.csv(abundance.results, file = "../../Data/Butterfly_sync_data/abundance_data.csv", row.names = FALSE)
+# ###########################
+# ## abundance calculation ##
+# ###########################
+# 
+# abundance.results <- NULL
+# 
+# for (g in good.species.list){ # loop for each species #
+#   
+#   species.tab<-b_data[b_data$SPECIES==g,] 
+#   head(species.tab)
+#   print(paste("species",g))
+#   
+#   # create a table to assess how much data in each year for that species
+#   # then select only years that fulfill a minumum data criteria
+#   # allocate those years to 'year.list'     
+#   
+#   year.list <-1980:2007   # temp until above steps are complete
+#   
+#   for (i in year.list){
+#     
+#     start.year<-i
+#     mid.year<-i+4.5
+#     print(paste("mid.year=",mid.year))
+#     end.year<-i+9
+#     species.10.yr.data<-species.tab[species.tab$YEAR>=start.year&species.tab$YEAR<=end.year,]
+#     
+#     species<-g
+#     abundance.index <- mean(species.10.yr.data$SINDEX)
+#     results.temp<-data.frame(start.year,mid.year,end.year,abundance.index,species)
+#     abundance.results<-rbind(abundance.results,results.temp)
+#     
+#   }
+# }
+# 
+# write.csv(abundance.results, file = "../../Data/Butterfly_sync_data/abundance_data.csv", row.names = FALSE)

@@ -8,9 +8,10 @@
 #### getwd() = ("C:/Users/wh890746/Documents/Mini_project/R_script") ####
 
 rm(list=ls()) # clear R
+library(dplyr)
 
 ### add data
-final_data <- read.csv("../Data/Bird_sync_data/final_data_all_spp_CBC.csv", header=TRUE) # 36 spp
+final_data <- read.csv("../Data/Bird_sync_data/final_data_all_spp_CBC_zeros.csv", header=TRUE) # 36 spp
 woodland_cbc <- read.csv("../Data/Bird_sync_data/cbc_woodland_birds.csv", header=TRUE)
 site_data <- read.csv("../Data/BTO_data/pair_attr_mean_north_dist_hab_sim_CBC.csv", header=TRUE)
 
@@ -66,34 +67,28 @@ for (g in spp.list){ # loop through spp.list
     ################################
     # create a matrix to be filled #
     site.list <- unique(species.10.yr.data$site)
-    site.list
     year.list.temp <- min(species.10.yr.data$year):max(species.10.yr.data$year)
-    year.list.temp
     Grow.matrix<-matrix(c(species.10.yr.data$gr), nrow=length(year.list.temp))
-    Grow.matrix
     ncol(Grow.matrix)
     rownames(Grow.matrix)<-year.list.temp
     colnames(Grow.matrix)<-site.list
-    Grow.matrix
-    
+
     length(site.list)
     
     num.ts <- length(site.list)   # number of time series
     TS <- matrix(Grow.matrix, ncol=num.ts)    # stores Grow data in a matrix     (simply removes names!)
-    TS
     # create site match table used to correct sites names after calculating synchrony
     site_match <- data.frame(TS_name = 1:ncol(TS), site_name = colnames(Grow.matrix))
     
     ###############################
     # cross-correlation functions #
     
-    pair.list <- NULL             # calculates combination between all the pairs of sites
-    for(k in 1:(num.ts-1)){
-      pair.list <- rbind(pair.list, cbind(rep(k, num.ts-k), (k+1):num.ts)) ## species 508 has only 2 sites, so this line of code doesn't work...
-    } # end k in num.ts-1
+    # calculates combination between all the pairs of sites
+    pair.list <- t(combn(1:num.ts,2))
     nrow(pair.list) 
     
     colnames(pair.list) <- c("site1","site2")
+    
     
     #### NOTE- ADD IN THE REAL SITE NAMES HERE, MERGE WITH SITE_DATA TABLE, THEN  CUT DOWN THE TABLE TO ONLY INCLUDE PAIRS WHERE distance < 100000 (100km)) ####
     ## e.g.   merge(data1,data2,by.x=c(col1,col2),by.y=c(site_a,site_b)) ##
@@ -139,27 +134,24 @@ for (g in spp.list){ # loop through spp.list
       # print(paste("row number=",k,"out of",nrow(pair.list))) 
       ## calculate number of years to base correlation on...
       CCF$numYears[k] <- length(na.omit((TS[,pair.list[k,1]]+TS[,pair.list[k,2]]))) ## add up number of times when sum can be done (i.e. neither is NA) then only include site with > 6 common years of data
-    
+      
       ## attempt calculation of CCF...
       try(CCF[k,-ncol(CCF)] <- ccf(TS[,pair.list[k,1]], TS[,pair.list[k,2]], lag.max=max.lag, na.action=na.exclude, plot=F, type="correlation")$acf, silent=T) ## use try to prevent crashes if no data
     } ## this will take a long time!!!
-    #hist(CCF$lag0)
-    #hist(CCF$numYears)
     
-    CCF1 <- CCF
     ## rank by numYears
+    CCF1 <- CCF
     CCF1 <- arrange(CCF1, desc(numYears))
     ## chop out rows where numYears<7
     CCF1 <- CCF1[CCF1$numYears>6,]
     CCF1 <- na.omit(CCF1)
-    
+
     # if statement to skip species which won't run
     if (nrow(CCF1)<2){
       print(paste("skip species", g, "year", i+4.5))
       next
     }
     
-  
     pair.attr <- pair.list ## matrix to hold attributes of pairs...
     colnames(pair.attr) <- c("site1","site2")
     pair.attr <- cbind(pair.attr, CCF)     ### add in correlation scores and number of comparisons at each site.
@@ -202,61 +194,67 @@ for (g in spp.list){ # loop through spp.list
   } # end i in year
 } # end g in species
 
-### merge in predictor variables
 head(final_pair_data)
 head(final_summ_stats)
 
-summary(final_pair_data) ## 33 species
-## species 370 skipped some years (nightingale)
-## this species gets removed in script 4
+length(unique(final_pair_data$spp)) ## 33 species
 
-write.csv(final_pair_data, file="../Data/Bird_sync_data/final_pair_data_all_spp_CBC.csv", row.names=FALSE) ## save final pair data for all 33 species
+final_pair_data_summ <- count(final_summ_stats$spp) ## nrow of each species
+## only include species with complete time series (i.e. nrow=12)
+final_pair_data_summ <- final_pair_data_summ[final_pair_data_summ$freq>=12,] ## 28 species (5 species removed)
+## merge back into final_pair_data
+final_pair_data <- merge(final_pair_data, final_pair_data_summ, by.="spp", by.y="x", all=FALSE)
+length(unique(final_pair_data$spp)) ## 28 species
+## 3 more species get removed in script 4 
 
-write.csv(final_summ_stats, file="../Data/Bird_sync_data/final_summ_stats_all_spp_CBC.csv", row.names=FALSE) ## save final summ stats for all 33 species
+write.csv(final_pair_data, file="../Data/Bird_sync_data/final_pair_data_all_spp_CBC_zeros.csv", row.names=FALSE) ## save final pair data for all 33 species
 
+write.csv(final_summ_stats, file="../Data/Bird_sync_data/final_summ_stats_all_spp_CBC_zeros.csv", row.names=FALSE) ## save final summ stats for all 33 species
 
-###########################
-## abundance calculation ##
-###########################
-woodland_cbc <- read.csv("../Data/Bird_sync_data/cbc_woodland_birds.csv", header=TRUE)
+########################## NOT USED ANYMORE ##############################
 
-woodland_cbc <- woodland_cbc[!woodland_cbc$species_code==508,] # removed siskin as not enough data (stops at first year, 1984.5)
-woodland_cbc <- woodland_cbc[!woodland_cbc$species_code==460,] # remove pied flycatcher as very little data (stopped working at 1991.5)
-woodland_cbc <- woodland_cbc[!woodland_cbc$species_code==522,] # removed hawfinch as not enough data (stops at first year, 1984.5)
-woodland_cbc <- woodland_cbc[!woodland_cbc$species_code==57,] # removed capercaillie => gets removed at growth rate stage
-woodland_cbc <- woodland_cbc[!woodland_cbc$species_code==515,] # removed common crossbill =>gets removed at growth rate stage
-
-spp.list <- unique(woodland_cbc$species_code)
-
-
-abundance.results <- NULL
-
-for (g in spp.list){ # loop for each species #
-  
-  species.tab<-woodland_cbc[woodland_cbc$species_code==g,] 
-  head(species.tab)
-  print(paste("species",g))
-  
-  # create a table to assess how much data in each year for that species
-  # then select only years that fulfill a minumum data criteria
-  # allocate those years to 'year.list'     
-  
-  year.list <-1980:1991   # temp until above steps are complete
-  
-  for (i in year.list){
-    
-    start.year<-i
-    mid.year<-i+4.5
-    print(paste("mid.year=",mid.year))
-    end.year<-i+9
-    species.10.yr.data<-species.tab[species.tab$Year>=start.year&species.tab$Year<=end.year,]
-    
-    species<-g
-    abundance.index <- mean(species.10.yr.data$Count)
-    results.temp<-data.frame(start.year,mid.year,end.year,abundance.index,species)
-    abundance.results<-rbind(abundance.results,results.temp)
-    
-  }
-}
-
-write.csv(abundance.results, file = "../Data/Bird_sync_data/abundance_data_BTO.csv", row.names = FALSE)
+# ###########################
+# ## abundance calculation ##
+# ###########################
+# woodland_cbc <- read.csv("../Data/Bird_sync_data/cbc_woodland_birds.csv", header=TRUE)
+# 
+# woodland_cbc <- woodland_cbc[!woodland_cbc$species_code==508,] # removed siskin as not enough data (stops at first year, 1984.5)
+# woodland_cbc <- woodland_cbc[!woodland_cbc$species_code==460,] # remove pied flycatcher as very little data (stopped working at 1991.5)
+# woodland_cbc <- woodland_cbc[!woodland_cbc$species_code==522,] # removed hawfinch as not enough data (stops at first year, 1984.5)
+# woodland_cbc <- woodland_cbc[!woodland_cbc$species_code==57,] # removed capercaillie => gets removed at growth rate stage
+# woodland_cbc <- woodland_cbc[!woodland_cbc$species_code==515,] # removed common crossbill =>gets removed at growth rate stage
+# 
+# spp.list <- unique(woodland_cbc$species_code)
+# 
+# 
+# abundance.results <- NULL
+# 
+# for (g in spp.list){ # loop for each species #
+#   
+#   species.tab<-woodland_cbc[woodland_cbc$species_code==g,] 
+#   head(species.tab)
+#   print(paste("species",g))
+#   
+#   # create a table to assess how much data in each year for that species
+#   # then select only years that fulfill a minumum data criteria
+#   # allocate those years to 'year.list'     
+#   
+#   year.list <-1980:1991   # temp until above steps are complete
+#   
+#   for (i in year.list){
+#     
+#     start.year<-i
+#     mid.year<-i+4.5
+#     print(paste("mid.year=",mid.year))
+#     end.year<-i+9
+#     species.10.yr.data<-species.tab[species.tab$Year>=start.year&species.tab$Year<=end.year,]
+#     
+#     species<-g
+#     abundance.index <- mean(species.10.yr.data$Count)
+#     results.temp<-data.frame(start.year,mid.year,end.year,abundance.index,species)
+#     abundance.results<-rbind(abundance.results,results.temp)
+#     
+#   }
+# }
+# 
+# write.csv(abundance.results, file = "../Data/Bird_sync_data/abundance_data_BTO.csv", row.names = FALSE)
