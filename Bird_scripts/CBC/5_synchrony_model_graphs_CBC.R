@@ -32,7 +32,7 @@ FCI_plot_unscaled <- ggplot(results_final_all_spp, aes(x = parameter, y = FCI)) 
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 FCI_plot_unscaled
 
-ggsave("../Graphs/Connectivity_plots/FCI_all_spp_BTO.png", plot = FCI_plot_unscaled, width=4, height=5)
+ggsave("../Graphs/Connectivity_plots/FCI_all_spp_CBC_unscaled.png", plot = FCI_plot_unscaled, width=4, height=5)
 
 ## FCI plot with error bars and unscaled
 FCI_plot_errorbars <- ggplot(results_final_all_spp, aes(x = parameter, y = FCI)) +
@@ -57,7 +57,7 @@ FCI_plot_scaled_error <- ggplot(results_final_all_spp, aes(x = parameter, y = re
   geom_errorbar(aes(ymin = rescaled_FCI - rescaled_sd, ymax = rescaled_FCI + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
   labs(x = "Mid-year of moving window", y = "Population synchrony") +
-  scale_y_continuous(breaks=seq(0,180,20)) +
+  #scale_y_continuous(breaks=seq(0,180,20)) +
   scale_x_continuous(breaks=seq(1985,1996,3)) +
   theme_bw() +
   theme(text = element_text(size = 16)) +
@@ -67,21 +67,7 @@ FCI_plot_scaled_error <- ggplot(results_final_all_spp, aes(x = parameter, y = re
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 FCI_plot_scaled_error
 
-ggsave("../Graphs/Connectivity_plots/FCI_all_spp_CBC_scaled_error.png", plot = FCI_plot_scaled_error, width=5, height=5)
-
-#### plot for each species (1980 data) ####
-SD_plot_spp <- ggplot(results_final_sp, aes(x = parameter, y = FCI, group = species)) +
-  stat_smooth(aes(colour=species), method=loess, se=FALSE) +
-  geom_point(size=1) + 
-  labs(x = "Year", y = "Functional connectivity index") +
-  scale_y_continuous(breaks=seq(-1,0.5,0.1)) +
-  scale_x_continuous(breaks=seq(1985,1996,1)) +
-  theme_bw() +
-  theme(text = element_text(size = 10)) +
-  labs(colour = "species", size=2)
-SD_plot_spp
-
-ggsave("../Graphs/Connectivity_plots/FCI_31_spp_BTO.png", plot = SD_plot_spp, width=9, height=5)
+ggsave("../Graphs/Connectivity_plots/FCI_all_spp_CBC_scaled_error2.png", plot = FCI_plot_scaled_error, width=5, height=5)
 
 #### plot for specialist/generalist ####
 results_final_spec$Strategy <- as.factor(results_final_spec$Strategy)

@@ -22,9 +22,7 @@ results_final_spec <- read.csv("../Results/Butterfly_results/results_final_spec.
 ## read in strategy data
 spp_data <- read.csv("../Data/UKBMS_data/UKBMS_UKspecieslist.csv", header=TRUE)
 results_final_sp <- merge(results_final_sp, spp_data, by.x="sp", by.y="BMSCODE") ## merge to get strategy info 
-results_final_sp <- results_final_sp[-c(12:14,16:17)]
-colnames(results_final_sp)[10] <- "COMMON_NAME"
-colnames(results_final_sp)[11] <- "HABITAT"
+results_final_sp <- results_final_sp[-c(12:17)]
 
 #################################
 ## PLOT GRAPH FOR ALL SPECIES ##
@@ -66,10 +64,10 @@ ggsave("../Graphs/Connectivity_plots/FCI_plot_all_spp.png", plot = FCI_plot_unsc
 ## FCI plot scaled to 100 with smoothed line and CI error bars ##
 FCI_plot_scaled <- ggplot(results_final_all_spp, aes(x = parameter, y = rescaled_FCI)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
-  geom_errorbar(aes(ymin = rescaled_FCI - rescaled_se, ymax = rescaled_FCI + rescaled_se), width=0.2, size = 0.5) +
+  geom_errorbar(aes(ymin = rescaled_FCI - rescaled_sd, ymax = rescaled_FCI + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
   labs(x = "Mid-year of moving window", y = "Population synchrony") +
-  scale_y_continuous(breaks=seq(40,160,10)) +
+  #scale_y_continuous(breaks=seq(40,160,10)) +
   scale_x_continuous(breaks=seq(1985,2012,3)) +
   geom_hline(yintercept = 100, linetype = "dashed") +
   theme_bw() +
@@ -78,7 +76,7 @@ FCI_plot_scaled <- ggplot(results_final_all_spp, aes(x = parameter, y = rescaled
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 FCI_plot_scaled
-ggsave("../Graphs/Connectivity_plots/FCI_plot_all_spp_scaled.png", plot = FCI_plot_scaled, width=7, height=5)
+ggsave("../Graphs/Connectivity_plots/FCI_plot_all_spp_scaled2.png", plot = FCI_plot_scaled, width=7, height=5)
 
 ############### plot with all 3 temporal synchrony graphs for ms #########################
 results_final_all_spp_BBS <- read.csv("../Results/Bird_results/results_final_all_spp_BBS_final.csv", header=TRUE)
