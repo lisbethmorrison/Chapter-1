@@ -51,9 +51,11 @@ pair_attr$end.year <- as.factor(pair_attr$end.year)
 pair_attr$mid.year <- as.factor(pair_attr$mid.year)
 pair_attr$hab_sim <- as.factor(pair_attr$hab_sim)
 
-pair_attr <- subset(pair_attr, spp!= "323") # all sites have hab_sim = 1, spp = lesser spotted woodpecker
-pair_attr <- subset(pair_attr, spp!= "370") # all sites have hab_sim = 1, spp = nightingale 
-length(unique(pair_attr$spp)) # 31 species
+# not needed anymore - these species are removed in script 3
+# pair_attr <- subset(pair_attr, spp!= "323") # all sites have hab_sim = 1, spp = lesser spotted woodpecker
+# pair_attr <- subset(pair_attr, spp!= "370") # all sites have hab_sim = 1, spp = nightingale 
+
+length(unique(pair_attr$spp)) # 28 species
 
 ## merge in trait data (specialism and dispersal distance)
 specialism <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", header=TRUE)
@@ -70,38 +72,28 @@ pair_attr$pair.id <- as.character(pair_attr$pair.id)
 pair_attr$spp <- as.factor(pair_attr$spp)
 pair_attr$end.year <- as.factor(pair_attr$end.year)
 pair_attr$mid.year <- as.factor(pair_attr$mid.year)
+str(pair_attr)
 
 ################################################
 ##  model to produce one line for all species ##
 ################################################
 
-## model without intercept
+## model with intercept
 start_time <- Sys.time()
-all_spp_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
+all_spp_model_int <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
 end_time <- Sys.time()
-end_time - start_time # 36.7 seconds
-
-## bootstrap this model
-start_time <- Sys.time()
-boot_cbc<-bootMer(x=all_spp_model_cbc,FUN=fixef,nsim=100, use.u = FALSE, type="parametric")
-end_time <- Sys.time()
-end_time - start_time # 18.9 mins
-## this will take ~180mins (3hrs) to run 1000 simulations
-
-std.err <- apply(boot_cbc$t, 2, sd)
-CI.lower <- pred - std.err*1.96
-CI.upper <- pred + std.err*1.96
+end_time - start_time # 20.5 seconds
 
 ### save results for northing, distance and hab sim
-fixed_results <- data.frame(summary(all_spp_model)$coefficients[,1:5])
+fixed_results <- data.frame(summary(all_spp_model_int)$coefficients[,1:5])
 fixed_results$parameter <- paste(row.names(fixed_results))
 rownames(fixed_results) <- 1:nrow(fixed_results)
 ## remove mid.year rows
-fixed_results <- fixed_results[-c(4:15),]
+fixed_results <- fixed_results[-c(1,5:15),]
 ## save results
 write.csv(fixed_results, file = "../Results/Model_outputs/fixed_effect_results_cbc.csv", row.names=FALSE)
 
-## model with intercept
+## model without intercept
 all_spp_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp)-1, data = pair_attr)
 summary(all_spp_model) 
 anova(all_spp_model)
@@ -157,6 +149,7 @@ results_table_sp<-NULL
 for (i in unique(pair_attr$spp)){
   
   species_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id)-1, data = pair_attr[pair_attr$spp==i,])
+  print(i)
   summary(species_model)
   anova(species_model)
   
@@ -198,8 +191,6 @@ for (i in unique(results_table_sp$sp)){
 species_names <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", header=TRUE)
 results_final_sp <- merge(results_final_sp, species_names, by.x="sp", by.y="species_code")
 
-results_final_sp <- results_final_sp[,-c(11:12)] ## take out generalist and specialist columns
-
 ## save species final results table ##
 write.csv(results_final_sp, file = "../Results/Bird_results/results_final_spp_CBC.csv", row.names=FALSE)
 
@@ -208,15 +199,13 @@ write.csv(results_final_sp, file = "../Results/Bird_results/results_final_spp_CB
 #########################################################
 
 ## merge with generalist/specialist data ##
-gen_spec <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", header=TRUE)
-pair_attr <- merge(pair_attr, gen_spec, by.x="spp", by.y="species_code", all=FALSE)
 str(pair_attr)
-pair_attr$strategy <- as.factor(pair_attr$strategy)
+pair_attr$specialism <- as.factor(pair_attr$specialism)
 
 results_table_spec<-NULL
-for (j in unique(pair_attr$strategy)){
+for (j in unique(pair_attr$specialism)){
   
-  specialist_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp)-1, data = pair_attr[pair_attr$strategy==j,])
+  specialist_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp)-1, data = pair_attr[pair_attr$specialism==j,])
   summary(specialist_model)
   anova(specialist_model)
   

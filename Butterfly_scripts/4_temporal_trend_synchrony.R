@@ -28,7 +28,7 @@ site_data_reverse <- site_data
 names(site_data_reverse)[1:6] <- c("site_b", "site_a", "site_b_EAST", "site_b_NORTH", "site_a_EAST", "site_a_NORTH")
 pair_attr_2 <- merge(final_pair_data, site_data_reverse, by.x=c("site1", "site2"), by.y=c("site_a", "site_b"))	# merge the site comparisons in the same direction using site_data_reverse
 pair_attr <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
-length(unique(pair_attr$spp))## 37 species
+length(unique(pair_attr$spp))## 31 species
 
 pair_attr$spp <- as.factor(pair_attr$spp)
 pair_attr <- pair_attr[!pair_attr$spp==121,] # DROPPED AS ITS A DUPLICATE OF SMALL SKIPPER
@@ -37,7 +37,7 @@ pair_attr <- pair_attr[!pair_attr$spp==122,] # MIGRANT (RED ADMIRAL)
 pair_attr <- pair_attr[!pair_attr$spp==123,] # MIGRANT (PAINTED LADY)
 
 pair_attr$spp <- droplevels(pair_attr$spp)
-length(unique(pair_attr$spp)) ## 33 species
+length(unique(pair_attr$spp)) ## 28 species
 
 # centre and standardize the distance and northing variables
 ### standardise by mean and sd
@@ -63,12 +63,12 @@ summary(lm(renk_hab_sim ~ end.year, data = pair_attr)) # 4.796e-05
 ## merge with trait data 
 pair_attr <- merge(pair_attr, trait_data, by.x="spp", by.y="species")
 summary(pair_attr)
-length(unique(pair_attr$spp)) # 33 species
+length(unique(pair_attr$spp)) # 28 species
 pair_attr <- droplevels(pair_attr)
 ## remove columns not needed
-pair_attr <- pair_attr[-c(16, 18:46, 48:50, 52:54)]
+pair_attr <- pair_attr[-c(18, 20:48, 50:52, 54:56)]
 summary(pair_attr)
-## 33 species - NA's are there because spp 100 has no mobility data
+## 28 species - NA's are there because spp 100 has no mobility data
 
 ## create pair.id variable and make species and year variables factors ## 
 str(pair_attr)
@@ -98,30 +98,13 @@ pair_attr$pair.id <- as.character(pair_attr$pair.id)
 ###############################################
 ### run the synchrony model for all species ###
 ###############################################
-length(unique(pair_attr$spp)) ## 33 species
+length(unique(pair_attr$spp)) ## 28 species
 
-## model without intercept
-start_time <- Sys.time()
-all_spp_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
-end_time <- Sys.time()
-end_time - start_time # 7.3 mins
-
-## bootstrap this model (10 times)
-start_time <- Sys.time()
-b_par<-bootMer(x=all_spp_model,FUN=fixef,nsim=10, use.u = FALSE, type="parametric")
-end_time <- Sys.time()
-end_time - start_time # 34.4 mins...
-## this will take 56 hours to run 1000 simulations
-
-mixed_boot_coefs <- function(fit){
-  unlist(coef(fit))
-}
-
-broom::augment(all_spp_model, pair_attr)
-print(b_par)
+## model with intercept
+all_spp_model_int <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
 
 ### save results for northing, distance and hab sim
-fixed_results <- data.frame(summary(all_spp_model)$coefficients[,1:5])
+fixed_results <- data.frame(summary(all_spp_model_int)$coefficients[,1:5])
 fixed_results$parameter <- paste(row.names(fixed_results))
 rownames(fixed_results) <- 1:nrow(fixed_results)
 ## remove mid.year rows
@@ -129,7 +112,7 @@ fixed_results <- fixed_results[-c(1,5:31),]
 ## save results
 write.csv(fixed_results, file = "../Results/Model_outputs/fixed_effect_results_ukbms.csv", row.names=FALSE)
 
-##  model to produce aggregate FCI model for all 33 species - no intercept and no migrants ##
+##  model to produce aggregate FCI model for all 28 species - no intercept and no migrants ##
 all_spp_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp)-1, data = pair_attr)
 summary(all_spp_model) 
 anova(all_spp_model)
@@ -223,7 +206,7 @@ results_final_sp <- rbind(results_final_sp, results_temp_sp)
 }
 
 ## Add in common names of species to final results table ##
-species_info <- pair_attr[c(1,16:18)]
+species_info <- pair_attr[c(1,18:20)]
 species_info <- unique(species_info)
 results_final_sp <- merge(results_final_sp, species_info, by.x="sp", by.y="spp")
 
