@@ -36,12 +36,6 @@ spec_model_ukbms1 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.y
 end_time <- Sys.time()
 end_time - start_time ## 7.36 mins
 
-## try and reshuffle specialism variable
-pair_attr$specialism_shuffle <- sample(pair_attr$specialism)
-
-### run 9 models 
- 
-
 summary(spec_model_ukbms1)
 ## specialists are the intercept
 anova(spec_model_ukbms1)
@@ -64,7 +58,7 @@ pair_attr_CBC$spp <- as.factor(pair_attr_CBC$spp)
 strategy_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + specialism + (1|pair.id) + (1|spp), data = pair_attr_CBC)
 summary(strategy_model_cbc)
 anova(strategy_model_cbc)
-## non-significant (p=-0.63)
+## non-significant (p=0.63)
 
 ## check fit
 sresid <- resid(strategy_model_cbc, type="pearson")

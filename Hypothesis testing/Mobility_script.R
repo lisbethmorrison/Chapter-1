@@ -132,7 +132,7 @@ AIC(wing_model3, wing_model4, wing_model5, wing_model6)
 
 ## remove NA's ==> removes Small White butterfly which doesn't have mobility data
 pair_attr <- na.omit(pair_attr)
-length(unique(pair_attr$spp)) # 32 species
+length(unique(pair_attr$spp)) # 27 species
 
 pair_attr$mid.year <- as.factor(pair_attr$mid.year)
 pair_attr$pair.id <- as.character(pair_attr$pair.id)
@@ -304,7 +304,7 @@ pair_attr_2012 <- pair_attr[pair_attr$mid.year==2011.5,]
 pair_attr_ukbms <- rbind(pair_attr_1985, pair_attr_2000, pair_attr_2012) ## 3 years and 32 species
 ## remove NA's to make sure small white is taken out
 pair_attr_ukbms <- na.omit(pair_attr_ukbms)
-length(unique(pair_attr_ukbms$spp)) # 32 species
+length(unique(pair_attr_ukbms$spp)) # 27 species
 
 ## merge wingspan data
 pair_attr_ukbms1 <- merge(pair_attr_ukbms, wingspan, by.x="spp", by.y="BMScode")

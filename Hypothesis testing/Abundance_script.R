@@ -38,7 +38,7 @@ write.csv(WCBS_data, file="../Data/Butterfly_sync_data/Average_abundance_UKBMS.c
 
 ## merge the two datasets
 pair_attr <- merge(pair_attr, WCBS_data, by.x="spp", by.y="Species_code", all=FALSE)
-length(unique(pair_attr$spp)) # 32 species (Grizzled Skipper doesn't have abundance data)
+length(unique(pair_attr$spp)) # 27 species (Grizzled Skipper doesn't have abundance data)
 summary(pair_attr)
 
 ## run model
@@ -140,6 +140,8 @@ start_time <- Sys.time()
 common_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + pop_estimate_log + (1|pair.id) + (1|spp), data = pair_attr_CBC)
 end_time <- Sys.time()
 end_time - start_time ## 26.14 seconds
+summary(common_model_cbc)
+anova(common_model_cbc) 
 
 ## save main (true) model results
 main_result_table <- data.frame(anova(common_model_cbc)[,5:6]) ## save anova table from main model
@@ -458,6 +460,7 @@ abundance_results$mean_change_abund <- abundance_results$mean_y - abundance_resu
 abundance_results$ab_change_85_00 <- ifelse(abundance_results$mean_change_abund>0, "increase", "decrease")                                                               
 ## save abundance results
 write.csv(abundance_results, file="../Results/Butterfly_results/abundance_results_85_00.csv", row.names=FALSE)
+abundance_results <- read.csv("../Results/Butterfly_results/abundance_results_85_00.csv", header=TRUE)
 
 ################ Interaction between mid-year and abundance change ####################
 ## UKBMS butterflies
@@ -511,7 +514,7 @@ abundance_results$mean_change_abund <- abundance_results$mean_y - abundance_resu
 abundance_results$ab_change_00_12 <- ifelse(abundance_results$mean_change_abund>0, "increase", "decrease")                                                               
 ## save abundance results
 write.csv(abundance_results, file="../Results/Butterfly_results/abundance_results_00_12.csv", row.names=FALSE)
-
+abundance_results <- read.csv("../Results/Butterfly_results/abundance_results_00_12.csv", header=TRUE)
 ################ Interaction between mid-year and abundance change ####################
 ## UKBMS butterflies
 ## subset to only look at mid years 1985 and 2000
@@ -685,7 +688,8 @@ bird_abundance_cbc <- rbind(bird_abundance_cbc_1, bird_abundance_cbc_2)
 
 ## now do t test on difference in abundance between early and late time periods
 ## calculates t test between early and late, produces p value, and produces mean of early and mean of late years
-abundance_results_cbc = grouped_df(bird_abundance_cbc, vars="species_code") %>% summarise(p=t.test(sm[which(time=="Early")], sm[which(time=="Late")])$p.value, mean_x=mean(sm[which(time=="Early")]), mean_y=mean(sm[which(time=="Late")]))
+abundance_results_cbc = bird_abundance_cbc %>% group_by(species_code) %>% summarise(p=t.test(sm[which(time=="Early")], 
+                        sm[which(time=="Late")])$p.value, mean_x=mean(sm[which(time=="Early")]), mean_y=mean(sm[which(time=="Late")]))
 
 ## add in column to say whether species t test is significant or not
 abundance_results_cbc$significance <- ifelse(abundance_results_cbc$p<0.05, "yes", "no")
@@ -694,6 +698,10 @@ abundance_results_cbc$significance <- ifelse(abundance_results_cbc$p<0.05, "yes"
 ## therefore negative difference == species has decrease in abundance between early and late years
 abundance_results_cbc$mean_abund_change <- abundance_results_cbc$mean_y - abundance_results_cbc$mean_x
 abundance_results_cbc$ab_change_85_96 <- ifelse(abundance_results_cbc$mean_abund_change>0, "increase", "decrease")                                                               
+
+## save abundance results
+write.csv(abundance_results_cbc, file="../Results/Bird_results/abundance_results_85_96.csv", row.names=FALSE)
+abundance_results_cbc <- read.csv("../Results/Bird_results/abundance_results_85_96.csv", header=TRUE)
 
 ####### Interaction with mid-year and abundance change
 pair_attr_cbc_1985 <- pair_attr_CBC[pair_attr_CBC$mid.year==1984.5,]
