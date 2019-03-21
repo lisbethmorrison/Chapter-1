@@ -88,17 +88,17 @@ for (g in spp_list){ # loop for each species #
 
 ## 38 species and 277 sites
 
-## now remove sites which have less than 7 years of growth rate data (this is a later filter anyway - putting it here reduces time on synchrony script)
-## remove NAs for now
-final_data2 <- subset(final_data, !is.na(gr))
-final_data3 <- final_data2 %>% group_by(site, name) %>% summarise(length(gr))
-final_data3 <- final_data3[final_data3$`length(gr)`>=7,] ## leave site and species combinations which have at least 7 years of data
-length(unique(final_data3$site)) ## 111 sites
-## remove length(gr) column
-final_data3$`length(gr)` <- NULL
-## now merge final_data3 with final_data so sites left are those with at least 7 years of data
-final_data <- merge(final_data, final_data3, by=c("site", "name"))
-length(unique(final_data$site)) ## 111
+# ## now remove sites which have less than 7 years of growth rate data (this is a later filter anyway - putting it here reduces time on synchrony script)
+# ## remove NAs for now
+# final_data2 <- subset(final_data, !is.na(gr))
+# final_data3 <- final_data2 %>% group_by(site, name) %>% summarise(length(gr))
+# final_data3 <- final_data3[final_data3$`length(gr)`>=7,] ## leave site and species combinations which have at least 7 years of data
+# length(unique(final_data3$site)) ## 111 sites
+# ## remove length(gr) column
+# final_data3$`length(gr)` <- NULL
+# ## now merge final_data3 with final_data so sites left are those with at least 7 years of data
+# final_data <- merge(final_data, final_data3, by=c("site", "name"))
+# length(unique(final_data$site)) ## 111
 
 # ### drop sites with >50% zero counts ###
 # good_year_data <- zero_count_data[zero_count_data$good_years>5,] ## dataframe with species & site combo with more than 5 years of non-zero counts
@@ -109,6 +109,5 @@ length(unique(final_data$site)) ## 111
 # ## Left with 141 sites
 
 write.csv(final_data, file = "../Data/Bird_sync_data/final_data_all_spp_CBC_no_zeros2.csv", row.names = FALSE)
-length(unique(final_data$name)) # 36 species (57 and 515 have been removed) 
-length(unique(final_data$site)) # 111 sites
-# 141 sites with zeros
+length(unique(final_data$name)) # 38
+length(unique(final_data$site)) # 227 sites
