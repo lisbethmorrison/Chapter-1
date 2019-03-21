@@ -12,7 +12,7 @@ library(gridExtra)
 
 ## add data
 pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE)
-pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE)
+pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2.csv", header=TRUE)
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE)
 
 ###########################
@@ -38,8 +38,8 @@ UKBMS_map <- blighty(place="set.British.Isles") +
 ## number of CBC sites ##
 #########################
 
-site1 <- unique(subset(pair_attr_CBC[c(2,9,10)]))
-site2 <- unique(subset(pair_attr_CBC[c(3,11,12)]))
+site1 <- unique(subset(pair_attr_CBC[c(2,10,11)]))
+site2 <- unique(subset(pair_attr_CBC[c(3,12,13)]))
 colnames(site1) <- c("site", "east", "north")
 colnames(site2) <- c("site", "east", "north")
 site_list_CBC <- rbind(site1, site2)
