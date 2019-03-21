@@ -487,18 +487,18 @@ summary_ukbms2$Abundance_change <- factor(summary_ukbms2$Abundance_change, level
 ## plot graph with raw data residuals (+SE error bars) and fitted line
 png("../Graphs/Abundance/Abundance_change_predicted_ukbms_00_12.png", height = 150, width = 180, units = "mm", res = 300)
 butterfly_abund <- ggplot(summary_ukbms2, aes(x = mid.year, y = mean, group=Abundance_change)) +
-  geom_point(aes(shape=Abundance_change), colour="grey66", size = 2, position=myjit) +
+  geom_point(aes(shape=Abundance_change), colour="grey66", size = 3, position=myjit) +
   geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey66", position=myjit, width=0.2) +
-  geom_line(data=newdata_ukbms, aes(x=mid.year, y=lag0, linetype=Abundance_change), colour="black", lwd=0.5) +
+  geom_line(data=newdata_ukbms, aes(x=mid.year, y=lag0, linetype=Abundance_change), colour="black", lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   theme_bw() +
-  theme(legend.key.width = unit(0.8,"cm"), legend.key = element_rect(size = 2), text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.margin=margin(c(-15,20,-5,0)),
+  theme(legend.key.width = unit(0.8,"cm"), legend.key = element_rect(size = 2), text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.margin=margin(c(-10,20,-10,0)),
         axis.text.x=element_text(colour="black"), axis.text.y = element_text(colour="black")) +
-  scale_shape_manual(name="Change in abundance", 
-                     labels=c("Increase", "Decrease"), values=c(16,4)) +
-  scale_linetype_manual(name="",
+  scale_linetype_manual(name="Change in abundance",
                         labels=c("Increase", "Decrease"), values=c(1,2)) +
+  scale_shape_manual(name="", 
+                     labels=c("Increase", "Decrease"), values=c(16,4)) +
   guides(shape = guide_legend(override.aes = list(size = 3))) +
   guides(linetype = guide_legend(override.aes = list(size = 0.5)))
 

@@ -334,7 +334,7 @@ pair_attr_ukbms$mobility_score2 <- cut(pair_attr_ukbms$mobility_wil, 2, labels=F
 pair_attr_ukbms$mobility_score2 <- as.factor(pair_attr_ukbms$mobility_score2)
 
 mobility_model7 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*mobility_score2 + (1|spp) + (1|pair.id), data=pair_attr_ukbms)
-summary(mobility_model7)
+summary(mobility_model7) ## both years are significant
 anova(mobility_model7)
 ## interaction is  significant 
 ## save model output
@@ -366,10 +366,15 @@ newdata_ukbms <- data.frame(
 ## run model without mobility or species random effect to obtain residuals
 mob_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_ukbms)
 pair_attr_ukbms$residuals <- resid(mob_model, type="pearson")
+group_by(pair_attr_ukbms, mobility_score2) %>% summarize(m = mean(lag0)) ## decrease=0.25, increase=0.286
+## put mean of each group into pair_attr dataframe
+pair_attr_ukbms <- ddply(pair_attr_ukbms, "mobility_score2", transform, mob_mean = mean(lag0))
+## add mean to each residual
+pair_attr_ukbms$residuals2 <- pair_attr_ukbms$residuals + pair_attr_ukbms$mob_mean
 
 ## create dataframe which calculates mean, SD and SE of residuals for each species
 summary_ukbms <- pair_attr_ukbms %>% group_by(spp, mobility_score2, mid.year) %>% 
-  summarise_at(vars(residuals), funs(mean,std.error))
+  summarise_at(vars(residuals2), funs(mean,std.error))
 
 ## change values
 newdata_ukbms$mid.year <- revalue(newdata_ukbms$mid.year, c("1984.5"="1985"))
@@ -385,23 +390,30 @@ summary_ukbms$mid.year <- revalue(summary_ukbms$mid.year, c("2011.5"="2012"))
 colnames(summary_ukbms)[2] <- "Mobility"
 summary_ukbms$Mobility <- revalue(summary_ukbms$Mobility, c("1"="Low"))
 summary_ukbms$Mobility <- revalue(summary_ukbms$Mobility, c("2"="High"))
+## reorder levels
+levels(summary_ukbms$Mobility)
+summary_ukbms$Mobility <- factor(summary_ukbms$Mobility, levels=c("High", "Low"))
+levels(summary_ukbms$Mobility)
+levels(newdata_ukbms$Mobility)
+newdata_ukbms$Mobility <- factor(newdata_ukbms$Mobility, levels=c("High", "Low"))
+levels(newdata_ukbms$Mobility)
 
 ## plot graph with raw data residuals (+SE error bars) and fitted lines
 png("../Graphs/Mobility/Mobility_change_predicted_ukbms.png", height = 150, width = 180, units = "mm", res = 300)
 pd <- position_dodge(0.1)
 ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Mobility)) +
-  geom_point(aes(shape=Mobility), colour="grey", size = 2, position=myjit) +
+  geom_point(aes(shape=Mobility), colour="grey", size = 3, position=myjit) +
   geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position=myjit) +
   geom_line(data=newdata_ukbms, aes(x=mid.year, y=lag0, linetype=Mobility), lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   theme_bw() +
-  theme(legend.key.width = unit(0.8,"cm"), legend.key = element_rect(size = 2), text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.margin=margin(c(-15,20,-5,0)),
+  theme(legend.key.width = unit(0.8,"cm"), legend.key = element_rect(size = 2), text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.margin=margin(c(-10,20,-90,0)),
         axis.text.x=element_text(colour="black"), axis.text.y = element_text(colour="black")) +
-  scale_shape_manual(name="Mobility", 
-                     labels=c("Low", "High"), values=c(16,4)) +
-  scale_linetype_manual(name=" ",
-                        labels=c("Low", "High"), values=c(1,2)) +
+  scale_linetype_manual(name="Mobility",
+                        labels=c("High", "Low"), values=c(1,2)) +
+  scale_shape_manual(name=" ", 
+                     labels=c("High", "Low"), values=c(16,4)) +
   guides(shape = guide_legend(override.aes = list(size = 3))) +
   guides(linetype = guide_legend(override.aes = list(size = 0.5)))
 dev.off()

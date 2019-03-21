@@ -83,7 +83,7 @@ anova(strategy_model_bbs)
 ### Now test for change in synchony against specialism 
 
 ############################### interaction in model #################################
-pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE)
+pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", header=TRUE)
 pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE)
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS_1.csv", header=TRUE)
 
@@ -166,18 +166,18 @@ summary_ukbms$Specialism <- factor(summary_ukbms$Specialism, levels=c("Generalis
 ## plot graph with raw data residuals (+SE error bars) and fitted lines
 png("../Graphs/Specialism/Specialism_change_predicted_ukbms.png", height = 150, width = 180, units = "mm", res = 300)
 butterfly_spec <- ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Specialism)) +
-  geom_point(aes(shape=Specialism), colour="grey66", size = 2, position = myjit) +
+  geom_point(aes(shape=Specialism), colour="grey66", size = 3, position = myjit) +
   geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey66", width=0.2, position = myjit) +
-  geom_line(data=newdata, aes(x=mid.year, y=lag0, linetype=Specialism), colour="black", lwd=0.5) +
+  geom_line(data=newdata, aes(x=mid.year, y=lag0, linetype=Specialism), colour="black", lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   theme_bw() +
-  theme(legend.key.width = unit(0.8,"cm"), legend.key = element_rect(size = 2), text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.margin=margin(c(-15,20,-5,0)),
+  theme(legend.key.width = unit(0.8,"cm"), legend.key = element_rect(size = 2), text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.margin=margin(c(-10,20,-10,0)),
         axis.text.x=element_text(colour="black"), axis.text.y = element_text(colour="black")) +
-  scale_shape_manual(name="Biotype specialism", 
-                     labels=c("Generalist", "Specialist"), values=c(16,4)) +
   scale_linetype_manual(name=" ",
                         labels=c("Generalist", "Specialist"), values=c(1,2)) +
+  scale_shape_manual(name="Biotype specialism", 
+                     labels=c("Generalist", "Specialist"), values=c(16,4)) +
   guides(shape = guide_legend(override.aes = list(size = 3))) +
   guides(linetype = guide_legend(override.aes = list(size = 0.5)))
 butterfly_spec
@@ -189,18 +189,18 @@ summary_ukbms <- summary_ukbms[!(summary_ukbms$mid.year=="2012"),]
 
 png("../Graphs/Specialism/Specialism_change_predicted_ukbms2.png", height = 150, width = 180, units = "mm", res = 300)
 butterfly_spec2 <- ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Specialism)) +
-  geom_point(aes(shape=Specialism), colour="grey66", size = 2, position = myjit) +
+  geom_point(aes(shape=Specialism), colour="grey66", size = 3, position = myjit) +
   geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey66", width=0.2, position = myjit) +
-  geom_line(data=newdata, aes(x=mid.year, y=lag0, linetype=Specialism), colour="black", lwd=0.5) +
+  geom_line(data=newdata, aes(x=mid.year, y=lag0, linetype=Specialism), colour="black", lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   theme_bw() +
-  theme(legend.key.width = unit(0.8,"cm"), legend.key = element_rect(size = 2), text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.margin=margin(c(-15,20,-5,0)),
+  theme(legend.key.width = unit(0.8,"cm"), legend.key = element_rect(size = 2), text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.margin=margin(c(-10,20,-10,0)),
         axis.text.x=element_text(colour="black"), axis.text.y = element_text(colour="black")) +
-  scale_shape_manual(name="Biotype specialism", 
-                     labels=c("Generalist", "Specialist"), values=c(16,4)) +
   scale_linetype_manual(name=" ",
                         labels=c("Generalist", "Specialist"), values=c(1,2)) +
+  scale_shape_manual(name="Biotype specialism", 
+                     labels=c("Generalist", "Specialist"), values=c(16,4)) +
   guides(shape = guide_legend(override.aes = list(size = 3))) +
   guides(linetype = guide_legend(override.aes = list(size = 0.5)))
 butterfly_spec2
