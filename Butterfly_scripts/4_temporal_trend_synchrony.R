@@ -18,7 +18,7 @@ library(broom)
 ################################
 
 ## add data ##
-final_pair_data <- read.csv("../Data/Butterfly_sync_data/final_pair_data_all_spp.csv", header = TRUE) # pair attr synchrony data 37 species
+final_pair_data <- read.csv("../Data/Butterfly_sync_data/final_pair_data_all_spp_no_zeros2.csv", header = TRUE) # pair attr synchrony data 37 species
 site_data <- read.csv("../Data/UKBMS_data/pair_attr_mean_northing_dist_sim.csv", header = TRUE) # pair attr site data
 trait_data <- read.csv("../Data/UKBMS_data/species.traits.full.table.csv", header = TRUE) # mobility trait data for each species
 
@@ -28,16 +28,16 @@ site_data_reverse <- site_data
 names(site_data_reverse)[1:6] <- c("site_b", "site_a", "site_b_EAST", "site_b_NORTH", "site_a_EAST", "site_a_NORTH")
 pair_attr_2 <- merge(final_pair_data, site_data_reverse, by.x=c("site1", "site2"), by.y=c("site_a", "site_b"))	# merge the site comparisons in the same direction using site_data_reverse
 pair_attr <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
-length(unique(pair_attr$spp))## 31 species
+length(unique(pair_attr$spp))## 35 species
 
 pair_attr$spp <- as.factor(pair_attr$spp)
 pair_attr <- pair_attr[!pair_attr$spp==121,] # DROPPED AS ITS A DUPLICATE OF SMALL SKIPPER
-pair_attr <- pair_attr[!pair_attr$spp==34,] # MIGRANT (CLOUDED YELLOW)
+pair_attr <- pair_attr[!pair_attr$spp==34,] # MIGRANT (CLOUDED YELLOW) # already removed in script 3
 pair_attr <- pair_attr[!pair_attr$spp==122,] # MIGRANT (RED ADMIRAL)
 pair_attr <- pair_attr[!pair_attr$spp==123,] # MIGRANT (PAINTED LADY)
 
 pair_attr$spp <- droplevels(pair_attr$spp)
-length(unique(pair_attr$spp)) ## 28 species
+length(unique(pair_attr$spp)) ## 32 species
 
 # centre and standardize the distance and northing variables
 ### standardise by mean and sd
@@ -63,10 +63,10 @@ summary(lm(renk_hab_sim ~ end.year, data = pair_attr)) # 4.796e-05
 ## merge with trait data 
 pair_attr <- merge(pair_attr, trait_data, by.x="spp", by.y="species")
 summary(pair_attr)
-length(unique(pair_attr$spp)) # 28 species
+length(unique(pair_attr$spp)) # 32 species
 pair_attr <- droplevels(pair_attr)
 ## remove columns not needed
-pair_attr <- pair_attr[-c(18, 20:48, 50:52, 54:56)]
+pair_attr <- pair_attr[-c(9:10, 18, 20:48, 50:52, 54:56)]
 summary(pair_attr)
 ## 28 species - NA's are there because spp 100 has no mobility data
 
@@ -79,7 +79,7 @@ pair_attr$start.year <- as.factor(pair_attr$start.year)
 pair_attr$pair.id <- as.character(pair_attr$pair.id)
 pair_attr$spp <- as.factor(pair_attr$spp)
 
-write.csv(pair_attr, file = "../Data/Butterfly_sync_data/pair_attr.csv", row.names = FALSE) # save pair_attr file 
+write.csv(pair_attr, file = "../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", row.names = FALSE) # save pair_attr file 
 
 ####################################################################################################
 ################################## RUN SYNCHRONY MODELS ############################################
@@ -98,7 +98,7 @@ pair_attr$pair.id <- as.character(pair_attr$pair.id)
 ###############################################
 ### run the synchrony model for all species ###
 ###############################################
-length(unique(pair_attr$spp)) ## 28 species
+length(unique(pair_attr$spp)) ## 32 species
 
 ## model with intercept
 all_spp_model_int <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
@@ -110,7 +110,7 @@ rownames(fixed_results) <- 1:nrow(fixed_results)
 ## remove mid.year rows
 fixed_results <- fixed_results[-c(1,5:31),]
 ## save results
-write.csv(fixed_results, file = "../Results/Model_outputs/fixed_effect_results_ukbms.csv", row.names=FALSE)
+write.csv(fixed_results, file = "../Results/Model_outputs/fixed_effect_results_ukbms_no_zeros2.csv", row.names=FALSE)
 
 ##  model to produce aggregate FCI model for all 28 species - no intercept and no migrants ##
 all_spp_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp)-1, data = pair_attr)
@@ -142,7 +142,7 @@ results_table_all_spp$rescaled_sd <- results_table_all_spp$SD*(100/results_table
 results_table_all_spp$rescaled_ci <- results_table_all_spp$rescaled_sd*1.96
 
 ## save final results table ##
-write.csv(results_table_all_spp, file = "../Results/Butterfly_results/results_final_all_spp.csv", row.names=FALSE)
+write.csv(results_table_all_spp, file = "../Results/Butterfly_results/results_final_all_spp_no_zeros2.csv", row.names=FALSE)
 
 
 ##############################################
@@ -206,12 +206,12 @@ results_final_sp <- rbind(results_final_sp, results_temp_sp)
 }
 
 ## Add in common names of species to final results table ##
-species_info <- pair_attr[c(1,18:20)]
+species_info <- pair_attr[c(1,16)]
 species_info <- unique(species_info)
 results_final_sp <- merge(results_final_sp, species_info, by.x="sp", by.y="spp")
 
 ## save final results table ##
-write.csv(results_final_sp, file="../Results/Butterfly_results/results_final_sp.csv", row.names=FALSE)
+write.csv(results_final_sp, file="../Results/Butterfly_results/results_final_sp_no_zeros2.csv", row.names=FALSE)
 
 
 #########################################################################
@@ -261,7 +261,7 @@ for (g in unique(results_table_spec$specialism)){
 }
 
 ## save final results table	##
-write.csv(results_final_spec, file = "../Results/Butterfly_results/results_final_spec.csv", row.names = FALSE) 
+write.csv(results_final_spec, file = "../Results/Butterfly_results/results_final_spec_no_zeros2.csv", row.names = FALSE) 
 
 # ##############################################################################
 # ##################### WOODLAND SPECIES ANALYSIS ##############################
