@@ -11,7 +11,9 @@ rm(list=ls()) # clear R
 library(dplyr)
 
 ### add data
-final_data <- read.csv("../Data/Bird_sync_data/final_data_all_spp_CBC_zeros.csv", header=TRUE) # 36 spp
+#final_data <- read.csv("../Data/Bird_sync_data/final_data_all_spp_CBC_zeros.csv", header=TRUE) 
+#final_data <- read.csv("../Data/Bird_sync_data/final_data_all_spp_CBC_no_zeros.csv", header=TRUE) 
+final_data <- read.csv("../Data/Bird_sync_data/final_data_all_spp_CBC_no_zeros2.csv", header=TRUE) 
 woodland_cbc <- read.csv("../Data/Bird_sync_data/cbc_woodland_birds.csv", header=TRUE)
 site_data <- read.csv("../Data/BTO_data/pair_attr_mean_north_dist_hab_sim_CBC.csv", header=TRUE)
 
@@ -147,11 +149,11 @@ for (g in spp.list){ # loop through spp.list
     CCF1 <- na.omit(CCF1)
 
     # if statement to skip species which won't run
-    if (nrow(CCF1)<2){
+    if (nrow(CCF1)<1){
       print(paste("skip species", g, "year", i+4.5))
       next
     }
-    
+
     pair.attr <- pair.list ## matrix to hold attributes of pairs...
     colnames(pair.attr) <- c("site1","site2")
     pair.attr <- cbind(pair.attr, CCF)     ### add in correlation scores and number of comparisons at each site.
@@ -197,19 +199,19 @@ for (g in spp.list){ # loop through spp.list
 head(final_pair_data)
 head(final_summ_stats)
 
-length(unique(final_pair_data$spp)) ## 33 species
+length(unique(final_pair_data$spp)) ## 30 species
 
-final_pair_data_summ <- count(final_summ_stats$spp) ## nrow of each species
+final_summ_stats$spp <- as.factor(final_summ_stats$spp) ## 33 species
+final_pair_data_summ <- count(final_summ_stats, "spp") ## nrow of each species
 ## only include species with complete time series (i.e. nrow=12)
-final_pair_data_summ <- final_pair_data_summ[final_pair_data_summ$freq>=12,] ## 28 species (5 species removed)
+final_pair_data_summ <- final_pair_data_summ[final_pair_data_summ$freq>=12,] ## 30 species (2 species removed)
 ## merge back into final_pair_data
-final_pair_data <- merge(final_pair_data, final_pair_data_summ, by.="spp", by.y="x", all=FALSE)
-length(unique(final_pair_data$spp)) ## 28 species
-## 3 more species get removed in script 4 
+final_pair_data <- merge(final_pair_data, final_pair_data_summ, by="spp", all=FALSE)
+length(unique(final_pair_data$spp)) ## 30 species (no zeros), 33 species (zeros)
 
-write.csv(final_pair_data, file="../Data/Bird_sync_data/final_pair_data_all_spp_CBC_zeros.csv", row.names=FALSE) ## save final pair data for all 33 species
+write.csv(final_pair_data, file="../Data/Bird_sync_data/final_pair_data_all_spp_CBC_no_zeros2.csv", row.names=FALSE) ## save final pair data for all 33 species
 
-write.csv(final_summ_stats, file="../Data/Bird_sync_data/final_summ_stats_all_spp_CBC_zeros.csv", row.names=FALSE) ## save final summ stats for all 33 species
+write.csv(final_summ_stats, file="../Data/Bird_sync_data/final_summ_stats_all_spp_CBC_no_zeros2.csv", row.names=FALSE) ## save final summ stats for all 33 species
 
 ########################## NOT USED ANYMORE ##############################
 
