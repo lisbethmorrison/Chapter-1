@@ -14,15 +14,14 @@ library(ggplot2)
 library(dplyr)
 
 ## input data ##
-results_final_all_spp <- read.csv("../Results/Butterfly_results/results_final_all_spp.csv", header=TRUE)
-results_final_sp <- read.csv("../Results/Butterfly_results/results_final_sp.csv", header=TRUE)
-results_final_hab <- read.csv("../Results/Butterfly_results/results_final_hab.csv", header=TRUE)
-results_final_spec <- read.csv("../Results/Butterfly_results/results_final_spec.csv", header=TRUE)
+results_final_all_spp <- read.csv("../Results/Butterfly_results/results_final_all_spp_no_zeros2.csv", header=TRUE)
+results_final_sp <- read.csv("../Results/Butterfly_results/results_final_sp_no_zeros2.csv", header=TRUE)
+results_final_spec <- read.csv("../Results/Butterfly_results/results_final_spec_no_zeros2.csv", header=TRUE)
 
 ## read in strategy data
 spp_data <- read.csv("../Data/UKBMS_data/UKBMS_UKspecieslist.csv", header=TRUE)
+spp_data <- spp_data[c(1,5)]
 results_final_sp <- merge(results_final_sp, spp_data, by.x="sp", by.y="BMSCODE") ## merge to get strategy info 
-results_final_sp <- results_final_sp[-c(12:17)]
 
 #################################
 ## PLOT GRAPH FOR ALL SPECIES ##
@@ -76,11 +75,11 @@ FCI_plot_scaled <- ggplot(results_final_all_spp, aes(x = parameter, y = rescaled
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 FCI_plot_scaled
-ggsave("../Graphs/Connectivity_plots/FCI_plot_all_spp_scaled2.png", plot = FCI_plot_scaled, width=7, height=5)
+ggsave("../Graphs/Connectivity_plots/FCI_plot_all_spp_scaled3.png", plot = FCI_plot_scaled, width=7, height=5)
 
 ############### plot with all 3 temporal synchrony graphs for ms #########################
 results_final_all_spp_BBS <- read.csv("../Results/Bird_results/results_final_all_spp_BBS_final.csv", header=TRUE)
-results_final_all_spp_CBC <- read.csv("../Results/Bird_results/results_final_all_spp_CBC.csv", header=TRUE)
+results_final_all_spp_CBC <- read.csv("../Results/Bird_results/results_final_all_spp_CBC_no_zeros2.csv", header=TRUE)
 
 FCI_BBS <- ggplot(results_final_all_spp_BBS, aes(x = parameter, y = rescaled_FCI)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
@@ -102,7 +101,7 @@ FCI_CBC <- ggplot(results_final_all_spp_CBC, aes(x = parameter, y = rescaled_FCI
   geom_errorbar(aes(ymin = rescaled_FCI - rescaled_sd, ymax = rescaled_FCI + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
   labs(x = "Mid-year of moving window", y = "Population synchrony") +
-  scale_y_continuous(breaks=seq(0,180,20)) +
+  scale_y_continuous(breaks=seq(90,120,5)) +
   scale_x_continuous(breaks=seq(1985,1996,3)) +
   theme_bw() +
   theme(text = element_text(size = 10)) +
@@ -114,15 +113,15 @@ FCI_CBC
 
 library(ggpubr)
 
-png("../Graphs/FINAL/FigureS1.png", height = 250, width = 220, units = "mm", res = 300)
+png("../Graphs/FINAL/FigureS1_2.png", height = 250, width = 220, units = "mm", res = 300)
 ggarrange(FCI_plot_scaled,                                                 
       ggarrange(FCI_BBS, FCI_CBC, ncol = 2, labels = c("(b)", "(c)"), font.label = list(size = 12, color ="black")), 
       nrow = 2, labels = "(a)", font.label = list(size = 10, color ="black")) 
 dev.off()
 
 ####### also add in percentage change bar graphs for ms ########
-model_comp_UKBMS <- read.csv("../Results/Butterfly_results/model_comp_percentages.csv", header=TRUE)
-model_comp_CBC <- read.csv("../Results/Bird_results/model_comp_percentages_CBC.csv", header=TRUE)
+model_comp_UKBMS <- read.csv("../Results/Butterfly_results/model_comp_percentages_no_zeros2.csv", header=TRUE)
+model_comp_CBC <- read.csv("../Results/Bird_results/model_comp_percentages_CBC_no_zeros2.csv", header=TRUE)
 model_comp_BBS <- read.csv("../Results/Bird_results/model_comp_percentages_BBS.csv", header=TRUE)
 
 model_comp_CBC$comparison <- "1985-1996"
@@ -146,6 +145,21 @@ butterfly <- ggplot(data=model_comp_UKBMS, aes(x=comparison, y=percentage, fill=
   theme(text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
 butterfly
+## without overall change
+model_comp_UKBMS <- model_comp_UKBMS[!model_comp_UKBMS$comparison == "1985-2012",]
+butterfly2 <- ggplot(data=model_comp_UKBMS, aes(x=comparison, y=percentage, fill=change)) +
+  geom_bar(stat="identity", width=0.7) +
+  labs(y="Percentage of species", x="", fill="") +
+  scale_fill_manual(values = c("#339900", "#999999", "#990000")) +
+  theme_bw() +
+  theme(axis.text.x=element_text(colour = "black")) +
+  theme(axis.text.y=element_text(colour = "black")) +
+  scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
+  theme(legend.position="bottom",legend.direction="horizontal") +
+  guides(fill = guide_legend(override.aes = list(size = 1))) +
+  theme(text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
+butterfly2
 
 birds <- ggplot(data=model_comp_birds, aes(x=comparison, y=percentage, fill=change)) +
   geom_bar(stat="identity", width=0.7) +
@@ -173,12 +187,12 @@ get_legend<-function(myggplot){
   return(legend)
 }
 legend <- get_legend(butterfly)
-butterfly <- butterfly + theme(legend.position="none")
+butterfly2 <- butterfly2 + theme(legend.position="none")
 birds <- birds + theme(legend.position="none")
 
-percentages <- grid.arrange(butterfly, legend, birds, ncol=1, nrow = 3, widths = c(2.7), heights = c(2.5, 0.4, 2.5))
+percentages <- grid.arrange(butterfly2, legend, birds, ncol=1, nrow = 3, widths = c(2.7), heights = c(2.5, 0.4, 2.5))
 
-png("../Graphs/FINAL/test1.png", height = 150, width = 173, units = "mm", res = 300)
+png("../Graphs/FINAL/Figure2_2.png", height = 150, width = 173, units = "mm", res = 300)
 grid.arrange(FCI_plot_scaled, percentages,
              FCI_CBC, FCI_BBS, 
              layout_matrix=cbind(c(1,3), c(1,4), c(2,2)), nrow=2)

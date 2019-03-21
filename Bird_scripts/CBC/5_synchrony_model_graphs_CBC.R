@@ -8,15 +8,20 @@
 rm(list=ls()) # clear R
 
 library(ggplot2)
+library(gridExtra)
 
 ####################################
 ########## FCI GRAPHS ##############
 ####################################
 
 ### read in results tables ###
-results_final_all_spp <- read.csv("../Results/Bird_results/results_final_all_spp_CBC.csv", header=TRUE)
-results_final_sp <- read.csv("../Results/Bird_results/results_final_spp_CBC.csv", header=TRUE)
-results_final_spec <- read.csv("../Results/Bird_results/results_final_spec_CBC.csv", header=TRUE) 
+results_final_all_spp <- read.csv("../Results/Bird_results/results_final_all_spp_CBC_zeros.csv", header=TRUE)
+results_final_all_spp <- read.csv("../Results/Bird_results/results_final_all_spp_CBC_no_zeros2.csv", header=TRUE)
+
+results_final_sp_zeros <- read.csv("../Results/Bird_results/results_final_spp_CBC_zeros.csv", header=TRUE)
+results_final_sp_no_zeros <- read.csv("../Results/Bird_results/results_final_spp_CBC_no_zeros.csv", header=TRUE)
+results_final_sp_no_zeros_spp298 <- read.csv("../Results/Bird_results/results_final_all_spp_CBC_no_zeros_spp298.csv", header=TRUE)
+results_final_spec <- read.csv("../Results/Bird_results/results_final_spec_CBC_zeros.csv", header=TRUE) 
 
 #### one line for all species with shaded smoothed line and unscaled ####
 FCI_plot_unscaled <- ggplot(results_final_all_spp, aes(x = parameter, y = FCI)) +
@@ -67,7 +72,7 @@ FCI_plot_scaled_error <- ggplot(results_final_all_spp, aes(x = parameter, y = re
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 FCI_plot_scaled_error
 
-ggsave("../Graphs/Connectivity_plots/FCI_all_spp_CBC_scaled_error2.png", plot = FCI_plot_scaled_error, width=5, height=5)
+ggsave("../Graphs/Connectivity_plots/FCI_all_spp_CBC_scaled_error3.png", plot = FCI_plot_scaled_error, width=5, height=5)
 
 #### plot for specialist/generalist ####
 results_final_spec$Strategy <- as.factor(results_final_spec$Strategy)
@@ -114,6 +119,64 @@ FCI_plot_spec_unscaled <- ggplot(results_final_spec, aes(x = parameter, y = FCI,
 FCI_plot_spec_unscaled
 
 ggsave("../Graphs/Connectivity_plots/FCI_generalist_specialist_BTO_unscaled.png", plot = FCI_plot_spec_unscaled, width=7, height=5)
+
+####################### plot synchrony using two datasets (zeros and non-zeros) for each species 
+results_final_sp_zeros2 <- results_final_sp_zeros[results_final_sp_zeros$sp=="298",]
+results_final_sp_no_zeros2 <- results_final_sp_no_zeros[results_final_sp_no_zeros$sp=="298",]
+
+## red is dataset with zeros (original), blue is dataset without zeros (new dataset)
+plot1 <- ggplot() + geom_line(data=results_final_sp_zeros2, aes(x=parameter, y=rescaled_FCI, colour="With zeros"), lwd=1) +
+  geom_line(data=results_final_sp_no_zeros2, aes(x=parameter, y=rescaled_FCI, colour="Without zeros"), lwd=1) +
+  geom_line(data=results_final_sp_no_zeros_spp298, aes(x=parameter, y=rescaled_FCI, colour="Without zeros modified"), lwd=1) +
+  labs(x="Year", y="Population synchrony") +
+  scale_color_manual(values=c("blue","red", "green")) +
+  ggtitle("Species 298") +
+  labs(colour='Dataset') +
+  theme_bw() +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+plot1
+results_final_sp_zeros2 <- results_final_sp_zeros[results_final_sp_zeros$sp=="485",]
+results_final_sp_no_zeros2 <- results_final_sp_no_zeros[results_final_sp_no_zeros$sp=="485",]
+
+plot2 <- ggplot() + geom_line(data=results_final_sp_zeros2, aes(x=parameter, y=rescaled_FCI, colour="With zeros"), lwd=1) +
+  geom_line(data=results_final_sp_no_zeros2, aes(x=parameter, y=rescaled_FCI, colour="Without zeros"), lwd=1) +
+  labs(x="Year", y="Population synchrony") +
+  scale_color_manual(values=c("blue","red")) +
+  ggtitle("Species 485") +
+  labs(colour='Dataset') +
+  theme_bw() +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+plot2
+results_final_sp_zeros2 <- results_final_sp_zeros[results_final_sp_zeros$sp=="503",]
+results_final_sp_no_zeros2 <- results_final_sp_no_zeros[results_final_sp_no_zeros$sp=="503",]
+
+plot3 <- ggplot() + geom_line(data=results_final_sp_zeros2, aes(x=parameter, y=rescaled_FCI, colour="With zeros"), lwd=1) +
+  geom_line(data=results_final_sp_no_zeros2, aes(x=parameter, y=rescaled_FCI, colour="Without zeros"), lwd=1) +
+  labs(x="Year", y="Population synchrony") +
+  scale_color_manual(values=c("blue","red")) +
+  ggtitle("Species 503") +
+  labs(colour='Dataset') +
+  theme_bw() +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+plot3
+results_final_sp_zeros2 <- results_final_sp_zeros[results_final_sp_zeros$sp=="521",]
+results_final_sp_no_zeros2 <- results_final_sp_no_zeros[results_final_sp_no_zeros$sp=="521",]
+
+plot4 <- ggplot() + geom_line(data=results_final_sp_zeros2, aes(x=parameter, y=rescaled_FCI, colour="With zeros"), lwd=1) +
+  geom_line(data=results_final_sp_no_zeros2, aes(x=parameter, y=rescaled_FCI, colour="Without zeros"), lwd=1) +
+  labs(x="Year", y="Population synchrony") +
+  scale_color_manual(values=c("blue","red")) +
+  ggtitle("Species 521") +
+  labs(colour='Dataset') +
+  theme_bw() +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+plot4
+
+ggsave("../Graphs/Connectivity_plots/CBC_species_comp_7.png", arrangeGrob(plot1, plot2,plot3,plot4), width=12, height=8)
 
 #################### maps of CBC sites ######################
 

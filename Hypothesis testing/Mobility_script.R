@@ -17,8 +17,8 @@ library(parallel)
 options(scipen=999)
 
 ## read in synchrony data
-pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE) 
-pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE) 
+pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", header=TRUE) 
+pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2.csv", header=TRUE) 
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) 
 wingspan <- read.csv("../Data/UKBMS_data/butterflywingspans.csv", header=TRUE)
 bird_dispersal <- read.csv("../Data/Woodland_bird_dispersal_Paradis1998.csv", header=TRUE)
@@ -132,7 +132,7 @@ AIC(wing_model3, wing_model4, wing_model5, wing_model6)
 
 ## remove NA's ==> removes Small White butterfly which doesn't have mobility data
 pair_attr <- na.omit(pair_attr)
-length(unique(pair_attr$spp)) # 27 species
+length(unique(pair_attr$spp)) # 31 species
 
 pair_attr$mid.year <- as.factor(pair_attr$mid.year)
 pair_attr$pair.id <- as.character(pair_attr$pair.id)
@@ -167,22 +167,14 @@ pair_attr$mobility_wil <- as.numeric(pair_attr$mobility_wil)
 pair_attr$mobility_score2 <- cut(pair_attr$mobility_wil, 2, labels=c("low", "high"))
 pair_attr$mobility_score2 <- as.factor(pair_attr$mobility_score2)
 
-start_time <- Sys.time()
 mobility_model4 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + mobility_score2 + (1|spp) + (1|pair.id), data=pair_attr)
-end_time <- Sys.time()
-end_time - start_time ## 7.64mins 
-
 summary(mobility_model4)
 anova(mobility_model4)
 ## significant (p=0.011)
 ## mobility score 2 has higher average synchrony than score 1
+results_table_mob_ukbms <- data.frame(summary(mobility_model4)$coefficients[,1:5]) ## 31 species
+write.csv(results_table_mob_ukbms, file = "../Results/Model_outputs/UKBMS/average_mob_ukbms.csv", row.names=TRUE)
 
-#### compare models with 3 groups and 2 groups
-AIC(mobility_model2, mobility_model4)
-## AIC values are:
-## mobility_model2 - 1916320
-## mobility_model4 - 1916319
-############################# very similar so just use 2 groups ############################# 
 
 ## don't plot graph because mobility and change in synchrony is also significant
 
@@ -196,18 +188,10 @@ length(unique(bird_dispersal$Species_code)) ## only 23 species have dispersal da
 
 ## merge pair_attr with bird dispersal data
 pair_attr_CBC <- merge(pair_attr_CBC, bird_dispersal, by.x="spp", by.y="Species_code", all=FALSE)
-
-## natal arithmetic mean dispersal
-dispersal_model_cbc1 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + Natal_AM + (1|spp) + (1|pair.id), data=pair_attr_CBC)
-summary(dispersal_model1)
-anova(dispersal_model1)
-## not significant
+pair_attr_CBC <- na.omit(pair_attr_CBC) ## remove NAs (one species == redstart)
+length(unique(pair_attr_CBC$spp)) ## 21 species
 
 ## breeding arithmetic mean dispersal
-## remove NAs (one species == redstart)
-pair_attr_CBC <- na.omit(pair_attr_CBC)
-summary(pair_attr_CBC)  
-
 dispersal_model_cbc2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + Breeding_AM + (1|spp) + (1|pair.id), data=pair_attr_CBC)
 summary(dispersal_model2)
 anova(dispersal_model2)
@@ -231,11 +215,9 @@ pair_attr_CBC$Breeding_AM_score2 <- as.factor(pair_attr_CBC$Breeding_AM_score2)
 dispersal_model_cbc4 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + Breeding_AM_score2 + (1|spp) + (1|pair.id), data=pair_attr_CBC)
 summary(dispersal_model_cbc4)
 anova(dispersal_model_cbc4)
-## still not significant
-
-## compare models
-AIC(dispersal_model_cbc3, dispersal_model_cbc4)
-## model 4 slightly lower AIC => therefore performs better as two groups (low and high dispersal)
+## not significant
+results_table_mob_cbc <- data.frame(summary(dispersal_model_cbc4)$coefficients[,1:5]) ## 21 species
+write.csv(results_table_mob_cbc, file = "../Results/Model_outputs/CBC/average_mob_cbc.csv", row.names=TRUE)
 
 ################################
 #### Mobility model for BBS ####
@@ -304,7 +286,7 @@ pair_attr_2012 <- pair_attr[pair_attr$mid.year==2011.5,]
 pair_attr_ukbms <- rbind(pair_attr_1985, pair_attr_2000, pair_attr_2012) ## 3 years and 32 species
 ## remove NA's to make sure small white is taken out
 pair_attr_ukbms <- na.omit(pair_attr_ukbms)
-length(unique(pair_attr_ukbms$spp)) # 27 species
+length(unique(pair_attr_ukbms$spp)) # 31 species
 
 ## merge wingspan data
 pair_attr_ukbms1 <- merge(pair_attr_ukbms, wingspan, by.x="spp", by.y="BMScode")
@@ -344,38 +326,26 @@ pair_attr_ukbms$mobility_score <- as.factor(pair_attr_ukbms$mobility_score)
 mobility_model6 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*mobility_score + (1|spp) + (1|pair.id), data=pair_attr_ukbms)
 summary(mobility_model6)
 anova(mobility_model6)
-## interaction is very significant (p=<0.00001)
+## interaction is very significant 
 
 ## run model with 2 mobility groups (low and high)
 pair_attr_ukbms$mobility_wil <- as.numeric(pair_attr_ukbms$mobility_wil)
 pair_attr_ukbms$mobility_score2 <- cut(pair_attr_ukbms$mobility_wil, 2, labels=FALSE)
 pair_attr_ukbms$mobility_score2 <- as.factor(pair_attr_ukbms$mobility_score2)
 
-start_time <- Sys.time()
 mobility_model7 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*mobility_score2 + (1|spp) + (1|pair.id), data=pair_attr_ukbms)
-end_time <- Sys.time()
-end_time - start_time ## 22.9 seconds
-
 summary(mobility_model7)
 anova(mobility_model7)
-## interaction is  significant (p=0.00399)
+## interaction is  significant 
 ## save model output
-results_table_mobility_ukbms <- data.frame(summary(mobility_model7)$coefficients[,1:5])
-write.csv(results_table_mobility_ukbms, file = "../Results/Model_outputs/change_mobility_ukbms_nomigrants.csv", row.names=TRUE)
-
-#### compare models with 3 groups and 2 groups
-AIC(mobility_model6, mobility_model7)
-## AIC values are:
-## mobility_model6 - 222980
-## mobility_model7 - 223378.2
-## group of 3 is better...
-## but still continue with 2 groups of mobility as easier to interpret
-
+results_table_mobility_ukbms <- data.frame(summary(mobility_model7)$coefficients[,1:5]) ## 31 species
+write.csv(results_table_mobility_ukbms, file = "../Results/Model_outputs/UKBMS/change_mobility_ukbms.csv", row.names=TRUE)
 
 ### predict new data
+pair_attr_ukbms <- droplevels(pair_attr_ukbms)
 newdata_ukbms <- expand.grid(mean_northing=mean(pair_attr_ukbms$mean_northing), distance=mean(pair_attr_ukbms$distance), 
-                       renk_hab_sim=mean(pair_attr_ukbms$renk_hab_sim), pair.id=sample(pair_attr_ukbms$pair.id,10),
-                       spp=sample(pair_attr_ukbms$spp,10), mid.year=unique(pair_attr_ukbms$mid.year), 
+                       renk_hab_sim=mean(pair_attr_ukbms$renk_hab_sim), pair.id=sample(pair_attr_ukbms$pair.id,1),
+                       spp=unique(pair_attr_ukbms$spp), mid.year=unique(pair_attr_ukbms$mid.year), 
                        mobility_score2=unique(pair_attr_ukbms$mobility_score2))
 
 newdata_ukbms$lag0 <- predict(mobility_model7, newdata=newdata_ukbms, re.form=NA)
@@ -417,30 +387,46 @@ summary_ukbms$Mobility <- revalue(summary_ukbms$Mobility, c("1"="Low"))
 summary_ukbms$Mobility <- revalue(summary_ukbms$Mobility, c("2"="High"))
 
 ## plot graph with raw data residuals (+SE error bars) and fitted lines
-png("../Graphs/Mobility/Mobility_change_predicted_ukbms.png", height = 80, width = 120, units = "mm", res = 300)
+png("../Graphs/Mobility/Mobility_change_predicted_ukbms.png", height = 150, width = 180, units = "mm", res = 300)
 pd <- position_dodge(0.1)
 ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Mobility)) +
-  geom_point(aes(shape=Mobility), colour="grey", size = 2, position=pd) +
-  scale_shape_manual(values=c(16,4)) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position=pd) +
+  geom_point(aes(shape=Mobility), colour="grey", size = 2, position=myjit) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position=myjit) +
   geom_line(data=newdata_ukbms, aes(x=mid.year, y=lag0, linetype=Mobility), lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   theme_bw() +
-  theme(text = element_text(size = 10), panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+  theme(legend.key.width = unit(0.8,"cm"), legend.key = element_rect(size = 2), text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.margin=margin(c(-15,20,-5,0)),
+        axis.text.x=element_text(colour="black"), axis.text.y = element_text(colour="black")) +
+  scale_shape_manual(name="Mobility", 
+                     labels=c("Low", "High"), values=c(16,4)) +
+  scale_linetype_manual(name=" ",
+                        labels=c("Low", "High"), values=c(1,2)) +
+  guides(shape = guide_legend(override.aes = list(size = 3))) +
+  guides(linetype = guide_legend(override.aes = list(size = 0.5)))
 dev.off()
 
-## plot graph with fitted line and confidence interval error bars
-png("../Graphs/Mobility/Mobility_change_predicted_ukbms2.png", height = 100, width = 120, units = "mm", res = 300)
-ggplot(newdata_ukbms, aes(x=mid.year, y=lag0, group=Mobility)) +
-  geom_point(position=pd) +
-  geom_line(aes(linetype=Mobility), size=1, position=pd) +
-  labs(x="Year", y="Population synchrony") +
-  geom_linerange(aes(ymin=plo, ymax=phi), position=pd) +
-  theme_bw() +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-dev.off()
+############ jitter code #################
+myjit <- ggproto("fixJitter", PositionDodge,
+                 width = 0.5,
+                 dodge.width = 0.15,
+                 jit = NULL,
+                 compute_panel =  function (self, data, params, scales) 
+                 {
+                   
+                   #Generate Jitter if not yet
+                   if(is.null(self$jit) ) {
+                     self$jit <-jitter(rep(0, nrow(data)), amount=self$dodge.width)
+                   }
+                   
+                   data <- ggproto_parent(PositionDodge, self)$compute_panel(data, params, scales)
+                   
+                   data$x <- data$x + self$jit
+                   #For proper error extensions
+                   if("xmin" %in% colnames(data)) data$xmin <- data$xmin + self$jit
+                   if("xmax" %in% colnames(data)) data$xmax <- data$xmax + self$jit
+                   data
+                 } )
 
 ################################
 #### Mobility model for CBC ####
@@ -485,7 +471,7 @@ anova(dispersal_model_cbc3)
 ## interaction is significant (p=0.0418)
 ## save model output
 results_table_dispersal_cbc <- data.frame(summary(dispersal_model_cbc3)$coefficients[,1:5])
-write.csv(results_table_dispersal_cbc, file = "../Results/Model_outputs/change_dispersal_cbc.csv", row.names=TRUE)
+write.csv(results_table_dispersal_cbc, file = "../Results/Model_outputs/CBC/change_mob_cbc.csv", row.names=TRUE)
 
 ## save main (true) model results
 main_result_table <- data.frame(anova(dispersal_model_cbc3)[5]) ## save anova table from main model

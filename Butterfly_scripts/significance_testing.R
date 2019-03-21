@@ -15,14 +15,14 @@ library(dplyr)
 options(scipen=999)
 
 ## load data
-pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE)
+pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", header=TRUE)
 
 ##### Comparing between early, mid and late years:
 ## EARLY: start.year = 1980
 ## MID: start.year = 1995
 ## LATE: start.year = 2007
 
-length(unique(pair_attr$spp)) # 33 species
+length(unique(pair_attr$spp)) # 32 species
 
 ###### create 3 new pair_attr files whicih compares early, late and overall
 pair_attr_1980 <- pair_attr[pair_attr$start.year==1980,]
@@ -55,14 +55,14 @@ pair_attr_overall$mean_northing <- (pair_attr_overall$mean_northing - mean(na.om
 pair_attr_overall$renk_hab_sim <- (pair_attr_overall$renk_hab_sim - mean(na.omit(pair_attr_overall$renk_hab_sim)))/sd(na.omit(pair_attr_overall$renk_hab_sim))
 
 #### write files
-write.csv(pair_attr_early, file = "../Data/Butterfly_sync_data/pair_attr_early.csv", row.names = FALSE) # save pair_attr_early file 
-write.csv(pair_attr_late, file = "../Data/Butterfly_sync_data/pair_attr_late.csv", row.names = FALSE) # save pair_attr_late file 
-write.csv(pair_attr_overall, file = "../Data/Butterfly_sync_data/pair_attr_overall.csv", row.names = FALSE) # save pair_attr_overall file 
+write.csv(pair_attr_early, file = "../Data/Butterfly_sync_data/pair_attr_early_no_zeros2.csv", row.names = FALSE) # save pair_attr_early file 
+write.csv(pair_attr_late, file = "../Data/Butterfly_sync_data/pair_attr_late_no_zeros2.csv", row.names = FALSE) # save pair_attr_late file 
+write.csv(pair_attr_overall, file = "../Data/Butterfly_sync_data/pair_attr_overall_no_zeros2.csv", row.names = FALSE) # save pair_attr_overall file 
 
 ## read in files to save time 
-pair_attr_early <- read.csv("../Data/Butterfly_sync_data/pair_attr_early.csv", header=TRUE)
-pair_attr_late <- read.csv("../Data/Butterfly_sync_data/pair_attr_late.csv", header=TRUE)
-pair_attr_overall <- read.csv("../Data/Butterfly_sync_data/pair_attr_overall.csv", header=TRUE)
+pair_attr_early <- read.csv("../Data/Butterfly_sync_data/pair_attr_early_no_zeros2.csv", header=TRUE)
+pair_attr_late <- read.csv("../Data/Butterfly_sync_data/pair_attr_late_no_zeros2.csv", header=TRUE)
+pair_attr_overall <- read.csv("../Data/Butterfly_sync_data/pair_attr_overall_no_zeros2.csv", header=TRUE)
 
 #### change variables to factors/characters
 str(pair_attr_early)
@@ -90,215 +90,215 @@ pair_attr_overall$start.year <- as.factor(pair_attr_overall$start.year)
 pair_attr_overall$spp <- as.factor(pair_attr_overall$spp)
 
 
-##############################
-######## run models ##########
-############################## 
-
-## likelihood ratio test to test if year has a significant OVERALL effect ##
-
-## EARLY COMPARISON ##
-early_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_early)
-early_model_null <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_early)
-## model comparison
-model_comp_early <- anova(early_model_null, early_model, test="Chisq")
-## add comparison column
-model_comp_early$comparison <- rep("Early comparison")
-## create dataframe with results
-results_early_all_spp <- data.frame(summary(early_model)$coefficients[,1:5])
-names(results_early_all_spp) <- c("Estimate", "SD", "df", "t","p_value")
-results_early_all_spp$parameter <- paste(row.names(results_early_all_spp))
-rownames(results_early_all_spp) <- 1:nrow(results_early_all_spp)
-
-## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-results_table5 <- NULL
-results_table1 <- results_early_all_spp[grep("mean_northing", results_early_all_spp$parameter),]
-results_table2 <- results_early_all_spp[grep("distance", results_early_all_spp$parameter),]
-results_table3 <- results_early_all_spp[grep("hab_sim", results_early_all_spp$parameter),]
-results_table4 <- results_early_all_spp[grep("(Intercept)", results_early_all_spp$parameter),]
-results_table5 <- rbind(results_table5, results_table4, results_table1, results_table2, results_table3)
-results_early_all_spp <- results_early_all_spp[!results_early_all_spp$parameter%in%results_table5$parameter,]
-
-## create year to the comparison (years 1985 and 2000)
-results_early_all_spp$year <- "1985/2000"
-## remove parameter column
-results_early_all_spp <- results_early_all_spp[-6]
-results_early_all_spp$comparison <- "Early short term"
-results_early_all_spp$trend <- "significant decrease"
-
-## LATE COMPARISON ##
-late_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_late)
-late_model_null <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_late)
-## model comparison
-model_comp_late <- anova(late_model_null, late_model, test="Chisq")
-## add comparison column
-model_comp_late$comparison <- rep("Late comparison")
-## create dataframe with results
-results_late_all_spp <- data.frame(summary(late_model)$coefficients[,1:5])
-names(results_late_all_spp) <- c("Estimate", "SD", "df", "t","p_value")
-results_late_all_spp$parameter <- paste(row.names(results_late_all_spp))
-rownames(results_late_all_spp) <- 1:nrow(results_late_all_spp)
-
-## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-results_table5 <- NULL
-results_table1 <- results_late_all_spp[grep("mean_northing", results_late_all_spp$parameter),]
-results_table2 <- results_late_all_spp[grep("distance", results_late_all_spp$parameter),]
-results_table3 <- results_late_all_spp[grep("hab_sim", results_late_all_spp$parameter),]
-results_table4 <- results_late_all_spp[grep("(Intercept)", results_late_all_spp$parameter),]
-results_table5 <- rbind(results_table5, results_table4, results_table1, results_table2, results_table3)
-results_late_all_spp <- results_late_all_spp[!results_late_all_spp$parameter%in%results_table5$parameter,]
-
-## create year to the comparison (years 1985 and 2000)
-results_late_all_spp$year <- "2000/2012"
-## remove parameter column
-results_late_all_spp <- results_late_all_spp[-6]
-results_late_all_spp$comparison <- "Late short term"
-results_late_all_spp$trend <- "significant increase"
-
-## OVERALL COMPARISON ##
-overall_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_overall)
-overall_model_null <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_overall)
-## model comparison
-model_comp_overall <- anova(overall_model_null, overall_model, test="Chisq")
-## add comparison column
-model_comp_overall$comparison <- rep("Overall comparison")
-## create dataframe with results
-results_overall_all_spp <- data.frame(summary(overall_model)$coefficients[,1:5])
-names(results_overall_all_spp) <- c("Estimate", "SD", "df", "t","p_value")
-results_overall_all_spp$parameter <- paste(row.names(results_overall_all_spp))
-rownames(results_overall_all_spp) <- 1:nrow(results_overall_all_spp)
-
-## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-results_table5 <- NULL
-results_table1 <- results_overall_all_spp[grep("mean_northing", results_overall_all_spp$parameter),]
-results_table2 <- results_overall_all_spp[grep("distance", results_overall_all_spp$parameter),]
-results_table3 <- results_overall_all_spp[grep("hab_sim", results_overall_all_spp$parameter),]
-results_table4 <- results_overall_all_spp[grep("(Intercept)", results_overall_all_spp$parameter),]
-results_table5 <- rbind(results_table5, results_table4, results_table1, results_table2, results_table3)
-results_overall_all_spp <- results_overall_all_spp[!results_overall_all_spp$parameter%in%results_table5$parameter,]
-
-## create year to the comparison (years 1985 and 2000)
-results_overall_all_spp$year <- "1985/2012"
-## remove parameter column
-results_overall_all_spp <- results_overall_all_spp[-6]
-results_overall_all_spp$comparison <- "Long term"
-results_overall_all_spp$trend <- "significant increase"
-
-## save model comparison results for all species
-model_comp_all_spp <- data.frame(rbind(results_early_all_spp, results_late_all_spp, results_overall_all_spp))
-write.csv(model_comp_all_spp, file="../Results/Butterfly_results/model_comp_all_spp.csv", row.names=FALSE)
-
-#### save log likelihood test results for each comparison for all species #####
-ratio_test_all_spp <- data.frame(rbind(model_comp_early, model_comp_late, model_comp_overall))
-ratio_test_all_spp <- ratio_test_all_spp[-c(1,3,5),]
-rownames(ratio_test_all_spp) <- 1:nrow(ratio_test_all_spp)
-
-write.csv(ratio_test_all_spp, file="../Results/Butterfly_results/ratio_test_all_spp.csv", row.names=FALSE)
-#### results = very significant for all 3 comparisons #####
-
-##################################################################################################
-####################### SAME AS ABOVE BUT FOR WOODLAND SPECIES ONLY ##############################
-##################################################################################################
-
-### create new pair_attr files with woodland species only
-pair_attr_early_wood <- pair_attr_early[pair_attr_early$HABITAT=="Woodland",]
-pair_attr_early_wood <- droplevels(pair_attr_early_wood)
-
-pair_attr_late_wood <- pair_attr_late[pair_attr_late$HABITAT=="Woodland",]
-pair_attr_late_wood <- droplevels(pair_attr_late_wood)
-
-pair_attr_overall_wood <- pair_attr_overall[pair_attr_overall$HABITAT=="Woodland",]
-pair_attr_overall_wood <- droplevels(pair_attr_overall_wood)
-
-## EARLY COMPARISON ##
-early_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_early_wood)
-early_model_null <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_early_wood)
-## model comparison
-model_comp_early <- anova(early_model_null, early_model, test="Chisq")
-## add comparison column
-model_comp_early$comparison <- rep("Early comparison")
-## create dataframe with results
-results_early_all_spp <- data.frame(summary(early_model)$coefficients[,1:5])
-names(results_early_all_spp) <- c("Estimate", "SD", "df", "t","p_value")
-results_early_all_spp$parameter <- paste(row.names(results_early_all_spp))
-rownames(results_early_all_spp) <- 1:nrow(results_early_all_spp)
-
-## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-results_table5 <- NULL
-results_table1 <- results_early_all_spp[grep("mean_northing", results_early_all_spp$parameter),]
-results_table2 <- results_early_all_spp[grep("distance", results_early_all_spp$parameter),]
-results_table3 <- results_early_all_spp[grep("hab_sim", results_early_all_spp$parameter),]
-results_table4 <- results_early_all_spp[grep("(Intercept)", results_early_all_spp$parameter),]
-results_table5 <- rbind(results_table5, results_table4, results_table1, results_table2, results_table3)
-results_early_all_spp <- results_early_all_spp[!results_early_all_spp$parameter%in%results_table5$parameter,]
-
-## create year to the comparison (years 1985 and 2000)
-results_early_all_spp$year <- "1985/2000"
-## remove parameter column
-results_early_all_spp <- results_early_all_spp[-6]
-results_early_all_spp$comparison <- "Early short term"
-results_early_all_spp$trend <- "significant decrease"
-
-## LATE COMPARISON ##
-late_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_late_wood)
-late_model_null <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_late_wood)
-## model comparison
-model_comp_late <- anova(late_model_null, late_model, test="Chisq")
-## add comparison column
-model_comp_late$comparison <- rep("Late comparison")
-## create dataframe with results
-results_late_all_spp <- data.frame(summary(late_model)$coefficients[,1:5])
-names(results_late_all_spp) <- c("Estimate", "SD", "df", "t","p_value")
-results_late_all_spp$parameter <- paste(row.names(results_late_all_spp))
-rownames(results_late_all_spp) <- 1:nrow(results_late_all_spp)
-
-## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-results_table5 <- NULL
-results_table1 <- results_late_all_spp[grep("mean_northing", results_late_all_spp$parameter),]
-results_table2 <- results_late_all_spp[grep("distance", results_late_all_spp$parameter),]
-results_table3 <- results_late_all_spp[grep("hab_sim", results_late_all_spp$parameter),]
-results_table4 <- results_late_all_spp[grep("(Intercept)", results_late_all_spp$parameter),]
-results_table5 <- rbind(results_table5, results_table4, results_table1, results_table2, results_table3)
-results_late_all_spp <- results_late_all_spp[!results_late_all_spp$parameter%in%results_table5$parameter,]
-
-## create year to the comparison (years 1985 and 2000)
-results_late_all_spp$year <- "2000/2012"
-## remove parameter column
-results_late_all_spp <- results_late_all_spp[-6]
-results_late_all_spp$comparison <- "Late short term"
-results_late_all_spp$trend <- "significant increase"
-
-## OVERALL COMPARISON ##
-overall_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_overall_wood)
-overall_model_null <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_overall_wood)
-## model comparison
-model_comp_overall <- anova(overall_model_null, overall_model, test="Chisq")
-## add comparison column
-model_comp_overall$comparison <- rep("Overall comparison")
-## create dataframe with results
-results_overall_all_spp <- data.frame(summary(overall_model)$coefficients[,1:5])
-names(results_overall_all_spp) <- c("Estimate", "SD", "df", "t","p_value")
-results_overall_all_spp$parameter <- paste(row.names(results_overall_all_spp))
-rownames(results_overall_all_spp) <- 1:nrow(results_overall_all_spp)
-
-## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-results_table5 <- NULL
-results_table1 <- results_overall_all_spp[grep("mean_northing", results_overall_all_spp$parameter),]
-results_table2 <- results_overall_all_spp[grep("distance", results_overall_all_spp$parameter),]
-results_table3 <- results_overall_all_spp[grep("hab_sim", results_overall_all_spp$parameter),]
-results_table4 <- results_overall_all_spp[grep("(Intercept)", results_overall_all_spp$parameter),]
-results_table5 <- rbind(results_table5, results_table4, results_table1, results_table2, results_table3)
-results_overall_all_spp <- results_overall_all_spp[!results_overall_all_spp$parameter%in%results_table5$parameter,]
-
-## create year to the comparison (years 1985 and 2000)
-results_overall_all_spp$year <- "1985/2012"
-## remove parameter column
-results_overall_all_spp <- results_overall_all_spp[-6]
-results_overall_all_spp$comparison <- "Long term"
-results_overall_all_spp$trend <- "significant increase"
-
-## save model comparison results for all species
-model_comp_all_spp_wood <- data.frame(rbind(results_early_all_spp, results_late_all_spp, results_overall_all_spp))
-write.csv(model_comp_all_spp_wood, file="../Results/Butterfly_results/model_comp_all_spp_woodland.csv", row.names=FALSE)
+# ##############################
+# ######## run models ##########
+# ############################## 
+# 
+# ## likelihood ratio test to test if year has a significant OVERALL effect ##
+# 
+# ## EARLY COMPARISON ##
+# early_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_early)
+# early_model_null <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_early)
+# ## model comparison
+# model_comp_early <- anova(early_model_null, early_model, test="Chisq")
+# ## add comparison column
+# model_comp_early$comparison <- rep("Early comparison")
+# ## create dataframe with results
+# results_early_all_spp <- data.frame(summary(early_model)$coefficients[,1:5])
+# names(results_early_all_spp) <- c("Estimate", "SD", "df", "t","p_value")
+# results_early_all_spp$parameter <- paste(row.names(results_early_all_spp))
+# rownames(results_early_all_spp) <- 1:nrow(results_early_all_spp)
+# 
+# ## take out 3 columns for each species: mean northing, distance and renk_hab_sim
+# results_table5 <- NULL
+# results_table1 <- results_early_all_spp[grep("mean_northing", results_early_all_spp$parameter),]
+# results_table2 <- results_early_all_spp[grep("distance", results_early_all_spp$parameter),]
+# results_table3 <- results_early_all_spp[grep("hab_sim", results_early_all_spp$parameter),]
+# results_table4 <- results_early_all_spp[grep("(Intercept)", results_early_all_spp$parameter),]
+# results_table5 <- rbind(results_table5, results_table4, results_table1, results_table2, results_table3)
+# results_early_all_spp <- results_early_all_spp[!results_early_all_spp$parameter%in%results_table5$parameter,]
+# 
+# ## create year to the comparison (years 1985 and 2000)
+# results_early_all_spp$year <- "1985/2000"
+# ## remove parameter column
+# results_early_all_spp <- results_early_all_spp[-6]
+# results_early_all_spp$comparison <- "Early short term"
+# results_early_all_spp$trend <- "significant decrease"
+# 
+# ## LATE COMPARISON ##
+# late_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_late)
+# late_model_null <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_late)
+# ## model comparison
+# model_comp_late <- anova(late_model_null, late_model, test="Chisq")
+# ## add comparison column
+# model_comp_late$comparison <- rep("Late comparison")
+# ## create dataframe with results
+# results_late_all_spp <- data.frame(summary(late_model)$coefficients[,1:5])
+# names(results_late_all_spp) <- c("Estimate", "SD", "df", "t","p_value")
+# results_late_all_spp$parameter <- paste(row.names(results_late_all_spp))
+# rownames(results_late_all_spp) <- 1:nrow(results_late_all_spp)
+# 
+# ## take out 3 columns for each species: mean northing, distance and renk_hab_sim
+# results_table5 <- NULL
+# results_table1 <- results_late_all_spp[grep("mean_northing", results_late_all_spp$parameter),]
+# results_table2 <- results_late_all_spp[grep("distance", results_late_all_spp$parameter),]
+# results_table3 <- results_late_all_spp[grep("hab_sim", results_late_all_spp$parameter),]
+# results_table4 <- results_late_all_spp[grep("(Intercept)", results_late_all_spp$parameter),]
+# results_table5 <- rbind(results_table5, results_table4, results_table1, results_table2, results_table3)
+# results_late_all_spp <- results_late_all_spp[!results_late_all_spp$parameter%in%results_table5$parameter,]
+# 
+# ## create year to the comparison (years 1985 and 2000)
+# results_late_all_spp$year <- "2000/2012"
+# ## remove parameter column
+# results_late_all_spp <- results_late_all_spp[-6]
+# results_late_all_spp$comparison <- "Late short term"
+# results_late_all_spp$trend <- "significant increase"
+# 
+# ## OVERALL COMPARISON ##
+# overall_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_overall)
+# overall_model_null <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_overall)
+# ## model comparison
+# model_comp_overall <- anova(overall_model_null, overall_model, test="Chisq")
+# ## add comparison column
+# model_comp_overall$comparison <- rep("Overall comparison")
+# ## create dataframe with results
+# results_overall_all_spp <- data.frame(summary(overall_model)$coefficients[,1:5])
+# names(results_overall_all_spp) <- c("Estimate", "SD", "df", "t","p_value")
+# results_overall_all_spp$parameter <- paste(row.names(results_overall_all_spp))
+# rownames(results_overall_all_spp) <- 1:nrow(results_overall_all_spp)
+# 
+# ## take out 3 columns for each species: mean northing, distance and renk_hab_sim
+# results_table5 <- NULL
+# results_table1 <- results_overall_all_spp[grep("mean_northing", results_overall_all_spp$parameter),]
+# results_table2 <- results_overall_all_spp[grep("distance", results_overall_all_spp$parameter),]
+# results_table3 <- results_overall_all_spp[grep("hab_sim", results_overall_all_spp$parameter),]
+# results_table4 <- results_overall_all_spp[grep("(Intercept)", results_overall_all_spp$parameter),]
+# results_table5 <- rbind(results_table5, results_table4, results_table1, results_table2, results_table3)
+# results_overall_all_spp <- results_overall_all_spp[!results_overall_all_spp$parameter%in%results_table5$parameter,]
+# 
+# ## create year to the comparison (years 1985 and 2000)
+# results_overall_all_spp$year <- "1985/2012"
+# ## remove parameter column
+# results_overall_all_spp <- results_overall_all_spp[-6]
+# results_overall_all_spp$comparison <- "Long term"
+# results_overall_all_spp$trend <- "significant increase"
+# 
+# ## save model comparison results for all species
+# model_comp_all_spp <- data.frame(rbind(results_early_all_spp, results_late_all_spp, results_overall_all_spp))
+# write.csv(model_comp_all_spp, file="../Results/Butterfly_results/model_comp_all_spp.csv", row.names=FALSE)
+# 
+# #### save log likelihood test results for each comparison for all species #####
+# ratio_test_all_spp <- data.frame(rbind(model_comp_early, model_comp_late, model_comp_overall))
+# ratio_test_all_spp <- ratio_test_all_spp[-c(1,3,5),]
+# rownames(ratio_test_all_spp) <- 1:nrow(ratio_test_all_spp)
+# 
+# write.csv(ratio_test_all_spp, file="../Results/Butterfly_results/ratio_test_all_spp.csv", row.names=FALSE)
+# #### results = very significant for all 3 comparisons #####
+# 
+# ##################################################################################################
+# ####################### SAME AS ABOVE BUT FOR WOODLAND SPECIES ONLY ##############################
+# ##################################################################################################
+# 
+# ### create new pair_attr files with woodland species only
+# pair_attr_early_wood <- pair_attr_early[pair_attr_early$HABITAT=="Woodland",]
+# pair_attr_early_wood <- droplevels(pair_attr_early_wood)
+# 
+# pair_attr_late_wood <- pair_attr_late[pair_attr_late$HABITAT=="Woodland",]
+# pair_attr_late_wood <- droplevels(pair_attr_late_wood)
+# 
+# pair_attr_overall_wood <- pair_attr_overall[pair_attr_overall$HABITAT=="Woodland",]
+# pair_attr_overall_wood <- droplevels(pair_attr_overall_wood)
+# 
+# ## EARLY COMPARISON ##
+# early_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_early_wood)
+# early_model_null <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_early_wood)
+# ## model comparison
+# model_comp_early <- anova(early_model_null, early_model, test="Chisq")
+# ## add comparison column
+# model_comp_early$comparison <- rep("Early comparison")
+# ## create dataframe with results
+# results_early_all_spp <- data.frame(summary(early_model)$coefficients[,1:5])
+# names(results_early_all_spp) <- c("Estimate", "SD", "df", "t","p_value")
+# results_early_all_spp$parameter <- paste(row.names(results_early_all_spp))
+# rownames(results_early_all_spp) <- 1:nrow(results_early_all_spp)
+# 
+# ## take out 3 columns for each species: mean northing, distance and renk_hab_sim
+# results_table5 <- NULL
+# results_table1 <- results_early_all_spp[grep("mean_northing", results_early_all_spp$parameter),]
+# results_table2 <- results_early_all_spp[grep("distance", results_early_all_spp$parameter),]
+# results_table3 <- results_early_all_spp[grep("hab_sim", results_early_all_spp$parameter),]
+# results_table4 <- results_early_all_spp[grep("(Intercept)", results_early_all_spp$parameter),]
+# results_table5 <- rbind(results_table5, results_table4, results_table1, results_table2, results_table3)
+# results_early_all_spp <- results_early_all_spp[!results_early_all_spp$parameter%in%results_table5$parameter,]
+# 
+# ## create year to the comparison (years 1985 and 2000)
+# results_early_all_spp$year <- "1985/2000"
+# ## remove parameter column
+# results_early_all_spp <- results_early_all_spp[-6]
+# results_early_all_spp$comparison <- "Early short term"
+# results_early_all_spp$trend <- "significant decrease"
+# 
+# ## LATE COMPARISON ##
+# late_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_late_wood)
+# late_model_null <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_late_wood)
+# ## model comparison
+# model_comp_late <- anova(late_model_null, late_model, test="Chisq")
+# ## add comparison column
+# model_comp_late$comparison <- rep("Late comparison")
+# ## create dataframe with results
+# results_late_all_spp <- data.frame(summary(late_model)$coefficients[,1:5])
+# names(results_late_all_spp) <- c("Estimate", "SD", "df", "t","p_value")
+# results_late_all_spp$parameter <- paste(row.names(results_late_all_spp))
+# rownames(results_late_all_spp) <- 1:nrow(results_late_all_spp)
+# 
+# ## take out 3 columns for each species: mean northing, distance and renk_hab_sim
+# results_table5 <- NULL
+# results_table1 <- results_late_all_spp[grep("mean_northing", results_late_all_spp$parameter),]
+# results_table2 <- results_late_all_spp[grep("distance", results_late_all_spp$parameter),]
+# results_table3 <- results_late_all_spp[grep("hab_sim", results_late_all_spp$parameter),]
+# results_table4 <- results_late_all_spp[grep("(Intercept)", results_late_all_spp$parameter),]
+# results_table5 <- rbind(results_table5, results_table4, results_table1, results_table2, results_table3)
+# results_late_all_spp <- results_late_all_spp[!results_late_all_spp$parameter%in%results_table5$parameter,]
+# 
+# ## create year to the comparison (years 1985 and 2000)
+# results_late_all_spp$year <- "2000/2012"
+# ## remove parameter column
+# results_late_all_spp <- results_late_all_spp[-6]
+# results_late_all_spp$comparison <- "Late short term"
+# results_late_all_spp$trend <- "significant increase"
+# 
+# ## OVERALL COMPARISON ##
+# overall_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_overall_wood)
+# overall_model_null <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_overall_wood)
+# ## model comparison
+# model_comp_overall <- anova(overall_model_null, overall_model, test="Chisq")
+# ## add comparison column
+# model_comp_overall$comparison <- rep("Overall comparison")
+# ## create dataframe with results
+# results_overall_all_spp <- data.frame(summary(overall_model)$coefficients[,1:5])
+# names(results_overall_all_spp) <- c("Estimate", "SD", "df", "t","p_value")
+# results_overall_all_spp$parameter <- paste(row.names(results_overall_all_spp))
+# rownames(results_overall_all_spp) <- 1:nrow(results_overall_all_spp)
+# 
+# ## take out 3 columns for each species: mean northing, distance and renk_hab_sim
+# results_table5 <- NULL
+# results_table1 <- results_overall_all_spp[grep("mean_northing", results_overall_all_spp$parameter),]
+# results_table2 <- results_overall_all_spp[grep("distance", results_overall_all_spp$parameter),]
+# results_table3 <- results_overall_all_spp[grep("hab_sim", results_overall_all_spp$parameter),]
+# results_table4 <- results_overall_all_spp[grep("(Intercept)", results_overall_all_spp$parameter),]
+# results_table5 <- rbind(results_table5, results_table4, results_table1, results_table2, results_table3)
+# results_overall_all_spp <- results_overall_all_spp[!results_overall_all_spp$parameter%in%results_table5$parameter,]
+# 
+# ## create year to the comparison (years 1985 and 2000)
+# results_overall_all_spp$year <- "1985/2012"
+# ## remove parameter column
+# results_overall_all_spp <- results_overall_all_spp[-6]
+# results_overall_all_spp$comparison <- "Long term"
+# results_overall_all_spp$trend <- "significant increase"
+# 
+# ## save model comparison results for all species
+# model_comp_all_spp_wood <- data.frame(rbind(results_early_all_spp, results_late_all_spp, results_overall_all_spp))
+# write.csv(model_comp_all_spp_wood, file="../Results/Butterfly_results/model_comp_all_spp_woodland.csv", row.names=FALSE)
 
 ##################################
 ## EARLY MODEL FOR EACH SPECIES ##
@@ -334,8 +334,8 @@ for (i in spp.list.early){
 
 ## Add REML=FALSE because you should use ML (maximum likelihood) when comparing models that differ in their fixed effects
 ## if else function removes 1 species when nrow of 1980 is set at <20:
-## species 119, 14, 18 and 48
-## 29 species 
+## species 110, 116, 119, 17, 18, 23, 27 and 48
+## 24 species 
 
 names(results_table_early) <- c("Estimate", "SD", "df", "t","p_value", "species")
 results_table_early$parameter <- paste(row.names(results_table_early))
@@ -358,10 +358,10 @@ results_table_early <- results_table_early[-7]
 ## classify each species as either no change (insignificant p value), decreasing (negative estimte), or increasing (positive estimate)
 results_table_early <- results_table_early %>% group_by(species) %>% mutate(change = ifelse(p_value>0.05, "No change", ifelse(p_value<0.05 & Estimate<0, "Decrease", "Increase")))
 
-nrow(results_table_early[results_table_early$change=="No change",]) ## 10 species unchanged
-nrow(results_table_early[results_table_early$change=="Decrease",]) ## 18 species decreasing
-nrow(results_table_early[results_table_early$change=="Increase",]) ## 1 species increasing
-## Plus 4 species not included in the model
+nrow(results_table_early[results_table_early$change=="No change",]) ## 5 species unchanged
+nrow(results_table_early[results_table_early$change=="Decrease",]) ## 17 species decreasing
+nrow(results_table_early[results_table_early$change=="Increase",]) ## 2 species increasing
+## Plus 8 species not included in the model
 
 ## make final table
 results_final_early <- results_table_early[,c(1,5,6,8)]
@@ -383,7 +383,10 @@ for (i in spp.list.late){
     print(paste("skip species",i))
     next 
     
-  } else {
+  } else if(length(unique(p_attr$pair.id))==nrow(p_attr)) {
+    print(paste("skip species",i))
+    next
+  }
   
   late_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), REML=FALSE, data = pair_attr_late[pair_attr_late$spp==i,])
   summary(late_model)
@@ -393,12 +396,11 @@ for (i in spp.list.late){
   results_table_temp <- data.frame(summary(late_model)$coefficients[,1:5],i)
   results_table_late <-rbind(results_table_late,results_table_temp)
 
-  }
-
 }
+
 ## if else function removes 2 species when nrow of 2007 is set at <20:
-## species 14 (pearl-bordered fritillary) skipped
-## 32 species
+## species 18 (pearl-bordered fritillary) skipped
+## 31 species
 
 names(results_table_late) <- c("Estimate", "SD", "df", "t","p_value", "species")
 results_table_late$parameter <- paste(row.names(results_table_late))
@@ -421,9 +423,9 @@ results_table_late <- results_table_late[-7]
 ## classify each species as either no change (insignificant p value), decreasing (negative estimte), or increasing (positive estimate)
 results_table_late <- results_table_late %>% group_by(species) %>% mutate(change = ifelse(p_value>0.05, "No change", ifelse(p_value<0.05 & Estimate<0, "Decrease", "Increase")))
 
-nrow(results_table_late[results_table_late$change=="No change",]) ## 6 species unchanged
+nrow(results_table_late[results_table_late$change=="No change",]) ## 4 species unchanged
 nrow(results_table_late[results_table_late$change=="Decrease",]) ## 3 species decreasing
-nrow(results_table_late[results_table_late$change=="Increase",]) ## 23 species increasing
+nrow(results_table_late[results_table_late$change=="Increase",]) ## 24 species increasing
 ## 1 species not included in the model
 
 results_final_late <- results_table_late[,c(1,5,6,8)]
@@ -469,8 +471,8 @@ for (i in spp.list.overall){
   }
 }
 ## if else function removes 6 species when nrow of 1980 and 2007 is set at <20:
-## spp. 4, 14, 18, 48, 94 and 119 skipped
-## 27 species left
+## spp. 110, 116, 119, 17, 18, 23, 27, 4, 48, 64 and 94 skipped
+## 21 species left
 
 names(results_table_overall) <- c("Estimate", "SD", "df", "t","p_value", "species")
 results_table_overall$parameter <- paste(row.names(results_table_overall))
@@ -493,17 +495,17 @@ results_table_overall <- results_table_overall[-7]
 ## classify each species as either no change (insignificant p value), decreasing (negative estimte), or increasing (positive estimate)
 results_table_overall <- results_table_overall %>% group_by(species) %>% mutate(change = ifelse(p_value>0.05, "No change", ifelse(p_value<0.05 & Estimate<0, "Decrease", "Increase")))
 
-nrow(results_table_overall[results_table_overall$change=="No change",]) ## 5 species unchanged
-nrow(results_table_overall[results_table_overall$change=="Decrease",]) ## 9 species decreasing
-nrow(results_table_overall[results_table_overall$change=="Increase",]) ## 13 species increasing
-## 6 species which the model didn't run (4, 14, 18, 48, 94 and 119)
+nrow(results_table_overall[results_table_overall$change=="No change",]) ## 6 species unchanged
+nrow(results_table_overall[results_table_overall$change=="Decrease",]) ## 6 species decreasing
+nrow(results_table_overall[results_table_overall$change=="Increase",]) ## 9 species increasing
+## 11 species which the model didn't run (4, 14, 18, 48, 94 and 119)
 
 results_final_overall <- results_table_overall[,c(1,5,6,8)]
 
 #### save comparison model results for each comparison for each species #####
-write.csv(results_final_early, file="../Results/Butterfly_results/results_comp_early.csv", row.names=FALSE)
-write.csv(results_final_late, file="../Results/Butterfly_results/results_comp_late.csv", row.names=FALSE)
-write.csv(results_final_overall, file="../Results/Butterfly_results/results_comp_overall.csv", row.names=FALSE)
+write.csv(results_final_early, file="../Results/Butterfly_results/results_comp_early_no_zeros2.csv", row.names=FALSE)
+write.csv(results_final_late, file="../Results/Butterfly_results/results_comp_late_no_zeros2.csv", row.names=FALSE)
+write.csv(results_final_overall, file="../Results/Butterfly_results/results_comp_overall_no_zeros2.csv", row.names=FALSE)
 
 results_final_early <- read.csv("../Results/Butterfly_results/results_comp_early.csv", header=TRUE)
 results_final_late <- read.csv("../Results/Butterfly_results/results_comp_late.csv", header=TRUE)
@@ -515,30 +517,30 @@ results_final_late <- results_final_late[,-c(1:2)]
 results_final_overall <- results_final_overall[,-c(1:2)]
 
 ## create early comparison data frame
-results_final_early <- data.frame(comparison="1985-2000", change=unique(results_final_early$change), no_species=c(18,10,1), total_species=29)
-# nrow(results_table_early[results_table_early$change=="No change",]) ## 10 species unchanged
-# nrow(results_table_early[results_table_early$change=="Decrease",]) ## 18 species decreasing
-# nrow(results_table_early[results_table_early$change=="Increase",]) ## 1 species increasing
+results_final_early <- data.frame(comparison="1985-2000", change=unique(results_final_early$change), no_species=c(17,5,2), total_species=24)
+# nrow(results_table_early[results_table_early$change=="No change",]) ## 5 species unchanged
+# nrow(results_table_early[results_table_early$change=="Decrease",]) ## 17 species decreasing
+# nrow(results_table_early[results_table_early$change=="Increase",]) ## 2 species increasing
 results_final_early$percentage <- (results_final_early$no_species / results_final_early$total_species)*100
 
 ## create late comparison data frame
-results_final_late <- data.frame(comparison="2000-2012", change=unique(results_final_late$change), no_species=c(23,6,3), total_species=32)
-# nrow(results_table_late[results_table_late$change=="No change",]) ## 6 species unchanged
+results_final_late <- data.frame(comparison="2000-2012", change=unique(results_final_late$change), no_species=c(24,4,3), total_species=31)
+# nrow(results_table_late[results_table_late$change=="No change",]) ## 4 species unchanged
 # nrow(results_table_late[results_table_late$change=="Decrease",]) ## 3 species decreasing
-# nrow(results_table_late[results_table_late$change=="Increase",]) ## 23 species increasing
+# nrow(results_table_late[results_table_late$change=="Increase",]) ## 24 species increasing
 results_final_late$percentage <- (results_final_late$no_species / results_final_late$total_species)*100
 
 ## create overall comparison data frame
-results_final_overall <- data.frame(comparison="1985-2012", change=unique(results_final_overall$change), no_species=c(9,13,5), total_species=27)
-# nrow(results_table_overall[results_table_overall$change=="No change",]) ## 5 species unchanged
-# nrow(results_table_overall[results_table_overall$change=="Decrease",]) ## 9 species decreasing
-# nrow(results_table_overall[results_table_overall$change=="Increase",]) ## 13 species increasing
+results_final_overall <- data.frame(comparison="1985-2012", change=unique(results_final_overall$change), no_species=c(9,6,6), total_species=21)
+# nrow(results_table_overall[results_table_overall$change=="No change",]) ## 6 species unchanged
+# nrow(results_table_overall[results_table_overall$change=="Decrease",]) ## 6 species decreasing
+# nrow(results_table_overall[results_table_overall$change=="Increase",]) ## 9 species increasing
 results_final_overall$percentage <- (results_final_overall$no_species / results_final_overall$total_species)*100
 
 ## rbind all results together 
 model_comp_results <- rbind(results_final_early, results_final_late, results_final_overall)
 ## save file
-write.csv(model_comp_results, file="../Results/Butterfly_results/model_comp_percentages.csv", row.names=FALSE)
+write.csv(model_comp_results, file="../Results/Butterfly_results/model_comp_percentages_no_zeros2.csv", row.names=FALSE)
 
 ## now produce graph
 
@@ -550,7 +552,7 @@ model_comp_results$change <- factor(model_comp_results$change, levels=c("Increas
 levels(model_comp_results$change)
 
 ## pretty graph
-png("../Graphs/Model_comps/Model_comp_results_all_spp.png", height = 100, width = 120, units = "mm", res = 300)
+png("../Graphs/Model_comps/Model_comp_results_all_spp_no_zeros2.png", height = 100, width = 120, units = "mm", res = 300)
 ggplot(data=model_comp_results, aes(x=comparison, y=percentage, fill=change)) +
   geom_bar(stat="identity", width=0.4) +
   labs(y="Percentage of species", x="", fill="") +
@@ -566,7 +568,7 @@ dev.off()
 ## same plot but without overall change
 ## remove overall change
 model_comp_results <- model_comp_results[!model_comp_results$comparison == "1985-2012",]
-png("../Graphs/Model_comps/Model_comp_results_all_spp3.png", height = 100, width = 120, units = "mm", res = 300)
+png("../Graphs/Model_comps/Model_comp_results_all_spp3_no_zeros2.png", height = 100, width = 120, units = "mm", res = 300)
 ggplot(data=model_comp_results, aes(x=comparison, y=percentage, fill=change)) +
   geom_bar(stat="identity", width=0.4) +
   labs(y="Percentage of species", x="", fill="") +
@@ -688,71 +690,71 @@ ggplot(data=model_comp_results_hs, aes(x=comparison, y=percentage, fill=change))
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
 dev.off()
 
-##########################################################
-##### Make the same graph for woodland species only ######
-##########################################################
-
-## merge the results with habitat data
-habitat_data <- read.csv("../Data/UKBMS_data/UKBMS_UKspecieslist.csv", header = TRUE) # habitat data for each species
-results_table_early <- merge(results_table_early, habitat_data, by.x="species", by.y="BMSCODE")
-results_table_late <- merge(results_table_late, habitat_data, by.x="species", by.y="BMSCODE")
-results_table_overall <- merge(results_table_overall, habitat_data, by.x="species", by.y="BMSCODE")
-
-## subset woodland species only
-results_table_early <- results_table_early[results_table_early$HABITAT=="Woodland",] ## 7 out of 9
-results_table_late <- results_table_late[results_table_late$HABITAT=="Woodland",] ## 7 out of 9
-results_table_overall <- results_table_overall[results_table_overall$HABITAT=="Woodland",] ## 5 out of 9
-
-## leave 4 columns: species code, change, common name and strategy
-results_table_early <- results_table_early[,c(1,4:5,8)]
-results_table_late <- results_table_late[,c(1,4:5,8)]
-results_table_overall <- results_table_overall[,c(1,4:5,8)]
-
-## create early comparison data frame
-results_final_early <- data.frame(comparison="Early short term", change=unique(results_table_early$change), no_species=c(1,4,2), total_species=7)
-nrow(results_table_early[results_table_early$change=="No change",]) ## 4 species unchanged
-nrow(results_table_early[results_table_early$change=="Decrease",]) ## 2 species decreasing
-nrow(results_table_early[results_table_early$change=="Increase",]) ## 1 species increasing
-results_final_early$percentage <- (results_final_early$no_species / results_final_early$total_species)*100
-
-## create late comparison data frame
-results_final_late <- data.frame(comparison="Late short term", change=unique(results_table_late$change), no_species=c(5,1,1), total_species=7)
-nrow(results_table_late[results_table_late$change=="No change",]) ## 1 species unchanged
-nrow(results_table_late[results_table_late$change=="Decrease",]) ## 1 species decreasing
-nrow(results_table_late[results_table_late$change=="Increase",]) ## 5 species increasing
-results_final_late$percentage <- (results_final_late$no_species / results_final_late$total_species)*100
-
-## create overall comparison data frame
-results_final_overall <- data.frame(comparison="Long term", change=unique(results_table_overall$change), no_species=c(2,1,2), total_species=5)
-nrow(results_table_overall[results_table_overall$change=="No change",]) ## 2 species unchanged
-nrow(results_table_overall[results_table_overall$change=="Decrease",]) ## 1 species decreasing
-nrow(results_table_overall[results_table_overall$change=="Increase",]) ## 2 species increasing
-results_final_overall$percentage <- (results_final_overall$no_species / results_final_overall$total_species)*100
-
-## rbind all results together 
-model_comp_results_woodland <- rbind(results_final_early, results_final_late, results_final_overall)
-## save file
-write.csv(model_comp_results_woodland, file="../Results/Butterfly_results/model_comp_percentages_woodland.csv", row.names=FALSE)
-
-## now produce graph
-
-library(ggplot2)
-
-## change levels of change so they go in correct order
-levels(model_comp_results_woodland$change)
-model_comp_results_woodland$change <- factor(model_comp_results_woodland$change, levels=c("Increase", "No change", "Decrease"))
-levels(model_comp_results_woodland$change)
-
-## pretty graph
-png("../Graphs/Model_comps/Model_comp_results_woodland.png", height = 100, width = 120, units = "mm", res = 300)
-ggplot(data=model_comp_results_woodland, aes(x=comparison, y=percentage, fill=change)) +
-  geom_bar(stat="identity", width=0.4) +
-  labs(y="Percentage of species", x="", fill="") +
-  scale_fill_manual(values = c("#339900", "#999999", "#990000")) +
-  theme_bw() +
-  theme(axis.text.x=element_text(colour = "black")) +
-  theme(axis.text.y=element_text(colour = "black")) +
-  scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
-dev.off()
+# ##########################################################
+# ##### Make the same graph for woodland species only ######
+# ##########################################################
+# 
+# ## merge the results with habitat data
+# habitat_data <- read.csv("../Data/UKBMS_data/UKBMS_UKspecieslist.csv", header = TRUE) # habitat data for each species
+# results_table_early <- merge(results_table_early, habitat_data, by.x="species", by.y="BMSCODE")
+# results_table_late <- merge(results_table_late, habitat_data, by.x="species", by.y="BMSCODE")
+# results_table_overall <- merge(results_table_overall, habitat_data, by.x="species", by.y="BMSCODE")
+# 
+# ## subset woodland species only
+# results_table_early <- results_table_early[results_table_early$HABITAT=="Woodland",] ## 7 out of 9
+# results_table_late <- results_table_late[results_table_late$HABITAT=="Woodland",] ## 7 out of 9
+# results_table_overall <- results_table_overall[results_table_overall$HABITAT=="Woodland",] ## 5 out of 9
+# 
+# ## leave 4 columns: species code, change, common name and strategy
+# results_table_early <- results_table_early[,c(1,4:5,8)]
+# results_table_late <- results_table_late[,c(1,4:5,8)]
+# results_table_overall <- results_table_overall[,c(1,4:5,8)]
+# 
+# ## create early comparison data frame
+# results_final_early <- data.frame(comparison="Early short term", change=unique(results_table_early$change), no_species=c(1,4,2), total_species=7)
+# nrow(results_table_early[results_table_early$change=="No change",]) ## 4 species unchanged
+# nrow(results_table_early[results_table_early$change=="Decrease",]) ## 2 species decreasing
+# nrow(results_table_early[results_table_early$change=="Increase",]) ## 1 species increasing
+# results_final_early$percentage <- (results_final_early$no_species / results_final_early$total_species)*100
+# 
+# ## create late comparison data frame
+# results_final_late <- data.frame(comparison="Late short term", change=unique(results_table_late$change), no_species=c(5,1,1), total_species=7)
+# nrow(results_table_late[results_table_late$change=="No change",]) ## 1 species unchanged
+# nrow(results_table_late[results_table_late$change=="Decrease",]) ## 1 species decreasing
+# nrow(results_table_late[results_table_late$change=="Increase",]) ## 5 species increasing
+# results_final_late$percentage <- (results_final_late$no_species / results_final_late$total_species)*100
+# 
+# ## create overall comparison data frame
+# results_final_overall <- data.frame(comparison="Long term", change=unique(results_table_overall$change), no_species=c(2,1,2), total_species=5)
+# nrow(results_table_overall[results_table_overall$change=="No change",]) ## 2 species unchanged
+# nrow(results_table_overall[results_table_overall$change=="Decrease",]) ## 1 species decreasing
+# nrow(results_table_overall[results_table_overall$change=="Increase",]) ## 2 species increasing
+# results_final_overall$percentage <- (results_final_overall$no_species / results_final_overall$total_species)*100
+# 
+# ## rbind all results together 
+# model_comp_results_woodland <- rbind(results_final_early, results_final_late, results_final_overall)
+# ## save file
+# write.csv(model_comp_results_woodland, file="../Results/Butterfly_results/model_comp_percentages_woodland.csv", row.names=FALSE)
+# 
+# ## now produce graph
+# 
+# library(ggplot2)
+# 
+# ## change levels of change so they go in correct order
+# levels(model_comp_results_woodland$change)
+# model_comp_results_woodland$change <- factor(model_comp_results_woodland$change, levels=c("Increase", "No change", "Decrease"))
+# levels(model_comp_results_woodland$change)
+# 
+# ## pretty graph
+# png("../Graphs/Model_comps/Model_comp_results_woodland.png", height = 100, width = 120, units = "mm", res = 300)
+# ggplot(data=model_comp_results_woodland, aes(x=comparison, y=percentage, fill=change)) +
+#   geom_bar(stat="identity", width=0.4) +
+#   labs(y="Percentage of species", x="", fill="") +
+#   scale_fill_manual(values = c("#339900", "#999999", "#990000")) +
+#   theme_bw() +
+#   theme(axis.text.x=element_text(colour = "black")) +
+#   theme(axis.text.y=element_text(colour = "black")) +
+#   scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
+#   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
+# dev.off()

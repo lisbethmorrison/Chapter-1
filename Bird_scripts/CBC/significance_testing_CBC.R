@@ -14,7 +14,7 @@ options(scipen=999)
 
 
 ## load data
-pair_attr <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE)
+pair_attr <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2.csv", header=TRUE)
 
 ### just want to compare 1985 with 1996 
 ## to see if there has been an increase/decrease/no change in connectivity
@@ -112,7 +112,7 @@ for (i in spp.list){
   
 
 ## Add REML=FALSE because you should use ML (maximum likelihood) when comparing models that differ in their fixed effects
-## don't need the ifelse function - all 31 species run
+## 4 species skipped (347, 377, 450, 456)
 
 names(results_table) <- c("Estimate", "SD", "df", "t","p_value", "species")
 results_table$parameter <- paste(row.names(results_table))
@@ -133,20 +133,20 @@ results_table$parameter <- 1996
 ## classify each species as either no change (insignificant p value), decreasing (negative estimte), or increasing (positive estimate)
 results_table <- results_table %>% group_by(species) %>% mutate(change = ifelse(p_value>0.05, "No change", ifelse(p_value<0.05 & Estimate<0, "Decrease", "Increase")))
 
-nrow(results_table[results_table$change=="No change",]) ## 23 species unchanged
-nrow(results_table[results_table$change=="Decrease",]) ## 1 species decreasing
-nrow(results_table[results_table$change=="Increase",]) ## 1 species increasing
+nrow(results_table[results_table$change=="No change",]) ## 19 species unchanged
+nrow(results_table[results_table$change=="Decrease",]) ## 2 species decreasing
+nrow(results_table[results_table$change=="Increase",]) ## 4 species increasing
 
 ## make final table
-results_final <- results_table[,c(1,5,6,8)] ## 25 species analysed (3 skipped)
+results_final <- results_table[,c(1,5,6,8)] ## 25 species analysed 
 
 ## save results
-write.csv(results_final, file="../Results/Bird_results/model_comp_results_CBC.csv", row.names=FALSE)
+write.csv(results_final, file="../Results/Bird_results/model_comp_results_CBC_no_zeros2.csv", row.names=FALSE)
 
-results_final_overall <- data.frame(change=unique(results_final$change), no_species=c(1,23,1), total_species=25)
+results_final_overall <- data.frame(change=unique(results_final$change), no_species=c(19,4,2), total_species=25)
 results_final_overall$percentage <- (results_final_overall$no_species / results_final_overall$total_species)*100
 
 ## save file
-write.csv(results_final_overall, file="../Results/Bird_results/model_comp_percentages_CBC.csv", row.names=FALSE)
+write.csv(results_final_overall, file="../Results/Bird_results/model_comp_percentages_CBC_no_zeros2.csv", row.names=FALSE)
 
 
