@@ -12,12 +12,14 @@ rm(list=ls()) # clear R
 
 library(lme4)
 library(lmerTest)
+options(scipen=999)
 
 ################################
 ## CREATE PAIR ATTRIBUTE DATA ##
 ################################
 ## add data ##
-final_pair_data <- read.csv("../Data/Bird_sync_data/final_pair_data_all_spp_CBC.csv", header = TRUE) # pair attr synchrony data
+#final_pair_data <- read.csv("../Data/Bird_sync_data/final_pair_data_all_spp_CBC_zeros.csv", header = TRUE) # pair attr synchrony data
+final_pair_data <- read.csv("../Data/Bird_sync_data/final_pair_data_all_spp_CBC_no_zeros2.csv", header = TRUE) # pair attr synchrony data
 site_data <- read.csv("../Data/BTO_data/pair_attr_mean_north_dist_hab_sim_CBC.csv", header = TRUE) # pair attr site data
 
 ## merge to site data for each species ##
@@ -51,22 +53,21 @@ pair_attr$end.year <- as.factor(pair_attr$end.year)
 pair_attr$mid.year <- as.factor(pair_attr$mid.year)
 pair_attr$hab_sim <- as.factor(pair_attr$hab_sim)
 
-# not needed anymore - these species are removed in script 3
-# pair_attr <- subset(pair_attr, spp!= "323") # all sites have hab_sim = 1, spp = lesser spotted woodpecker
-# pair_attr <- subset(pair_attr, spp!= "370") # all sites have hab_sim = 1, spp = nightingale 
+pair_attr <- subset(pair_attr, spp!= "323") # all sites have hab_sim = 1, spp = lesser spotted woodpecker
+pair_attr <- subset(pair_attr, spp!= "370") # all sites have hab_sim = 1, spp = nightingale 
 
-length(unique(pair_attr$spp)) # 28 species
+length(unique(pair_attr$spp)) # 29 species (no zeros), 31 species (zeros)
 
 ## merge in trait data (specialism and dispersal distance)
 specialism <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", header=TRUE)
 pair_attr <- merge(pair_attr, specialism, by.x="spp", by.y="species_code")
-length(unique(pair_attr$spp)) ## 31 species 
+length(unique(pair_attr$spp)) ## 28 species (no zeros), 31 species (zeros)
 
-write.csv(pair_attr, file = "../Data/Bird_sync_data/pair_attr_CBC.csv", row.names = FALSE) # save pair_attr file (31 spp)
+write.csv(pair_attr, file = "../Data/Bird_sync_data/pair_attr_CBC_no_zeros2.csv", row.names = FALSE) # save pair_attr file (31 spp)
 
 
 ########## READ IN PAIR ATTRIBUTE FILE ################
-pair_attr <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE)
+pair_attr <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2.csv", header=TRUE)
 
 pair_attr$pair.id <- as.character(pair_attr$pair.id)
 pair_attr$spp <- as.factor(pair_attr$spp)
@@ -91,10 +92,10 @@ rownames(fixed_results) <- 1:nrow(fixed_results)
 ## remove mid.year rows
 fixed_results <- fixed_results[-c(1,5:15),]
 ## save results
-write.csv(fixed_results, file = "../Results/Model_outputs/fixed_effect_results_cbc.csv", row.names=FALSE)
+write.csv(fixed_results, file = "../Results/Model_outputs/fixed_effect_results_cbc_no_zeros2.csv", row.names=FALSE)
 
 ## model without intercept
-all_spp_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp)-1, data = pair_attr)
+all_spp_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id)-1, data = pair_attr)
 summary(all_spp_model) 
 anova(all_spp_model)
 
@@ -128,7 +129,7 @@ results_table_all_spp$rescaled_sd <- results_table_all_spp$SD*(100/results_table
 results_table_all_spp$rescaled_ci <- results_table_all_spp$rescaled_sd*1.96
 
 ## save final results table ##
-write.csv(results_table_all_spp, file = "../Results/Bird_results/results_final_all_spp_CBC.csv", row.names=FALSE)
+write.csv(results_table_all_spp, file = "../Results/Bird_results/results_final_all_spp_CBC_no_zeros2.csv", row.names=FALSE)
 
 ## same model but without covariates
 all_spp_model2 <- lmer(lag0 ~ mid.year + (1|pair.id) + (1|spp), data = pair_attr)
@@ -190,9 +191,9 @@ for (i in unique(results_table_sp$sp)){
 ### merge with species common name info ###
 species_names <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", header=TRUE)
 results_final_sp <- merge(results_final_sp, species_names, by.x="sp", by.y="species_code")
-
+length(unique(results_final_sp$sp)) # 29 species
 ## save species final results table ##
-write.csv(results_final_sp, file = "../Results/Bird_results/results_final_spp_CBC.csv", row.names=FALSE)
+write.csv(results_final_sp, file = "../Results/Bird_results/results_final_spp_CBC_no_zeros2.csv", row.names=FALSE)
 
 #########################################################
 ### run the synchrony model for generalist/specialist ###
@@ -245,5 +246,5 @@ for (k in unique(results_table_spec$Strategy)){
 }
 
 ## save species specialism final results
-write.csv(results_final_spec, file = "../Results/Bird_results/results_final_spec_CBC.csv", row.names=FALSE)
+write.csv(results_final_spec, file = "../Results/Bird_results/results_final_spec_CBC_no_zeros2.csv", row.names=FALSE)
 
