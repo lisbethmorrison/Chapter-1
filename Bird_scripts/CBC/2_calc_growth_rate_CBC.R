@@ -14,7 +14,7 @@ rm(list=ls()) # clear R
 woodland_cbc <- read.csv("../Data/Bird_sync_data/cbc_woodland_birds.csv", header=TRUE) ## contains ALL 38 woodland species 
 
 ### delete unnessecary columns ###
-woodland_cbc <- subset(woodland_cbc, select = -c(Gridref, hab, Hab1, malt))
+#woodland_cbc <- subset(woodland_cbc, select = -c(Gridref, hab, Hab1, malt))
 
 woodland_cbc$Count <- woodland_cbc$Count+1 # add 1 to each annual count to avoid problem of logging zeros 
 ## remove years <1979 and >2000 (leave years 1979 to allow a GR calculation for 1980)
@@ -54,8 +54,8 @@ for (g in spp_list){ # loop for each species #
       # convert to growth rate
       if(length(temp.table[temp.table$Year==i,"Count"]) + length(temp.table[temp.table$Year==(i-1),"Count"]) < 2){		# if there is less than two years of data
         gr <- c(gr,NA) # gr gets NA
-      # } else if (temp.table[temp.table$Year==(i-1), "Count"] == 1){ ## if previous year == 1 (i.e. no count made), gr = NA to avoid synchrony being calculated on string of zeros
-      #   gr <- c(gr, NA) # gr gets NA
+      } else if (temp.table[temp.table$Year==(i-1), "Count"] == 1){ ## if previous year == 1 (i.e. no count made), gr = NA to avoid synchrony being calculated on string of zeros
+        gr <- c(gr, NA) # gr gets NA
       } else {
         gr <- c(gr, (log(temp.table[temp.table$Year==i,"Count"]) - log(temp.table[temp.table$Year==(i-1),"Count"]))) # else gr gets the log growth rate calculation
       }
@@ -86,32 +86,29 @@ for (g in spp_list){ # loop for each species #
   
 } # end g in species
 
-## 38 species and 271 sites
+## 38 species and 277 sites
 
-# ## now remove sites which have less than 7 years of growth rate data (this is a later filter anyway - putting it here reduces time on synchrony script)
-# ## remove NAs for now
-# final_data2 <- subset(final_data, !is.na(gr))
-# final_data3 <- final_data2 %>% group_by(site, name) %>% summarise(length(gr))
-# final_data3 <- final_data3[final_data3$`length(gr)`>=7,] ## leave site and species combinations which have at least 7 years of data
-# length(unique(final_data3$site)) ## 111 sites
-# ## remove length(gr) column
-# final_data3$`length(gr)` <- NULL
-# ## now merge final_data3 with final_data so sites left are those with at least 7 years of data 
-# final_data <- merge(final_data, final_data3, by=c("site", "name"))
-# length(unique(final_data_test$site)) ## 111
+## now remove sites which have less than 7 years of growth rate data (this is a later filter anyway - putting it here reduces time on synchrony script)
+## remove NAs for now
+final_data2 <- subset(final_data, !is.na(gr))
+final_data3 <- final_data2 %>% group_by(site, name) %>% summarise(length(gr))
+final_data3 <- final_data3[final_data3$`length(gr)`>=7,] ## leave site and species combinations which have at least 7 years of data
+length(unique(final_data3$site)) ## 111 sites
+## remove length(gr) column
+final_data3$`length(gr)` <- NULL
+## now merge final_data3 with final_data so sites left are those with at least 7 years of data
+final_data <- merge(final_data, final_data3, by=c("site", "name"))
+length(unique(final_data$site)) ## 111
 
-# this filter has been removed
-### drop sites with >50% zero counts ###
-good_year_data <- zero_count_data[zero_count_data$good_years>5,] ## dataframe with species & site combo with more than 5 years of non-zero counts
-final_data$rec_id <- paste(final_data$name, final_data$site, sep="_")
-good_year_data$rec_id <- paste(good_year_data$species_code, good_year_data$Pcode, sep="_")
-
+# ### drop sites with >50% zero counts ###
+# good_year_data <- zero_count_data[zero_count_data$good_years>5,] ## dataframe with species & site combo with more than 5 years of non-zero counts
+# final_data$rec_id <- paste(final_data$name, final_data$site, sep="_")
+# good_year_data$rec_id <- paste(good_year_data$species_code, good_year_data$Pcode, sep="_")
 # final_data <- final_data[final_data$rec_id%in%good_year_data$rec_id,]
-## NOTE: this process removes 2 species from the analysis: spp 57 (Capercaillie) & 515 (Common crossbill)
-## Also removes 231 sites (left with 180 sites)
+# ## NOTE: this process removes 2 species from the analysis: spp 57 (Capercaillie) & 515 (Common crossbill)
+# ## Left with 141 sites
 
-write.csv(final_data, file = "../Data/Bird_sync_data/final_data_all_spp_CBC_zeros.csv", row.names = FALSE)
+write.csv(final_data, file = "../Data/Bird_sync_data/final_data_all_spp_CBC_no_zeros2.csv", row.names = FALSE)
 length(unique(final_data$name)) # 36 species (57 and 515 have been removed) 
-# 38 species with zeros
 length(unique(final_data$site)) # 111 sites
-# 277 sites with zeros
+# 141 sites with zeros
