@@ -5,6 +5,9 @@
 .RDataTmp
 .Rproj
 .RDataTmp1
+.RDataTmp2
+.RDataTmp3
 .Rproj.user/
 *.Rproj
 -SAPC7039-2.RData
+-SAPC7039-3.RData
