@@ -13,7 +13,7 @@ rm(list=ls()) # clear R
 library(plyr)
 
 ### add data
-final_data <- read.csv("../Data/Butterfly_sync_data/final_data_all_spp_zeros.csv", header = TRUE) # add growth rate data
+final_data <- read.csv("../Data/Butterfly_sync_data/final_data_all_spp_no_zeros2.csv", header = TRUE) # add growth rate data
 b_data <- read.csv("../Data/Butterfly_sync_data/b_data.csv", header = TRUE) # add butterfly count data
 site_data <- read.csv("../Data/UKBMS_data/pair_attr_mean_northing_dist_sim.csv", header = TRUE) # site data
 
@@ -40,7 +40,7 @@ final_pair_data <- NULL
 final_summ_stats <- NULL
 
 ### split based on species ###
-for (g in good.species.list[33]){ # loop through spp.list 
+for (g in good.species.list){ # loop through spp.list 
    spp_data <- final_data[final_data$name==g,]
   total_comp <- NULL
 print(paste("species",g))    
@@ -57,21 +57,16 @@ for (i in year.list){ # loop through years
     ################################
     # create a matrix to be filled #
     site.list <- unique(species.10.yr.data$site)
-    site.list
     year.list.temp <- min(species.10.yr.data$year):max(species.10.yr.data$year)
-    year.list.temp
     Grow.matrix<-matrix(c(species.10.yr.data$gr), nrow=length(year.list.temp))
-    Grow.matrix
     ncol(Grow.matrix)
     rownames(Grow.matrix)<-year.list.temp
     colnames(Grow.matrix)<-site.list
-    Grow.matrix
     
     length(site.list)
     
     num.ts <- length(site.list)   # number of time series
     TS <- matrix(Grow.matrix, ncol=num.ts)    # stores Grow data in a matrix     (simply removes names!)
-    TS
     # create site match table used to correct sites names after calculating synchrony
     site_match <- data.frame(TS_name = 1:ncol(TS), site_name = colnames(Grow.matrix))
     
@@ -139,8 +134,8 @@ for (i in year.list){ # loop through years
     CCF1 <- na.omit(CCF1)
 
     # if statement to skip species which won't run
-    if (nrow(CCF1)<2){
-      #print(paste("skip species", g, "year", i+4.5))
+    if (nrow(CCF1)<1){
+      print(paste("skip species", g, "year", i+4.5))
       next
     }
 
@@ -151,10 +146,10 @@ for (i in year.list){ # loop through years
     
     ###  correct site numbers ### 
     pair.attr <- merge(pair.attr, site_match, by.x="site1", by.y="TS_name")  
-    pair.attr <- pair.attr[,c("site_name", "site2", "lag0", "numYears", "skip")]
+    pair.attr <- pair.attr[,c("site_name", "site2", "lag0", "numYears")]
     names(pair.attr) <- gsub("site_name", "site1", names(pair.attr))
     pair.attr <- merge(pair.attr, site_match, by.x="site2", by.y="TS_name")  
-    pair.attr <- pair.attr[,c("site1", "site_name", "lag0", "numYears", "skip")]
+    pair.attr <- pair.attr[,c("site1", "site_name", "lag0", "numYears")]
     names(pair.attr) <- gsub("site_name", "site2", names(pair.attr))
     
     ### drop sites comparisons with <7 years of survey data in common 
@@ -189,20 +184,22 @@ for (i in year.list){ # loop through years
 ### merge in predictor variables
 head(final_pair_data)
 head(final_summ_stats)
+length(unique(final_pair_data$spp)) ## 37 species
 
 summary(final_pair_data)
 
-final_pair_data_summ <- count(final_summ_stats$spp) ## nrow of each species
+final_summ_stats$spp <- as.factor(final_summ_stats$spp)
+final_pair_data_summ <- count(final_summ_stats, "spp") ## nrow of each species 
 ## only include species with complete time series (i.e. nrow=28)
-final_pair_data_summ <- final_pair_data_summ[final_pair_data_summ$freq>=28,] ## 31 species (6 species removed)
-## merge back into final_pair_data
-final_pair_data <- merge(final_pair_data, final_pair_data_summ, by.="spp", by.y="x", all=FALSE)
-length(unique(final_pair_data$spp)) ## 31 species
-## 3 more species get removed in script 4 
+final_pair_data_summ <- final_pair_data_summ[final_pair_data_summ$freq>=28,] ## 35 species (2 species (34 and 14) removed)
+## merge back into final_pair_data (not really needed as all 37 species have complete time series)
+final_pair_data <- merge(final_pair_data, final_pair_data_summ, by="spp", all=FALSE)
+length(unique(final_pair_data$spp)) ## 35 species
+## 3 more species get removed in script 4
 
-write.csv(final_pair_data, file="../Data/Butterfly_sync_data/final_pair_data_all_spp_zeros.csv", row.names=FALSE) ## save final pair data for all 37 species
+write.csv(final_pair_data, file="../Data/Butterfly_sync_data/final_pair_data_all_spp_no_zeros2.csv", row.names=FALSE) ## save final pair data for all 37 species
 
-write.csv(final_summ_stats, file="../Data/Butterfly_sync_data/final_summ_stats_all_spp_zeros.csv", row.names=FALSE) ## save final summ stats for all 37 species
+write.csv(final_summ_stats, file="../Data/Butterfly_sync_data/final_summ_stats_all_spp_no_zeros2.csv", row.names=FALSE) ## save final summ stats for all 37 species
 
 # ###########################
 # ## abundance calculation ##
