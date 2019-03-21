@@ -49,7 +49,7 @@ final_pair_data <- NULL
 final_summ_stats <- NULL
 final_summary <- NULL
 ### split based on species ###
-for(g in spp.list){
+for(g in spp.list[23]){
 
 # loop through spp.list 
   spp_data <- final_data[final_data$name==g,]
@@ -58,7 +58,7 @@ for(g in spp.list){
 
   year.list<-1994:2007
 
-  for (i in year.list){ # loop through years
+  for (i in year.list[1]){ # loop through years
     start.year<-i
     mid.year<-i+4.5
     print(paste("mid.year=",mid.year))
@@ -163,7 +163,7 @@ for(g in spp.list){
 
     
     # if statement to skip species which won't run
-    if (nrow(CCF1)<2){
+    if (nrow(CCF1)<1){
       print(paste("skip species", g, "year", i+4.5))
       next
     }
@@ -233,9 +233,20 @@ head(final_summ_stats)
 
 summary(final_pair_data)
 
-write.csv(final_pair_data, file="../Data/Bird_sync_data/final_pair_data_all_spp_BBS_4th_run.csv", row.names=FALSE) ## save final pair data for all 33 species
+final_summ_stats$spp <- as.factor(final_summ_stats$spp) ## 27 species
+final_pair_data_summ <- final_summ_stats %>% 
+  group_by(spp) %>% 
+  summarise(freq = n()) ## nrow of each species
+## only include species with complete time series (i.e. nrow=14)
+final_pair_data_summ <- final_pair_data_summ[final_pair_data_summ$freq>=14,] ## 24 species (3 removed)
+## merge back into final_pair_data
+final_pair_data <- merge(final_pair_data, final_pair_data_summ, by="spp", all=FALSE)
+length(unique(final_pair_data$spp)) ## 24
 
-write.csv(final_summ_stats, file="../Data/Bird_sync_data/final_summ_stats_all_spp_BBS_4th_run.csv", row.names=FALSE) ## save final summ stats for all 33 species
+
+write.csv(final_pair_data, file="../Data/Bird_sync_data/final_pair_data_all_spp_BBS_4.csv", row.names=FALSE) ## save final pair data for all 33 species
+
+write.csv(final_summ_stats, file="../Data/Bird_sync_data/final_summ_stats_all_spp_BBS_4.csv", row.names=FALSE) ## save final summ stats for all 33 species
 
 ### species which were skipped for ALL years: 
 ## 467, 298, 450, 123 ==> 27 species were NOT skipped
