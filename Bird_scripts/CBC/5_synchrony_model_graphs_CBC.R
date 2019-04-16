@@ -15,13 +15,9 @@ library(gridExtra)
 ####################################
 
 ### read in results tables ###
-results_final_all_spp <- read.csv("../Results/Bird_results/results_final_all_spp_CBC_zeros.csv", header=TRUE)
 results_final_all_spp <- read.csv("../Results/Bird_results/results_final_all_spp_CBC_no_zeros2.csv", header=TRUE)
-
-results_final_sp_zeros <- read.csv("../Results/Bird_results/results_final_spp_CBC_zeros.csv", header=TRUE)
-results_final_sp_no_zeros <- read.csv("../Results/Bird_results/results_final_spp_CBC_no_zeros.csv", header=TRUE)
-results_final_sp_no_zeros_spp298 <- read.csv("../Results/Bird_results/results_final_all_spp_CBC_no_zeros_spp298.csv", header=TRUE)
-results_final_spec <- read.csv("../Results/Bird_results/results_final_spec_CBC_zeros.csv", header=TRUE) 
+results_final_sp <- read.csv("../Results/Bird_results/results_final_spp_CBC_no_zeros2.csv", header=TRUE)
+results_final_spec <- read.csv("../Results/Bird_results/results_final_spec_CBC_no_zeros2.csv", header=TRUE) 
 
 #### one line for all species with shaded smoothed line and unscaled ####
 FCI_plot_unscaled <- ggplot(results_final_all_spp, aes(x = parameter, y = FCI)) +
@@ -73,6 +69,21 @@ FCI_plot_scaled_error <- ggplot(results_final_all_spp, aes(x = parameter, y = re
 FCI_plot_scaled_error
 
 ggsave("../Graphs/Connectivity_plots/FCI_all_spp_CBC_scaled_error3.png", plot = FCI_plot_scaled_error, width=5, height=5)
+
+##### method to obtain smoothed values with 95% confidence intervals for indicator
+loess_model <- loess(rescaled_FCI~parameter, data=results_final_all_spp)
+loess_predict <- predict(loess_model, se=T)
+FCI_indicator_plot <- data.frame("fitted"=loess_predict$fit, "lwl"=(loess_predict$fit-1.96*loess_predict$se.fit),
+                                 "upl"=(loess_predict$fit+1.96*loess_predict$se.fit))
+### merge with results_final_all_spp file
+FCI_indicator_plot <- cbind(FCI_indicator_plot, results_final_all_spp)
+## remove columns not needed
+FCI_indicator_plot <- FCI_indicator_plot[-c(4:6,9:10)]
+## reorder columns
+FCI_indicator_plot <- FCI_indicator_plot[c(4,5,1,3,2)]
+names(FCI_indicator_plot) <-  c("year", "unsmoothed", "smoothed", "upperCI", "lowerCI")
+## save file
+write.csv(FCI_indicator_plot, file="../Connectivity fiche/Data files/CBC/CBC trend data.csv", row.names=FALSE)
 
 #### plot for specialist/generalist ####
 results_final_spec$Strategy <- as.factor(results_final_spec$Strategy)
