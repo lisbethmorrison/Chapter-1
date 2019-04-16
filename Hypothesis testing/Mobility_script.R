@@ -401,7 +401,7 @@ levels(newdata_ukbms$Mobility)
 ## plot graph with raw data residuals (+SE error bars) and fitted lines
 png("../Graphs/Mobility/Mobility_change_predicted_ukbms.png", height = 150, width = 180, units = "mm", res = 300)
 pd <- position_dodge(0.1)
-ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Mobility)) +
+plot1<-ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Mobility)) +
   geom_point(aes(shape=Mobility), colour="grey", size = 3, position=myjit) +
   geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position=myjit) +
   geom_line(data=newdata_ukbms, aes(x=mid.year, y=lag0, linetype=Mobility), lwd=1) +
@@ -416,6 +416,7 @@ ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Mobility)) +
                      labels=c("High", "Low"), values=c(16,4)) +
   guides(shape = guide_legend(override.aes = list(size = 3))) +
   guides(linetype = guide_legend(override.aes = list(size = 0.5)))
+plot1
 dev.off()
 
 ############ jitter code #################
@@ -677,7 +678,8 @@ anova(dispersal_model_bbs3)
 ## interaction is very significant (p<0.000001)
 ## save model output
 results_table_dispersal_bbs <- data.frame(summary(dispersal_model_bbs3)$coefficients[,1:5])
-write.csv(results_table_dispersal_bbs, file = "../Results/Model_outputs/change_dispersal_bbs.csv", row.names=TRUE)
+write.csv(results_table_dispersal_bbs, file = "../Results/Model_outputs/BBS/change_mob_bbs.csv", row.names=TRUE)
+#results_table_dispersal_bbs <- read.csv("../Results/Model_outputs/BBS/change_mob_bbs.csv", header=TRUE)
 
 ## save main (true) model results
 main_result_table <- data.frame(anova(dispersal_model_bbs3)[,5:6]) ## save anova table from main model
@@ -791,14 +793,14 @@ levels(newdata_bbs$Dispersal)
 
 ## plot graph with raw data residuals (+SE errorbars) and fitted line
 png("../Graphs/Mobility/Mobility_change_predicted_bbs.png", height = 100, width = 110, units = "mm", res = 300)
-ggplot(summary_bbs, aes(x = mid.year, y = mean, group=Dispersal)) +
-  geom_point(aes(shape=Dispersal), colour="grey66", size = 2, position=myjit) +
+bbs_mob <- ggplot(summary_bbs, aes(x = mid.year, y = mean, group=Dispersal)) +
+  geom_point(aes(shape=Dispersal), colour="grey66", size = 3, position=myjit) +
   geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey66", width=0.2, position=myjit) +
-  geom_line(data=newdata_bbs, aes(x=mid.year, y=lag0, linetype=Dispersal), lwd=0.5) +
+  geom_line(data=newdata_bbs, aes(x=mid.year, y=lag0, linetype=Dispersal), lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   scale_y_continuous(breaks=seq(-0.2,0.3,0.05)) +
   theme_bw() +
-  theme(legend.key.width = unit(0.8,"cm"), legend.key = element_rect(size = 2), text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
+  theme(legend.key.width = unit(0.8,"cm"), legend.key = element_rect(size = 2), text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.margin=margin(c(-10,20,-80,0)),
         axis.text.x=element_text(colour="black"), axis.text.y = element_text(colour="black")) +
   scale_linetype_manual(name=" ",
@@ -807,6 +809,7 @@ ggplot(summary_bbs, aes(x = mid.year, y = mean, group=Dispersal)) +
                      labels=c("High", "Low"), values=c(16,4)) +
   guides(shape = guide_legend(override.aes = list(size = 3))) +
   guides(linetype = guide_legend(override.aes = list(size = 0.5)))
+bbs_mob
 dev.off()
 
 
