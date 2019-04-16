@@ -208,8 +208,8 @@ dev.off()
 
 install.packages("ggpubr")
 library(ggpubr)
-png("../Graphs/FINAL/Figure3.png", height = 200, width = 110, units = "mm", res = 300)
-ggarrange(butterfly_spec, butterfly_abund, 
+png("../Graphs/FINAL/Figure3_2.png", height = 200, width = 150, units = "mm", res = 300)
+ggarrange(butterfly_spec2, butterfly_abund, 
           labels = c("(a)", "(b)"), font.label = list(size = 10, color ="black"),
           ncol = 1, nrow = 2)
 dev.off()
@@ -455,9 +455,9 @@ summary_bbs$Specialism <- revalue(summary_bbs$Specialism, c("specialist"="Specia
 png("../Graphs/Specialism/Specialism_change_predicted_bbs.png", height = 80, width = 120, units = "mm", res = 300)
 pd <- position_dodge(0.2)
 ggplot(summary_bbs, aes(x = mid.year, y = mean, group=Specialism)) +
-  geom_point(aes(shape=Specialism), colour="grey", size = 2, position=pd) +
+  geom_point(aes(shape=Specialism), colour="grey", size = 2, position=myjit) +
   scale_shape_manual(values=c(16,4)) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position=pd) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position=myjit) +
   geom_line(data=newdata_bbs, aes(x=mid.year, y=lag0, linetype=Specialism), lwd=1) +
   labs(x="Mid year of moving window", y="Population synchrony") +
   theme_bw() +
@@ -466,3 +466,24 @@ ggplot(summary_bbs, aes(x = mid.year, y = mean, group=Specialism)) +
 dev.off()
 
 
+############ jitter code #################
+myjit <- ggproto("fixJitter", PositionDodge,
+                 width = 0.5,
+                 dodge.width = 0.15,
+                 jit = NULL,
+                 compute_panel =  function (self, data, params, scales) 
+                 {
+                   
+                   #Generate Jitter if not yet
+                   if(is.null(self$jit) ) {
+                     self$jit <-jitter(rep(0, nrow(data)), amount=self$dodge.width)
+                   }
+                   
+                   data <- ggproto_parent(PositionDodge, self)$compute_panel(data, params, scales)
+                   
+                   data$x <- data$x + self$jit
+                   #For proper error extensions
+                   if("xmin" %in% colnames(data)) data$xmin <- data$xmin + self$jit
+                   if("xmax" %in% colnames(data)) data$xmax <- data$xmax + self$jit
+                   data
+                 } )
