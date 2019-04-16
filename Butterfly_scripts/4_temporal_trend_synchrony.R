@@ -85,8 +85,9 @@ write.csv(pair_attr, file = "../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv
 ################################## RUN SYNCHRONY MODELS ############################################
 ####################################################################################################
 
-pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE) # load up pair attribute data to save time
-
+pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", header=TRUE) # load up pair attribute data to save time
+species_traits <- read.csv("../Data/UKBMS_data/species.traits.full.table.csv", header=TRUE)
+  
 ## make sure correct variables are factors ## 
 str(pair_attr)
 pair_attr$spp <- as.factor(pair_attr$spp)
@@ -99,6 +100,22 @@ pair_attr$pair.id <- as.character(pair_attr$pair.id)
 ### run the synchrony model for all species ###
 ###############################################
 length(unique(pair_attr$spp)) ## 32 species
+
+############################## merge in species data (family) ###############################
+## subset family and genus info
+species_traits <- species_traits[,c(3,4,39)]
+pair_attr <- merge(pair_attr, species_traits, by.x="spp", by.y="species", all=FALSE)
+pair_attr <- droplevels(pair_attr)
+
+### run model with family to test for a relationship with synchrony
+all_spp_model_family <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + family + (1|pair.id) + (1|spp), data = pair_attr)
+summary(all_spp_model_family) 
+anova(all_spp_model_family) ## overall non-significant
+
+### run model with genus to test for a relationship with synchrony
+all_spp_model_genus <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + genus + (1|pair.id) + (1|spp), data = pair_attr)
+summary(all_spp_model_genus) 
+anova(all_spp_model_genus) ## overall non-significant
 
 ## model with intercept
 all_spp_model_int <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
