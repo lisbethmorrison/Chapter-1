@@ -491,6 +491,7 @@ summary(climate_bbs_change)
 anova(climate_bbs_change) ## interaction is significant (p=0.0332)
 results_table_STI_change_bbs <- data.frame(summary(climate_bbs_change)$coefficients[,1:5]) ## 24 species
 write.csv(results_table_STI_change_bbs, file = "../Results/Model_outputs/BBS/change_STI_bbs.csv", row.names=TRUE)
+#results_table_STI_change_bbs <- read.csv("../Results/Model_outputs/BBS/change_STI_bbs.csv", header=TRUE)
 
 ## split STI into two groups (low and high) to plot midyear*STI interaction result
 pair_attr_bbs$STI <- as.numeric(pair_attr_bbs$STI)
@@ -506,7 +507,7 @@ anova(climate_bbs_change2) ## not significant
 pair_attr_bbs$mid.year <- factor(pair_attr_bbs$mid.year)
 newdata_bbs <- expand.grid(mean_northing=mean(pair_attr_bbs$mean_northing), distance=mean(pair_attr_bbs$distance), 
                            renk_hab_sim=mean(pair_attr_bbs$renk_hab_sim), mid.year=unique(pair_attr_bbs$mid.year), 
-                           pair.id=sample(pair_attr_bbs$pair.id,10), spp=sample(pair_attr_bbs$spp,10),
+                           pair.id=sample(pair_attr_bbs$pair.id,10), spp=unique(pair_attr_bbs$spp),
                            STI_score=unique(pair_attr_bbs$STI_score))
 newdata_bbs$lag0 <- predict(climate_bbs_change2, newdata=newdata_bbs, re.form=NA)
 
@@ -560,7 +561,7 @@ levels(newdata_bbs$STI)
 
 pd <- position_dodge(0.1)
 png("../Graphs/STI/STI_change_predicted_bbs.png", height = 150, width = 180, units = "mm", res = 300)
-ggplot(summary_bbs, aes(x = mid.year, y = mean, group=STI)) +
+bbs_sti <- ggplot(summary_bbs, aes(x = mid.year, y = mean, group=STI)) +
   geom_point(aes(shape=STI), colour="grey66", size = 3, position=myjit) +
   geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey66", width=0.2, position=myjit) +
   geom_line(data=newdata_bbs, aes(x=mid.year, y=lag0, linetype=STI), lwd=1) +
@@ -576,8 +577,16 @@ ggplot(summary_bbs, aes(x = mid.year, y = mean, group=STI)) +
                      labels=c("High", "Low"), values=c(16,4)) +
   guides(shape = guide_legend(override.aes = list(size = 3))) +
   guides(linetype = guide_legend(override.aes = list(size = 0.5)))
+bbs_sti
 dev.off()
 
+## include STI graph for manuscript
+library(ggpubr)
+png("../Graphs/FINAL/Figure5_2.png", height = 200, width = 150, units = "mm", res = 300)
+ggarrange(bbs_mob, bbs_sti, 
+          labels = c("(a)", "(b)"), font.label = list(size = 10, color ="black"),
+          ncol = 1, nrow = 2)
+dev.off()
 
 myjit <- ggproto("fixJitter", PositionDodge,
                  width = 0.2,
