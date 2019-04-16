@@ -8,7 +8,7 @@
 rm(list=ls()) # clear R
 
 ## read in climate data
-met_office_temp <- read.csv("../Data/Temp_data/Met_Office_Seasonal_Temps.csv", header=T)
+met_office_temp <- read.csv("../Data/MetOffice_data/Met_Office_Seasonal_Temps.csv", header=T)
 rainfall_data <- read.table("../Data/Temp_data/UK_rainfall_data.txt", header=TRUE) # add climate data
 
 ## create 2 data frames: one with early years (1980-2004) and one with late years (1995-2016) and rename columns
