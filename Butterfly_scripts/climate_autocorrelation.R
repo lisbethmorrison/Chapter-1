@@ -13,7 +13,7 @@ rm(list=ls()) # clear R
 ###### CLIMATE DATA CLEANING ######
 
 ## add data
-climate.data <- read.table("../Data/Temp_data/all.sites.CIP.mean.temp.AND.rainfall.1971_2012_running.3month.means.txt", header=TRUE) # add climate data
+climate.data <- read.table("../Data/MetOffice_data/all.sites.CIP.mean.temp.AND.rainfall.1971_2012_running.3month.means.txt", header=TRUE) # add climate data
 pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header = TRUE) # pair attr site data
 
 ## remove years before 1980 and remove occasional 2013 data
@@ -309,58 +309,58 @@ for (i in sort(unique(climate.autocorr$year))){
 moran.final <- merge(moran.final, moran.winter.rain, by.x="year", by.y="year")
 
 write.csv(moran.final, file = "../Results/Butterfly_results/moran.i.final.data.csv", row.names=FALSE)
-
+#moran.final <- read.csv("../Results/Butterfly_results/moran.i.final.data.csv", header=TRUE)
 ######## LINEAR MODELS ##########
 
 lm_spring_temp <- lm(moran.i.spring.temp ~ year, data = moran.final)
-summary(lm_spring_temp)
+summary(lm_spring_temp) # positive 
 
 lm_summer_temp <- lm(moran.i.summer.temp ~ year, data = moran.final)
-summary(lm_summer_temp)
+summary(lm_summer_temp) # negative
 
 lm_autumn_temp <- lm(moran.i.autumn.temp ~ year, data = moran.final)
-summary(lm_autumn_temp)
+summary(lm_autumn_temp) # negative
 
 lm_winter_temp <- lm(moran.i.winter.temp ~ year, data = moran.final)
-summary(lm_winter_temp)
+summary(lm_winter_temp) # positive
 
 lm_spring_rain <- lm(moran.i.spring.rain ~ year, data = moran.final)
-summary(lm_spring_rain)
+summary(lm_spring_rain) # negative
 
 lm_summer_rain <- lm(moran.i.summer.rain ~ year, data = moran.final)
-summary(lm_summer_rain)
+summary(lm_summer_rain) # negative
 
 lm_autumn_rain <- lm(moran.i.autumn.rain ~ year, data = moran.final)
-summary(lm_autumn_rain)
+summary(lm_autumn_rain) # positive
 
 lm_winter_rain <- lm(moran.i.winter.rain ~ year, data = moran.final)
-summary(lm_winter_rain)
+summary(lm_winter_rain) # positive
 ###### NONE OF THE LINEAR MODELS ARE SIGNIFICANT ######
 
 ###### polynomial models of year against moran's i
 pm_spring_temp <- lm(moran.i.spring.temp ~ I(year^2), data=moran.final)
-summary(pm_spring_temp)
+summary(pm_spring_temp) # positive
 
 pm_summer_temp <- lm(moran.i.summer.temp ~ I(year^2), data=moran.final)
-summary(pm_summer_temp)
+summary(pm_summer_temp) # negative
 
 pm_autumn_temp <- lm(moran.i.autumn.temp ~ I(year^2), data=moran.final)
-summary(pm_autumn_temp)
+summary(pm_autumn_temp) # negative
 
 pm_winter_temp <- lm(moran.i.winter.temp ~ I(year^2), data=moran.final)
-summary(pm_winter_temp)
+summary(pm_winter_temp) # positive
 
 pm_spring_rain <- lm(moran.i.spring.rain ~ I(year^2), data=moran.final)
-summary(pm_spring_rain)
+summary(pm_spring_rain) # negative
 
 pm_summer_rain <- lm(moran.i.summer.rain ~ I(year^2), data=moran.final)
-summary(pm_summer_rain)
+summary(pm_summer_rain) # negative
 
 pm_autumn_rain <- lm(moran.i.autumn.rain ~ I(year^2), data=moran.final)
-summary(pm_autumn_rain)
+summary(pm_autumn_rain) # negative
 
 pm_winter_rain <- lm(moran.i.winter.rain ~ I(year^2), data=moran.final)
-summary(pm_winter_rain)
+summary(pm_winter_rain) # positive
 ##### NONE OF THE ABOVE ARE SIGNIFICANT
 
 ############################################
