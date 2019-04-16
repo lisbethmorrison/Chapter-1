@@ -17,6 +17,11 @@ library(dplyr)
 results_final_all_spp <- read.csv("../Results/Butterfly_results/results_final_all_spp_no_zeros2.csv", header=TRUE)
 results_final_sp <- read.csv("../Results/Butterfly_results/results_final_sp_no_zeros2.csv", header=TRUE)
 results_final_spec <- read.csv("../Results/Butterfly_results/results_final_spec_no_zeros2.csv", header=TRUE)
+## climate data
+results_table_winter_rain <- read.csv("../Results/Climate_results/winter_rainfall_synchrony.csv", header=TRUE)
+results_table_spring_rain <- read.csv("../Results/Climate_results/spring_rainfall_synchrony.csv", header=TRUE)
+results_table_summer_rain <- read.csv("../Results/Climate_results/summer_rainfall_synchrony.csv", header=TRUE)
+results_table_autumn_rain <- read.csv("../Results/Climate_results/autumn_rainfall_synchrony.csv", header=TRUE)
 
 ## read in strategy data
 spp_data <- read.csv("../Data/UKBMS_data/UKBMS_UKspecieslist.csv", header=TRUE)
@@ -76,6 +81,24 @@ FCI_plot_scaled <- ggplot(results_final_all_spp, aes(x = parameter, y = rescaled
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 FCI_plot_scaled
 ggsave("../Graphs/Connectivity_plots/FCI_plot_all_spp_scaled3.png", plot = FCI_plot_scaled, width=7, height=5)
+
+### add climate (rainfall) data in background
+results_table_autumn_rain$category <- "autumn"
+results_table_spring_rain$category <- "spring"
+results_table_summer_rain$category <- "summer"
+results_table_winter_rain$category <- "winter"
+
+## merge files
+rainfall_synchrony <- rbind(results_table_autumn_rain, results_table_spring_rain, results_table_summer_rain, results_table_winter_rain)
+
+
+
+
+
+
+
+
+
 
 ############### plot with all 3 temporal synchrony graphs for ms #########################
 results_final_all_spp_BBS <- read.csv("../Results/Bird_results/results_final_all_spp_BBS_final.csv", header=TRUE)
@@ -192,7 +215,7 @@ birds <- birds + theme(legend.position="none")
 
 percentages <- grid.arrange(butterfly2, legend, birds, ncol=1, nrow = 3, widths = c(2.7), heights = c(2.5, 0.4, 2.5))
 
-png("../Graphs/FINAL/Figure2_2.png", height = 150, width = 173, units = "mm", res = 300)
+png("../Graphs/FINAL/Figure2_2.png", height = 150, width = 220, units = "mm", res = 300)
 grid.arrange(FCI_plot_scaled, percentages,
              FCI_CBC, FCI_BBS, 
              layout_matrix=cbind(c(1,3), c(1,4), c(2,2)), nrow=2)
@@ -211,7 +234,7 @@ FCI_indicator_plot <- FCI_indicator_plot[-c(4:6,9:10)]
 FCI_indicator_plot <- FCI_indicator_plot[c(4,5,1,3,2)]
  names(FCI_indicator_plot) <-  c("year", "unsmoothed", "smoothed", "upperCI", "lowerCI")
 ## save file
-write.csv(FCI_indicator_plot, file="../FCI_fiche/Data files/C2i data.csv", row.names=FALSE)
+write.csv(FCI_indicator_plot, file="../Connectivity fiche/Data files/UKBMS/C2i data.csv", row.names=FALSE)
  
 ############# plot of woodland species (one line) FCI only #################
 woodland_sp <- ggplot(subset(results_final_hab, habitat %in% ("Woodland")), aes(x = parameter, y = FCI)) +
