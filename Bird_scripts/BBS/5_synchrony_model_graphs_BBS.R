@@ -15,11 +15,11 @@ library(dplyr)
 ####################################
 
 ### read in results tables ###
-results_final_all_spp_BBS_1 <- read.csv("../Results/Bird_results/results_final_all_spp_BBS.csv", header=TRUE)
-results_final_all_spp_BBS_2 <- read.csv("../Results/Bird_results/results_final_all_spp_BBS_2.csv", header=TRUE)
-results_final_all_spp_BBS_3 <- read.csv("../Results/Bird_results/results_final_all_spp_BBS_3.csv", header=TRUE)
-results_final_all_spp_BBS_4 <- read.csv("../Results/Bird_results/results_final_all_spp_BBS_4.csv", header=TRUE)
-results_final_all_spp_BBS_5 <- read.csv("../Results/Bird_results/results_final_all_spp_BBS_5.csv", header=TRUE)
+# results_final_all_spp_BBS_1 <- read.csv("../Results/Bird_results/results_final_all_spp_BBS.csv", header=TRUE)
+# results_final_all_spp_BBS_2 <- read.csv("../Results/Bird_results/results_final_all_spp_BBS_2.csv", header=TRUE)
+# results_final_all_spp_BBS_3 <- read.csv("../Results/Bird_results/results_final_all_spp_BBS_3.csv", header=TRUE)
+# results_final_all_spp_BBS_4 <- read.csv("../Results/Bird_results/results_final_all_spp_BBS_4.csv", header=TRUE)
+# results_final_all_spp_BBS_5 <- read.csv("../Results/Bird_results/results_final_all_spp_BBS_5.csv", header=TRUE)
 results_final_all_spp_BBS <- read.csv("../Results/Bird_results/results_final_all_spp_BBS_final.csv", header=TRUE)
 
 ## FCI plot with error bars and sacled to 100
@@ -39,6 +39,21 @@ FCI_plot_scaled_error <- ggplot(results_final_all_spp_BBS, aes(x = parameter, y 
 FCI_plot_scaled_error
 
 ggsave("../Graphs/Connectivity_plots/FCI_all_spp_BBS_scaled_error.png", plot = FCI_plot_scaled_error, width=5, height=5)
+
+##### method to obtain smoothed values with 95% confidence intervals for indicator
+loess_model <- loess(rescaled_FCI~parameter, data=results_final_all_spp_BBS)
+loess_predict <- predict(loess_model, se=T)
+FCI_indicator_plot <- data.frame("fitted"=loess_predict$fit, "lwl"=(loess_predict$fit-1.96*loess_predict$se.fit),
+                                 "upl"=(loess_predict$fit+1.96*loess_predict$se.fit))
+### merge with results_final_all_spp file
+FCI_indicator_plot <- cbind(FCI_indicator_plot, results_final_all_spp_BBS)
+## remove columns not needed
+FCI_indicator_plot <- FCI_indicator_plot[-c(4:6,9:10)]
+## reorder columns
+FCI_indicator_plot <- FCI_indicator_plot[c(4,5,1,3,2)]
+names(FCI_indicator_plot) <-  c("year", "unsmoothed", "smoothed", "upperCI", "lowerCI")
+## save file
+write.csv(FCI_indicator_plot, file="../Connectivity fiche/Data files/BBS/BBS trend data.csv", row.names=FALSE)
 
 #### plot with 5 runs of BBS 
 results_final_all_spp_BBS_1$Run <- 1
