@@ -20,19 +20,19 @@ options(scipen=999)
 ukbms_strat <- read.csv( "../Results/Model_outputs/UKBMS/average_spec_ukbms.csv", header=TRUE)
 ukbms_mob <- read.csv("../Results/Model_outputs/UKBMS/average_mob_ukbms.csv", header=TRUE)
 ukbms_common <- read.csv("../Results/Model_outputs/UKBMS/average_abund_ukbms.csv", header=TRUE)
-ukbms_sti <- read.csv( "../Results/Model_outputs/UKBMS/average_STI_ukbms.csv", header=TRUE)
+ukbms_sti <- read.csv( "../Results/Model_outputs/UKBMS/average_STIgroup_ukbms.csv", header=TRUE)
 ukbms_fixed <- read.csv("../Results/Model_outputs/UKBMS/fixed_effect_results_ukbms.csv", header=TRUE)
 ## cbc birds
 cbc_strat <- read.csv( "../Results/Model_outputs/CBC/average_spec_cbc.csv", header=TRUE)
 cbc_mob <- read.csv("../Results/Model_outputs/CBC/average_mob_cbc.csv", header=TRUE)
 cbc_common <- read.csv("../Results/Model_outputs/CBC/average_abund_cbc.csv", header=TRUE)
-cbc_sti <- read.csv("../Results/Model_outputs/CBC/average_STI_cbc.csv", header=TRUE)
+cbc_sti <- read.csv("../Results/Model_outputs/CBC/average_STIgroup_cbc.csv", header=TRUE)
 cbc_fixed <- read.csv("../Results/Model_outputs/CBC/fixed_effect_results_cbc.csv", header=TRUE)
 ## bbs birds
 bbs_strat <- read.csv( "../Results/Model_outputs/BBS/average_spec_bbs.csv", header=TRUE)
 bbs_mob <- read.csv("../Results/Model_outputs/BBS/average_mob_bbs.csv", header=TRUE)
 bbs_common <- read.csv("../Results/Model_outputs/BBS/average_abund_bbs.csv", header=TRUE)
-bbs_sti <- read.csv("../Results/Model_outputs/BBS/average_STI_bbs.csv", header=TRUE)
+bbs_sti <- read.csv("../Results/Model_outputs/BBS/average_STIgroup_bbs.csv", header=TRUE)
 bbs_fixed <- read.csv("../Results/Model_outputs/BBS/fixed_effect_results_bbs.csv", header=TRUE)
 
 ### remove fixed & random effects from species attribute models
@@ -84,7 +84,7 @@ lookup <- c("specialismwider.countryside"="Specialism", "specialismgeneralist"="
             "pop_est_stand"="Abundance", "pop_estimate_log"="Abundance", "pop_estimate_log"="Abundance",
             "mobility_score2high"="Mobility", "Breeding_AM_score2high"="Mobility", "Breeding_AM_score22"="Mobility",
             "mean_northing"="Mean northing", "distance"="Distance", "renk_hab_sim"="Habitat similarity", "hab_sim"="Habitat similarity",
-            "specialismspecialist"="Specialism", "hab_sim1"="Habitat similarity", "STI"="STI")
+            "specialismspecialist"="Specialism", "hab_sim1"="Habitat similarity", "STI_score2"="STI")
 average_synchrony <- average_synchrony %>% mutate(vars=lookup[as.character(vars)])
 
 ## order alphabetically
