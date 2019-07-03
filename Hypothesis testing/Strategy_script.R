@@ -19,6 +19,8 @@ options(scipen=999)
 pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", header=TRUE) # butterfly pair attribute data
 pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2.csv", header=TRUE) # CBC pair attribute data
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) # BBS pair attribute data
+## bird phylogeny info 
+species_traits <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", header=TRUE)
 
 ##############################################
 #### specialism model for ALL butterflies ####
@@ -41,16 +43,22 @@ write.csv(results_table_average_spec, file = "../Results/Model_outputs/UKBMS/ave
 ###############################################
 
 ## CBC ##
+## merge in phylogeny info 
+species_traits <- species_traits[,c(2,3,4)]
+pair_attr_CBC <- merge(pair_attr_CBC, species_traits, by.x="spp", by.y="species_code", all=FALSE)
+pair_attr_CBC <- droplevels(pair_attr_CBC)
+length(unique(pair_attr_CBC$spp)) # 29 species
+
 str(pair_attr_CBC)
 pair_attr_CBC$mid.year <- as.character(pair_attr_CBC$mid.year)
 pair_attr_CBC$pair.id <- as.character(pair_attr_CBC$pair.id)
 pair_attr_CBC$spp <- as.factor(pair_attr_CBC$spp)
 
 ## run model with specialism as fixed categorical variable
-strategy_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + specialism + (1|pair.id) + (1|spp), data = pair_attr_CBC)
+strategy_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + specialism + family + (1|pair.id) + (1|spp), data = pair_attr_CBC)
 summary(strategy_model_cbc)
 anova(strategy_model_cbc)
-## non-significant (p=0.55)
+## non-significant (p=0.55) (still non-significant with genus and family included in model)
 results_table_average_spec <- data.frame(summary(strategy_model_cbc)$coefficients[,1:5]) ## 29 species
 write.csv(results_table_average_spec, file = "../Results/Model_outputs/CBC/average_spec_cbc.csv", row.names=TRUE) # 24 species
 
@@ -91,28 +99,45 @@ pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS_1.csv", header=T
 pair_attr_1985 <- pair_attr[pair_attr$mid.year==1984.5,]
 pair_attr_2000 <- pair_attr[pair_attr$mid.year==1999.5,]
 pair_attr_2012 <- pair_attr[pair_attr$mid.year==2011.5,]
-pair_attr_ukbms <- rbind(pair_attr_1985, pair_attr_2000, pair_attr_2012) ## 3 years and 33 species
-pair_attr_ukbms <- droplevels(pair_attr_ukbms)
+pair_attr_early <- rbind(pair_attr_1985, pair_attr_2000) ## 3 years and 33 species
+pair_attr_late <- rbind(pair_attr_2000, pair_attr_2012) ## 3 years and 33 species
+pair_attr_early <- droplevels(pair_attr_early)
+pair_attr_late <- droplevels(pair_attr_late)
 
-pair_attr_ukbms$mid.year <- as.factor(pair_attr_ukbms$mid.year)
-pair_attr_ukbms$pair.id <- as.character(pair_attr_ukbms$pair.id)
-pair_attr_ukbms$spp <- as.factor(pair_attr_ukbms$spp)
-pair_attr_ukbms$specialism <- as.factor(pair_attr_ukbms$specialism)
+pair_attr_early$mid.year <- as.factor(pair_attr_early$mid.year)
+pair_attr_early$pair.id <- as.character(pair_attr_early$pair.id)
+pair_attr_early$spp <- as.factor(pair_attr_early$spp)
+pair_attr_early$specialism <- as.factor(pair_attr_early$specialism)
 
-###### run model with strategy and year interaction
-spec_model_ukbms2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*specialism + (1|pair.id) + (1|spp), data = pair_attr_ukbms)
-summary(spec_model_ukbms2) ## only early time comparison is significant
+pair_attr_late$mid.year <- as.factor(pair_attr_late$mid.year)
+pair_attr_late$pair.id <- as.character(pair_attr_late$pair.id)
+pair_attr_late$spp <- as.factor(pair_attr_late$spp)
+pair_attr_late$specialism <- as.factor(pair_attr_late$specialism)
+
+###### run model with strategy and year interaction [EARLY]
+spec_model_ukbms2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*specialism + (1|pair.id) + (1|spp), data = pair_attr_early)
+summary(spec_model_ukbms2) ## interaction is significant
 anova(spec_model_ukbms2)
 ## mid.year*strategy interaction is significant overall
 ## save model output
 results_table_spec_ukbms <- data.frame(summary(spec_model_ukbms2)$coefficients[,1:5]) ## 32 species
-write.csv(results_table_spec_ukbms, file = "../Results/Model_outputs/UKBMS/change_spec_ukbms.csv", row.names=TRUE)
+write.csv(results_table_spec_ukbms, file = "../Results/Model_outputs/UKBMS/change_spec_ukbms_85_00.csv", row.names=TRUE)
 
-## predict new data
-newdata <- expand.grid(mean_northing=mean(pair_attr_ukbms$mean_northing), distance=mean(pair_attr_ukbms$distance), 
-              renk_hab_sim=mean(pair_attr_ukbms$renk_hab_sim), mid.year=unique(pair_attr_ukbms$mid.year), 
-              specialism=unique(pair_attr_ukbms$specialism), pair.id=sample(pair_attr_ukbms$pair.id,100), 
-              spp=unique(pair_attr_ukbms$spp))
+
+###### run model with strategy and year interaction [LATE]
+spec_model_ukbms3 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*specialism + (1|pair.id) + (1|spp), data = pair_attr_late)
+summary(spec_model_ukbms3) ## interaction is significant
+anova(spec_model_ukbms3)
+## mid.year*strategy interaction is significant overall
+## save model output
+results_table_spec_ukbms <- data.frame(summary(spec_model_ukbms3)$coefficients[,1:5]) ## 32 species
+write.csv(results_table_spec_ukbms, file = "../Results/Model_outputs/UKBMS/change_spec_ukbms_00_12.csv", row.names=TRUE)
+
+## predict new data for [EARLY] model
+newdata <- expand.grid(mean_northing=mean(pair_attr_early$mean_northing), distance=mean(pair_attr_early$distance), 
+              renk_hab_sim=mean(pair_attr_early$renk_hab_sim), mid.year=unique(pair_attr_early$mid.year), 
+              specialism=unique(pair_attr_early$specialism), pair.id=sample(pair_attr_early$pair.id,100), 
+              spp=unique(pair_attr_early$spp))
                          
 newdata$lag0 <- predict(spec_model_ukbms2, newdata=newdata, re.form=NA)
 
@@ -130,24 +155,23 @@ newdata <- data.frame(
 )
 
 ## run model without specialism or species random effect to obtain residuals
-spec_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_ukbms)
-pair_attr_ukbms$residuals <- resid(spec_ukbms)
+spec_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_early)
+pair_attr_early$residuals <- resid(spec_ukbms)
 ## check mean synchrony of each group
-group_by(pair_attr_ukbms, specialism) %>% summarize(m = mean(lag0)) ## WC mean = 0.265, HS mean = 0.195
+group_by(pair_attr_early, specialism) %>% summarize(m = mean(lag0)) ## WC mean = 0.265, HS mean = 0.195
 ## put mean of each group into pair_attr dataframe
-pair_attr_ukbms <- ddply(pair_attr_ukbms, "specialism", transform, spec_mean = mean(lag0))
+pair_attr_early <- ddply(pair_attr_early, "specialism", transform, spec_mean = mean(lag0))
 ## add mean to each residual
-pair_attr_ukbms$residuals2 <- pair_attr_ukbms$residuals + pair_attr_ukbms$spec_mean
+pair_attr_early$residuals2 <- pair_attr_early$residuals + pair_attr_early$spec_mean
 
 
 ## create dataframe which calculates mean, SD and SE of residuals for each species
-summary_ukbms <- pair_attr_ukbms %>% group_by(spp, specialism, mid.year) %>% 
+summary_ukbms <- pair_attr_early %>% group_by(spp, specialism, mid.year) %>% 
   summarise_at(vars(residuals2), funs(mean,std.error,sd))
 
 ## change year values
 newdata$mid.year <- revalue(newdata$mid.year, c("1984.5"="1985"))
 newdata$mid.year <- revalue(newdata$mid.year, c("1999.5"="2000"))
-newdata$mid.year <- revalue(newdata$mid.year, c("2011.5"="2012"))
 ## change strategy heading
 colnames(newdata)[5] <- "Specialism"
 newdata$Specialism <- revalue(newdata$Specialism, c("specialist"="Specialist"))
@@ -156,7 +180,6 @@ newdata$Specialism <- factor(newdata$Specialism, levels=c("Generalist", "Special
 ## same as above for summary dataframe
 summary_ukbms$mid.year <- revalue(summary_ukbms$mid.year, c("1984.5"="1985"))
 summary_ukbms$mid.year <- revalue(summary_ukbms$mid.year, c("1999.5"="2000"))
-summary_ukbms$mid.year <- revalue(summary_ukbms$mid.year, c("2011.5"="2012"))
 ## change strategy heading
 colnames(summary_ukbms)[2] <- "Specialism"
 summary_ukbms$Specialism <- revalue(summary_ukbms$Specialism, c("specialist"="Specialist"))
@@ -164,7 +187,7 @@ summary_ukbms$Specialism <- revalue(summary_ukbms$Specialism, c("wider.countrysi
 summary_ukbms$Specialism <- factor(summary_ukbms$Specialism, levels=c("Generalist", "Specialist"))
 
 ## plot graph with raw data residuals (+SE error bars) and fitted lines
-png("../Graphs/Specialism/Specialism_change_predicted_ukbms.png", height = 150, width = 180, units = "mm", res = 300)
+png("../Graphs/Specialism/Specialism_change_predicted_ukbms_85_00.png", height = 150, width = 180, units = "mm", res = 300)
 butterfly_spec <- ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Specialism)) +
   geom_point(aes(shape=Specialism), colour="grey66", size = 3, position = myjit) +
   geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey66", width=0.2, position = myjit) +
@@ -183,11 +206,61 @@ butterfly_spec <- ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Specia
 butterfly_spec
 dev.off()
 
-## also plot only 85-00 (this is the significant result)
-newdata <- newdata[!(newdata$mid.year=="2012"),]
-summary_ukbms <- summary_ukbms[!(summary_ukbms$mid.year=="2012"),]
+## predict new data for [LATE] model
+newdata <- expand.grid(mean_northing=mean(pair_attr_late$mean_northing), distance=mean(pair_attr_late$distance), 
+                       renk_hab_sim=mean(pair_attr_late$renk_hab_sim), mid.year=unique(pair_attr_late$mid.year), 
+                       specialism=unique(pair_attr_late$specialism), pair.id=sample(pair_attr_late$pair.id,100), 
+                       spp=unique(pair_attr_late$spp))
 
-png("../Graphs/Specialism/Specialism_change_predicted_ukbms2.png", height = 150, width = 180, units = "mm", res = 300)
+newdata$lag0 <- predict(spec_model_ukbms3, newdata=newdata, re.form=NA)
+
+mm2 <- model.matrix(terms(spec_model_ukbms3), newdata)
+pvar2 <- diag(mm2 %*% tcrossprod(vcov(spec_model_ukbms3),mm2))
+tvar2 <- pvar2+VarCorr(spec_model_ukbms3)$spp[1]+VarCorr(spec_model_ukbms3)$pair.id[1]
+cmult <- 2
+
+newdata <- data.frame(
+  newdata
+  , plo = newdata$lag0-1.96*sqrt(pvar2)
+  , phi = newdata$lag0+1.96*sqrt(pvar2)
+  , tlo = newdata$lag0-1.96*sqrt(tvar2)
+  , thi = newdata$lag0+1.96*sqrt(tvar2)
+)
+
+## run model without specialism or species random effect to obtain residuals
+spec_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_late)
+pair_attr_late$residuals <- resid(spec_ukbms)
+## check mean synchrony of each group
+group_by(pair_attr_late, specialism) %>% summarize(m = mean(lag0)) ## WC mean = 0.265, HS mean = 0.195
+## put mean of each group into pair_attr dataframe
+pair_attr_late <- ddply(pair_attr_late, "specialism", transform, spec_mean = mean(lag0))
+## add mean to each residual
+pair_attr_late$residuals2 <- pair_attr_late$residuals + pair_attr_late$spec_mean
+
+
+## create dataframe which calculates mean, SD and SE of residuals for each species
+summary_ukbms <- pair_attr_late %>% group_by(spp, specialism, mid.year) %>% 
+  summarise_at(vars(residuals2), funs(mean,std.error,sd))
+
+## change year values
+newdata$mid.year <- revalue(newdata$mid.year, c("2011.5"="2012"))
+newdata$mid.year <- revalue(newdata$mid.year, c("1999.5"="2000"))
+## change strategy heading
+colnames(newdata)[5] <- "Specialism"
+newdata$Specialism <- revalue(newdata$Specialism, c("specialist"="Specialist"))
+newdata$Specialism <- revalue(newdata$Specialism, c("wider.countryside"="Generalist"))
+newdata$Specialism <- factor(newdata$Specialism, levels=c("Generalist", "Specialist"))
+## same as above for summary dataframe
+summary_ukbms$mid.year <- revalue(summary_ukbms$mid.year, c("2011.5"="2012"))
+summary_ukbms$mid.year <- revalue(summary_ukbms$mid.year, c("1999.5"="2000"))
+## change strategy heading
+colnames(summary_ukbms)[2] <- "Specialism"
+summary_ukbms$Specialism <- revalue(summary_ukbms$Specialism, c("specialist"="Specialist"))
+summary_ukbms$Specialism <- revalue(summary_ukbms$Specialism, c("wider.countryside"="Generalist"))
+summary_ukbms$Specialism <- factor(summary_ukbms$Specialism, levels=c("Generalist", "Specialist"))
+
+## plot graph with raw data residuals (+SE error bars) and fitted lines
+png("../Graphs/Specialism/Specialism_change_predicted_ukbms_00_12.png", height = 150, width = 180, units = "mm", res = 300)
 butterfly_spec2 <- ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Specialism)) +
   geom_point(aes(shape=Specialism), colour="grey66", size = 3, position = myjit) +
   geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey66", width=0.2, position = myjit) +
@@ -205,6 +278,7 @@ butterfly_spec2 <- ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Speci
   guides(linetype = guide_legend(override.aes = list(size = 0.5)))
 butterfly_spec2
 dev.off()
+
 
 install.packages("ggpubr")
 library(ggpubr)
@@ -252,11 +326,11 @@ pair_attr_cbc$specialism <- as.factor(pair_attr_cbc$specialism)
 pair_attr_cbc$hab_sim <- as.factor(pair_attr_cbc$hab_sim)
 
 ###### run model with strategy and year interaction
-spec_model_cbc2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*specialism + (1|pair.id) + (1|spp), data = pair_attr_cbc)
+spec_model_cbc2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*specialism + family + (1|pair.id) + (1|spp), data = pair_attr_cbc)
 summary(spec_model_cbc2)
 ## intercept is mid.year 1985 and generalists
 anova(spec_model_cbc2)
-## mid.year*strategy interaction is NON-significant overall
+## mid.year*strategy interaction is NON-significant overall (still non-significant with family and genus included)
 ## save model output
 results_table_strategy_cbc <- data.frame(summary(spec_model_cbc2)$coefficients[,1:5]) ## 29 species
 write.csv(results_table_strategy_cbc, file = "../Results/Model_outputs/CBC/change_spec_cbc.csv", row.names=TRUE)
