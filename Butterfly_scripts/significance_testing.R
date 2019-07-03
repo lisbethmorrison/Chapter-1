@@ -12,6 +12,10 @@ rm(list=ls()) # clear R
 library(lme4)
 library(lmerTest)
 library(dplyr)
+library(foreach)
+library(doParallel)
+library(lmerTest)
+library(lme4)
 options(scipen=999)
 
 ## load data
@@ -65,28 +69,16 @@ pair_attr_late <- read.csv("../Data/Butterfly_sync_data/pair_attr_late_no_zeros2
 pair_attr_overall <- read.csv("../Data/Butterfly_sync_data/pair_attr_overall_no_zeros2.csv", header=TRUE)
 
 #### change variables to factors/characters
-str(pair_attr_early)
-pair_attr_early$pair.id <- paste("ID", pair_attr_early$site1, pair_attr_early$site2, sep = "_")
-pair_attr_early$end.year <- as.factor(pair_attr_early$end.year)
 pair_attr_early$mid.year <- as.factor(pair_attr_early$mid.year)
-pair_attr_early$start.year <- as.factor(pair_attr_early$start.year)
-#pair_attr_early$pair.id <- as.character(pair_attr_early$pair.id)
+pair_attr_early$pair.id <- as.character(pair_attr_early$pair.id)
 pair_attr_early$spp <- as.factor(pair_attr_early$spp)
 
-str(pair_attr_late)
-pair_attr_late$pair.id <- paste("ID", pair_attr_late$site1, pair_attr_late$site2, sep = "_")
-pair_attr_late$end.year <- as.factor(pair_attr_late$end.year)
 pair_attr_late$mid.year <- as.factor(pair_attr_late$mid.year)
-pair_attr_late$start.year <- as.factor(pair_attr_late$start.year)
-#pair_attr_late$pair.id <- as.character(pair_attr_late$pair.id)
+pair_attr_late$pair.id <- as.character(pair_attr_late$pair.id)
 pair_attr_late$spp <- as.factor(pair_attr_late$spp)
 
-str(pair_attr_overall)
-pair_attr_overall$pair.id <- paste("ID", pair_attr_overall$site1, pair_attr_overall$site2, sep = "_")
-pair_attr_overall$end.year <- as.factor(pair_attr_overall$end.year)
 pair_attr_overall$mid.year <- as.factor(pair_attr_overall$mid.year)
-pair_attr_overall$start.year <- as.factor(pair_attr_overall$start.year)
-#pair_attr_overall$pair.id <- as.character(pair_attr_overall$pair.id)
+pair_attr_overall$pair.id <- as.character(pair_attr_overall$pair.id)
 pair_attr_overall$spp <- as.factor(pair_attr_overall$spp)
 
 
@@ -300,6 +292,7 @@ pair_attr_overall$spp <- as.factor(pair_attr_overall$spp)
 # model_comp_all_spp_wood <- data.frame(rbind(results_early_all_spp, results_late_all_spp, results_overall_all_spp))
 # write.csv(model_comp_all_spp_wood, file="../Results/Butterfly_results/model_comp_all_spp_woodland.csv", row.names=FALSE)
 
+
 ##################################
 ## EARLY MODEL FOR EACH SPECIES ##
 ##################################
@@ -307,6 +300,7 @@ pair_attr_overall$spp <- as.factor(pair_attr_overall$spp)
 spp.list.early <- unique(pair_attr_early$spp)
 
 results_table_early<-NULL
+F_result_final <- NULL
 for (i in spp.list.early){
   print(i)
   
@@ -320,19 +314,20 @@ for (i in spp.list.early){
     
   } else {
   
-  early_model <- (lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), REML=FALSE, data = pair_attr_early[pair_attr_early$spp==i,]))
+  early_model <- (lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data = pair_attr_early[pair_attr_early$spp==i,]))
   summary(early_model)
   anova(early_model)
   
   ### save and plot the results ###
-  results_table_temp <- data.frame(summary(early_model)$coefficients[,1:5],i)
+  results_table_temp <- data.frame(summary(early_model)$coefficients[,1:5],i) ## save model results
+  F_result_table <- data.frame(anova(early_model)[5], i) ## also save model F values to use in permutation tests
   results_table_early <-rbind(results_table_early,results_table_temp)
+  F_result_final <-rbind(F_result_final,F_result_table)
   
   }
     
 }
 
-## Add REML=FALSE because you should use ML (maximum likelihood) when comparing models that differ in their fixed effects
 ## if else function removes 1 species when nrow of 1980 is set at <20:
 ## species 110, 116, 119, 17, 18, 23, 27 and 48
 ## 24 species 
@@ -342,29 +337,119 @@ results_table_early$parameter <- paste(row.names(results_table_early))
 rownames(results_table_early) <- 1:nrow(results_table_early)
 
 ## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-results_table5 <- NULL
-results_table1 <- results_table_early[grep("mean_northing", results_table_early$parameter),]
-results_table2 <- results_table_early[grep("distance", results_table_early$parameter),]
-results_table3 <- results_table_early[grep("hab_sim", results_table_early$parameter),]
-results_table4 <- results_table_early[grep("(Intercept)", results_table_early$parameter),]
-results_table5 <- rbind(results_table5, results_table4, results_table1, results_table2, results_table3)
-results_table_early <- results_table_early[!results_table_early$parameter%in%results_table5$parameter,]
+results_table_early <- results_table_early[grep("mid.year", results_table_early$parameter),]
 
 ## change parameter names to year of interest (mid.year = 2000/1999.5)
-results_table_early$year <- 2000 
-## remove parameter column
-results_table_early <- results_table_early[-7]
-
-## classify each species as either no change (insignificant p value), decreasing (negative estimte), or increasing (positive estimate)
-results_table_early <- results_table_early %>% group_by(species) %>% mutate(change = ifelse(p_value>0.05, "No change", ifelse(p_value<0.05 & Estimate<0, "Decrease", "Increase")))
-
-nrow(results_table_early[results_table_early$change=="No change",]) ## 5 species unchanged
-nrow(results_table_early[results_table_early$change=="Decrease",]) ## 17 species decreasing
-nrow(results_table_early[results_table_early$change=="Increase",]) ## 2 species increasing
-## Plus 8 species not included in the model
+results_table_early$year <- "1985/2000" 
 
 ## make final table
-results_final_early <- results_table_early[,c(1,5,6,8)]
+results_final_early <- results_table_early[,c(1,6,8)]
+
+##### modify F result table
+colnames(F_result_final)[2] <- "j"
+F_result_final$i <- 0 ## make i column with zeros 
+F_result_final$parameter <- paste(row.names(F_result_final)) ## move row.names to parameter column
+rownames(F_result_final) <- 1:nrow(F_result_final) ## change row names to numbers
+## take out 3 columns for each species: mean northing, distance and renk_hab_sim
+F_result_final <- F_result_final[grep("mid.year", F_result_final$parameter),]
+
+## save true model results
+write.csv(F_result_final, file = "../Results/Model_outputs/UKBMS/true_F_values_spp_85_00.csv", row.names=FALSE)
+F_result_final <- read.csv("../Results/Model_outputs/UKBMS/true_F_values_spp_85_00.csv", header=TRUE)
+
+## permutation tests for each species
+
+## run 999 permutation tests
+## Set up number of cores to run on (7)
+cores=detectCores()
+cl <- makeCluster(cores[1]-1) #not to overload your computer
+registerDoParallel(cl)
+
+n_sims <- 999
+F_result_final$j <- as.factor(F_result_final$j)
+spp_list <- unique(F_result_final$j) ## only run this on the species that work (24)
+## merge spp with pair_attr_early
+spp_list <- as.data.frame(spp_list)
+pair_attr_early <- merge(pair_attr_early, spp_list, by.x="spp", by.y="spp_list", all=FALSE)
+pair_attr_early <- droplevels(pair_attr_early)
+length(unique(pair_attr_early$spp))
+spp_list <- unique(F_result_final$j) ## only run this on the species that work (24)
+str(spp_list)
+
+para_start_time = Sys.time()
+ukbms_spp_para <- foreach (i=1:n_sims,  .combine=rbind, .packages=c('lme4', 'foreach')) %dopar% { ## loop through each permutation
+  print(i)
+  foreach (j=spp_list, .combine=rbind, .packages=c('lme4', 'foreach')) %dopar% { ## loop through each species
+    print(j)
+    pair_attr_early$mid.year_shuffle <- sample(pair_attr_early$mid.year) ## randomly shuffle mid year variable
+  model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year_shuffle + (1|pair.id), data = pair_attr_early[pair_attr_early$spp==j,])
+  ## run model with shuffled variable
+  ## save results
+  anoresult<-anova(model)
+  data.frame(anoresult, i=i, j=j)
+  }
+}
+stopCluster(cl)
+para_end_time = Sys.time()
+para_run_time = para_end_time - para_start_time
+print(paste0("TOTAL RUN TIME: ", para_run_time)) ## 1.7hrs for 999 runs
+
+### save results
+ukbms_spp_para$parameter <- paste(row.names(ukbms_spp_para)) ## move row.names to parameter column
+rownames(ukbms_spp_para) <- 1:nrow(ukbms_spp_para) ## change row names to numbers
+ukbms_spp_para <- ukbms_spp_para[,-c(1:3)] ## remove unnecessary columns
+## only keep rows with interaction
+ukbms_spp_para <- ukbms_spp_para[grep("mid.year_shuffle", ukbms_spp_para$parameter),]
+final_results_table <- rbind(F_result_final, ukbms_spp_para) ## bind the two data frames together
+
+F_value <- with(final_results_table, final_results_table$F.value[final_results_table$i==0]) ## true F value from main model
+hist(final_results_table$F.value) + abline(v=F_value, col="red") ## plot distribution of F values with vertical line (true F value)
+
+## save file
+write.csv(final_results_table, file = "../Results/Model_outputs/UKBMS/perm_F_values_spp_85_00.csv", row.names=FALSE)
+## read in file
+perm_ukbms_sp <- read.csv("../Results/Model_outputs/UKBMS/perm_F_values_spp_85_00.csv", header=TRUE) 
+
+## calculate p value for each species
+## Calculate p value
+number_of_permutations <- 1000
+spp_list <- unique(perm_ukbms_sp$j)
+p_values_final <- NULL
+## loop through each species
+for(j in spp_list){
+  
+  perm_ukbms_sp2 <- perm_ukbms_sp[perm_ukbms_sp$j==j,] ## select species of interest
+  true_ukbms_sp <- perm_ukbms_sp2[perm_ukbms_sp2$i==0,] ## obtain true F value (iteration = 0)
+  perm_ukbms_sp2 <- perm_ukbms_sp2[!perm_ukbms_sp2$i==0,] ## remove true value to calc. p value
+  diff.observed <- true_ukbms_sp$F.value ## true F value
+  
+  # P-value is the fraction of how many times the permuted difference is equal or more extreme than the observed difference
+  pvalue = sum(abs(perm_ukbms_sp2$F.value) >= abs(diff.observed)) / number_of_permutations
+  p_values_temp <- data.frame(pvalue=pvalue, species=j)
+  p_values_final <- rbind(p_values_final, p_values_temp)
+}
+## save file
+write.csv(p_values_final, file = "../Results/Model_outputs/UKBMS/perm_p_values_spp_85_00.csv", row.names=FALSE)
+p_values_early <- read.csv("../Results/Model_outputs/UKBMS/perm_p_values_spp_85_00.csv", header=TRUE)
+
+## merge permutation p values with main model output
+final_results_early <- merge(results_final_early, p_values_early, by="species")
+
+## classify each species as either no change (insignificant p value), decreasing (negative estimte), or increasing (positive estimate)
+final_results_early <- final_results_early %>% group_by(species) %>% mutate(change = ifelse(pvalue>0.05, "No change", ifelse(pvalue<0.05 & Estimate<0, "Decrease", "Increase")))
+
+nrow(final_results_early[final_results_early$change=="No change",]) ## 6 species unchanged
+nrow(final_results_early[final_results_early$change=="Decrease",]) ## 17 species decreasing
+nrow(final_results_early[final_results_early$change=="Increase",]) ## 1 species increasing
+
+write.csv(final_results_early, file="../Results/Butterfly_results/ukbms_spp_trends_85_00.csv", row.names=FALSE)
+
+final_results_early2 <- data.frame(change=unique(final_results_early$change), no_species=c(17,6,1), total_species=24)
+final_results_early2$percentage <- (final_results_early2$no_species / final_results_early2$total_species)*100
+
+## save file
+write.csv(final_results_early2, file="../Results/Butterfly_results/ukbms_overall_trends_85_00.csv", row.names=FALSE)
+
 
 ##################################
 ## LATE MODEL FOR EACH SPECIES ##
@@ -372,6 +457,7 @@ results_final_early <- results_table_early[,c(1,5,6,8)]
 
 spp.list.late <- unique(pair_attr_late$spp)
 results_table_late<-NULL
+F_result_final <- NULL
 for (i in spp.list.late){
   print(i)
   
@@ -388,14 +474,16 @@ for (i in spp.list.late){
     next
   }
   
-  late_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), REML=FALSE, data = pair_attr_late[pair_attr_late$spp==i,])
+  late_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data = pair_attr_late[pair_attr_late$spp==i,])
   summary(late_model)
   anova(late_model)
   
   ### save and plot the results ###
   results_table_temp <- data.frame(summary(late_model)$coefficients[,1:5],i)
   results_table_late <-rbind(results_table_late,results_table_temp)
-
+  F_result_table <- data.frame(anova(late_model)[5], i) ## also save model F values to use in permutation tests
+  F_result_final <-rbind(F_result_final,F_result_table)
+  
 }
 
 ## if else function removes 2 species when nrow of 2007 is set at <20:
@@ -407,28 +495,120 @@ results_table_late$parameter <- paste(row.names(results_table_late))
 rownames(results_table_late) <- 1:nrow(results_table_late)
 
 ## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-results_table5 <- NULL
-results_table1 <- results_table_late[grep("mean_northing", results_table_late$parameter),]
-results_table2 <- results_table_late[grep("distance", results_table_late$parameter),]
-results_table3 <- results_table_late[grep("hab_sim", results_table_late$parameter),]
-results_table4 <- results_table_late[grep("(Intercept)", results_table_late$parameter),]
-results_table5 <- rbind(results_table5, results_table4, results_table1, results_table2, results_table3)
-results_table_late <- results_table_late[!results_table_late$parameter%in%results_table5$parameter,]
+results_table_late <- results_table_late[grep("mid.year", results_table_late$parameter),]
 
 ## change parameter names to year of interest (mid.year = 2012/2011.5)
-results_table_late$year <- 2012 
-## remove parameter column
-results_table_late <- results_table_late[-7]
+results_table_late$year <- "2000/2012"  
+
+results_final_late <- results_table_late[,c(1,6,8)]
+
+
+##### modify F result table
+colnames(F_result_final)[2] <- "j"
+F_result_final$i <- 0 ## make i column with zeros 
+F_result_final$parameter <- paste(row.names(F_result_final)) ## move row.names to parameter column
+rownames(F_result_final) <- 1:nrow(F_result_final) ## change row names to numbers
+## take out 3 columns for each species: mean northing, distance and renk_hab_sim
+F_result_final <- F_result_final[grep("mid.year", F_result_final$parameter),]
+
+## save true model results
+write.csv(F_result_final, file = "../Results/Model_outputs/UKBMS/true_F_values_spp_00_12.csv", row.names=FALSE)
+F_result_final <- read.csv("../Results/Model_outputs/UKBMS/true_F_values_spp_00_12.csv", header=TRUE)
+
+## permutation tests for each species
+
+## run 999 permutation tests
+## Set up number of cores to run on (7)
+cores=detectCores()
+cl <- makeCluster(cores[1]-1) #not to overload your computer
+registerDoParallel(cl)
+
+n_sims <- 999
+F_result_final$j <- as.factor(F_result_final$j)
+spp_list <- unique(F_result_final$j) ## only run this on the species that work (31)
+## merge spp with pair_attr_late
+spp_list <- as.data.frame(spp_list)
+pair_attr_late <- merge(pair_attr_late, spp_list, by.x="spp", by.y="spp_list", all=FALSE)
+pair_attr_late <- droplevels(pair_attr_late)
+length(unique(pair_attr_late$spp))
+spp_list <- unique(F_result_final$j) ## only run this on the species that work (31)
+str(spp_list)
+
+para_start_time = Sys.time()
+ukbms_spp_para <- foreach (i=1:n_sims,  .combine=rbind, .packages=c('lme4', 'foreach')) %dopar% { ## loop through each permutation
+  print(i)
+  foreach (j=spp_list, .combine=rbind, .packages=c('lme4', 'foreach')) %dopar% { ## loop through each species
+    print(j)
+    pair_attr_late$mid.year_shuffle <- sample(pair_attr_late$mid.year) ## randomly shuffle mid year variable
+    model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year_shuffle + (1|pair.id), data = pair_attr_late[pair_attr_late$spp==j,])
+    ## run model with shuffled variable
+    ## save results
+    anoresult<-anova(model)
+    data.frame(anoresult, i=i, j=j)
+  }
+}
+stopCluster(cl)
+para_end_time = Sys.time()
+para_run_time = para_end_time - para_start_time
+print(paste0("TOTAL RUN TIME: ", para_run_time)) ## 9.618 minutes for 999 runs!
+
+### save results
+ukbms_spp_para$parameter <- paste(row.names(ukbms_spp_para)) ## move row.names to parameter column
+rownames(ukbms_spp_para) <- 1:nrow(ukbms_spp_para) ## change row names to numbers
+ukbms_spp_para <- ukbms_spp_para[,-c(1:3)] ## remove unnecessary columns
+## only keep rows with interaction
+ukbms_spp_para <- ukbms_spp_para[grep("mid.year_shuffle", ukbms_spp_para$parameter),]
+final_results_table <- rbind(F_result_final, ukbms_spp_para) ## bind the two data frames together
+
+F_value <- with(final_results_table, final_results_table$F.value[final_results_table$i==0]) ## true F value from main model
+hist(final_results_table$F.value) + abline(v=F_value, col="red") ## plot distribution of F values with vertical line (true F value)
+
+## save file
+write.csv(final_results_table, file = "../Results/Model_outputs/UKBMS/perm_F_values_spp_00_12.csv", row.names=FALSE)
+## read in file
+perm_ukbms_sp <- read.csv("../Results/Model_outputs/UKBMS/perm_F_values_spp_00_12.csv", header=TRUE) 
+
+## calculate p value for each species
+## Calculate p value
+number_of_permutations <- 1000
+spp_list <- unique(perm_ukbms_sp$j)
+p_values_final <- NULL
+## loop through each species
+for(j in spp_list){
+  
+  perm_ukbms_sp2 <- perm_ukbms_sp[perm_ukbms_sp$j==j,] ## select species of interest
+  true_ukbms_sp <- perm_ukbms_sp2[perm_ukbms_sp2$i==0,] ## obtain true F value (iteration = 0)
+  perm_ukbms_sp2 <- perm_ukbms_sp2[!perm_ukbms_sp2$i==0,] ## remove true value to calc. p value
+  diff.observed <- true_ukbms_sp$F.value ## true F value
+  
+  # P-value is the fraction of how many times the permuted difference is equal or more extreme than the observed difference
+  pvalue = sum(abs(perm_ukbms_sp2$F.value) >= abs(diff.observed)) / number_of_permutations
+  p_values_temp <- data.frame(pvalue=pvalue, species=j)
+  p_values_final <- rbind(p_values_final, p_values_temp)
+}
+## save file
+write.csv(p_values_final, file = "../Results/Model_outputs/UKBMS/perm_p_values_spp_00_12.csv", row.names=FALSE)
+p_values_late <- read.csv("../Results/Model_outputs/UKBMS/perm_p_values_spp_00_12.csv", header=TRUE)
+
+## merge permutation p values with main model output
+final_results_late <- merge(results_final_late, p_values_late, by="species")
 
 ## classify each species as either no change (insignificant p value), decreasing (negative estimte), or increasing (positive estimate)
-results_table_late <- results_table_late %>% group_by(species) %>% mutate(change = ifelse(p_value>0.05, "No change", ifelse(p_value<0.05 & Estimate<0, "Decrease", "Increase")))
+final_results_late <- final_results_late %>% group_by(species) %>% mutate(change = ifelse(pvalue>0.05, "No change", ifelse(pvalue<0.05 & Estimate<0, "Decrease", "Increase")))
 
-nrow(results_table_late[results_table_late$change=="No change",]) ## 4 species unchanged
-nrow(results_table_late[results_table_late$change=="Decrease",]) ## 3 species decreasing
-nrow(results_table_late[results_table_late$change=="Increase",]) ## 24 species increasing
-## 1 species not included in the model
+nrow(final_results_late[final_results_late$change=="No change",]) ## 5 species unchanged
+nrow(final_results_late[final_results_late$change=="Decrease",]) ## 3 species decreasing
+nrow(final_results_late[final_results_late$change=="Increase",]) ## 23 species increasing
 
-results_final_late <- results_table_late[,c(1,5,6,8)]
+write.csv(final_results_late, file="../Results/Butterfly_results/ukbms_spp_trends_00_12.csv", row.names=FALSE)
+
+final_results_late2 <- data.frame(change=unique(final_results_late$change), no_species=c(23,5,3), total_species=31)
+final_results_late2$percentage <- (final_results_late2$no_species / final_results_late2$total_species)*100
+
+## save file
+write.csv(final_results_late2, file="../Results/Butterfly_results/ukbms_overall_trends_00_12.csv", row.names=FALSE)
+
+
 
 ####################################
 ## OVERALL MODEL FOR EACH SPECIES ##
@@ -436,6 +616,7 @@ results_final_late <- results_table_late[,c(1,5,6,8)]
 
 spp.list.overall <- unique(pair_attr_overall$spp)
 results_table_overall<-NULL
+F_result_final <- NULL
 for (i in spp.list.overall){
   print(i)
   
@@ -457,7 +638,7 @@ for (i in spp.list.overall){
     
   } else {
   
-  overall_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), REML=FALSE, data = pair_attr_overall[pair_attr_overall$spp==i,])
+  overall_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data = pair_attr_overall[pair_attr_overall$spp==i,])
   summary(overall_model)
   anova(overall_model)
   
@@ -465,7 +646,9 @@ for (i in spp.list.overall){
   ### save and plot the results ###
   results_table_temp <- data.frame(summary(overall_model)$coefficients[,1:5],i)
   results_table_overall <-rbind(results_table_overall,results_table_temp)
-
+  F_result_table <- data.frame(anova(overall_model)[5], i) ## also save model F values to use in permutation tests
+  F_result_final <-rbind(F_result_final,F_result_table)
+  
   }
 
   }
@@ -479,63 +662,136 @@ results_table_overall$parameter <- paste(row.names(results_table_overall))
 rownames(results_table_overall) <- 1:nrow(results_table_overall)
 
 ## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-results_table5 <- NULL
-results_table1 <- results_table_overall[grep("mean_northing", results_table_overall$parameter),]
-results_table2 <- results_table_overall[grep("distance", results_table_overall$parameter),]
-results_table3 <- results_table_overall[grep("hab_sim", results_table_overall$parameter),]
-results_table4 <- results_table_overall[grep("(Intercept)", results_table_overall$parameter),]
-results_table5 <- rbind(results_table5, results_table4, results_table1, results_table2, results_table3)
-results_table_overall <- results_table_overall[!results_table_overall$parameter%in%results_table5$parameter,]
+results_table_overall <- results_table_overall[grep("mid.year", results_table_overall$parameter),]
 
 ## change parameter names to year of interest (mid.year = 2012/2011.5)
-results_table_overall$year <- 2012 
-## remove parameter column
-results_table_overall <- results_table_overall[-7]
+results_table_overall$year <- "1985/2012"   
+
+results_final_overall <- results_table_overall[,c(1,6,8)]
+
+##### modify F result table
+colnames(F_result_final)[2] <- "j"
+F_result_final$i <- 0 ## make i column with zeros 
+F_result_final$parameter <- paste(row.names(F_result_final)) ## move row.names to parameter column
+rownames(F_result_final) <- 1:nrow(F_result_final) ## change row names to numbers
+## take out 3 columns for each species: mean northing, distance and renk_hab_sim
+F_result_final <- F_result_final[grep("mid.year", F_result_final$parameter),]
+
+## save true model results
+write.csv(F_result_final, file = "../Results/Model_outputs/UKBMS/true_F_values_spp_85_12.csv", row.names=FALSE)
+F_result_final <- read.csv("../Results/Model_outputs/UKBMS/true_F_values_spp_85_12.csv", header=TRUE)
+
+## permutation tests for each species
+
+## run 999 permutation tests
+## Set up number of cores to run on (7)
+cores=detectCores()
+cl <- makeCluster(cores[1]-1) #not to overload your computer
+registerDoParallel(cl)
+
+n_sims <- 999
+F_result_final$j <- as.factor(F_result_final$j)
+spp_list <- unique(F_result_final$j) ## only run this on the species that work (21)
+## merge spp with pair_attr_overall
+spp_list <- as.data.frame(spp_list)
+pair_attr_overall <- merge(pair_attr_overall, spp_list, by.x="spp", by.y="spp_list", all=FALSE)
+pair_attr_overall <- droplevels(pair_attr_overall)
+length(unique(pair_attr_overall$spp))
+spp_list <- unique(F_result_final$j) ## only run this on the species that work (21)
+str(spp_list)
+
+para_start_time = Sys.time()
+ukbms_spp_para <- foreach (i=1:n_sims,  .combine=rbind, .packages=c('lme4', 'foreach')) %dopar% { ## loop through each permutation
+  print(i)
+  foreach (j=spp_list, .combine=rbind, .packages=c('lme4', 'foreach')) %dopar% { ## loop through each species
+    print(j)
+    pair_attr_overall$mid.year_shuffle <- sample(pair_attr_overall$mid.year) ## randomly shuffle mid year variable
+    model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year_shuffle + (1|pair.id), data = pair_attr_overall[pair_attr_overall$spp==j,])
+    ## run model with shuffled variable
+    ## save results
+    anoresult<-anova(model)
+    data.frame(anoresult, i=i, j=j)
+  }
+}
+stopCluster(cl)
+para_end_time = Sys.time()
+para_run_time = para_end_time - para_start_time
+print(paste0("TOTAL RUN TIME: ", para_run_time)) ## 1hr for 999 runs
+
+### save results
+ukbms_spp_para$parameter <- paste(row.names(ukbms_spp_para)) ## move row.names to parameter column
+rownames(ukbms_spp_para) <- 1:nrow(ukbms_spp_para) ## change row names to numbers
+ukbms_spp_para <- ukbms_spp_para[,-c(1:3)] ## remove unnecessary columns
+## only keep rows with interaction
+ukbms_spp_para <- ukbms_spp_para[grep("mid.year_shuffle", ukbms_spp_para$parameter),]
+final_results_table <- rbind(F_result_final, ukbms_spp_para) ## bind the two data frames together
+
+F_value <- with(final_results_table, final_results_table$F.value[final_results_table$i==0]) ## true F value from main model
+hist(final_results_table$F.value) + abline(v=F_value, col="red") ## plot distribution of F values with vertical line (true F value)
+
+## save file
+write.csv(final_results_table, file = "../Results/Model_outputs/UKBMS/perm_F_values_spp_85_12.csv", row.names=FALSE)
+## read in file
+perm_ukbms_sp <- read.csv("../Results/Model_outputs/UKBMS/perm_F_values_spp_85_12.csv", header=TRUE) 
+
+## calculate p value for each species
+## Calculate p value
+number_of_permutations <- 1000
+spp_list <- unique(perm_ukbms_sp$j)
+p_values_final <- NULL
+## loop through each species
+for(j in spp_list){
+  
+  perm_ukbms_sp2 <- perm_ukbms_sp[perm_ukbms_sp$j==j,] ## select species of interest
+  true_ukbms_sp <- perm_ukbms_sp2[perm_ukbms_sp2$i==0,] ## obtain true F value (iteration = 0)
+  perm_ukbms_sp2 <- perm_ukbms_sp2[!perm_ukbms_sp2$i==0,] ## remove true value to calc. p value
+  diff.observed <- true_ukbms_sp$F.value ## true F value
+  
+  # P-value is the fraction of how many times the permuted difference is equal or more extreme than the observed difference
+  pvalue = sum(abs(perm_ukbms_sp2$F.value) >= abs(diff.observed)) / number_of_permutations
+  p_values_temp <- data.frame(pvalue=pvalue, species=j)
+  p_values_final <- rbind(p_values_final, p_values_temp)
+}
+## save file
+write.csv(p_values_final, file = "../Results/Model_outputs/UKBMS/perm_p_values_spp_85_12.csv", row.names=FALSE)
+p_values_overall <- read.csv("../Results/Model_outputs/UKBMS/perm_p_values_spp_85_12.csv", header=TRUE)
+
+## merge permutation p values with main model output
+final_results_overall <- merge(results_final_overall, p_values_overall, by="species")
 
 ## classify each species as either no change (insignificant p value), decreasing (negative estimte), or increasing (positive estimate)
-results_table_overall <- results_table_overall %>% group_by(species) %>% mutate(change = ifelse(p_value>0.05, "No change", ifelse(p_value<0.05 & Estimate<0, "Decrease", "Increase")))
+final_results_overall <- final_results_overall %>% group_by(species) %>% mutate(change = ifelse(pvalue>0.05, "No change", ifelse(pvalue<0.05 & Estimate<0, "Decrease", "Increase")))
 
-nrow(results_table_overall[results_table_overall$change=="No change",]) ## 6 species unchanged
-nrow(results_table_overall[results_table_overall$change=="Decrease",]) ## 6 species decreasing
-nrow(results_table_overall[results_table_overall$change=="Increase",]) ## 9 species increasing
-## 11 species which the model didn't run (4, 14, 18, 48, 94 and 119)
+nrow(final_results_overall[final_results_overall$change=="No change",]) ## 6 species unchanged
+nrow(final_results_overall[final_results_overall$change=="Decrease",]) ## 6 species decreasing
+nrow(final_results_overall[final_results_overall$change=="Increase",]) ## 9 species increasing
 
-results_final_overall <- results_table_overall[,c(1,5,6,8)]
+write.csv(final_results_overall, file="../Results/Butterfly_results/ukbms_spp_trends_85_12.csv", row.names=FALSE)
+
+final_results_overall2 <- data.frame(change=unique(final_results_overall$change), no_species=c(9,6,6), total_species=21)
+final_results_overall2$percentage <- (final_results_overall2$no_species / final_results_overall2$total_species)*100
+
+## save file
+write.csv(final_results_overall2, file="../Results/Butterfly_results/ukbms_spp_trends_85_12.csv", row.names=FALSE)
+
+
+
+
+
 
 #### save comparison model results for each comparison for each species #####
-write.csv(results_final_early, file="../Results/Butterfly_results/results_comp_early_no_zeros2.csv", row.names=FALSE)
-write.csv(results_final_late, file="../Results/Butterfly_results/results_comp_late_no_zeros2.csv", row.names=FALSE)
-write.csv(results_final_overall, file="../Results/Butterfly_results/results_comp_overall_no_zeros2.csv", row.names=FALSE)
+results_final_early <- read.csv("../Results/Butterfly_results/ukbms_overall_trends_85_00.csv", header=TRUE)
+results_final_late <- read.csv("../Results/Butterfly_results/ukbms_overall_trends_00_12.csv", header=TRUE)
+results_final_overall <- read.csv("../Results/Butterfly_results/ukbms_overall_trends_85_12.csv", header=TRUE)
 
-results_final_early <- read.csv("../Results/Butterfly_results/results_comp_early.csv", header=TRUE)
-results_final_late <- read.csv("../Results/Butterfly_results/results_comp_late.csv", header=TRUE)
-results_final_overall <- read.csv("../Results/Butterfly_results/results_comp_overall.csv", header=TRUE)
+## remove columns 2 and 3 of each data frame (so just left with change and percentages)
+results_final_early <- results_final_early[,-c(2:3)]
+results_final_late <- results_final_late[,-c(2:3)]
+results_final_overall <- results_final_overall[,-c(2:3)]
 
-## remove first 2 columns of each data frame (so just left with change and species code)
-results_final_early <- results_final_early[,-c(1:2)]
-results_final_late <- results_final_late[,-c(1:2)]
-results_final_overall <- results_final_overall[,-c(1:2)]
-
-## create early comparison data frame
-results_final_early <- data.frame(comparison="1985-2000", change=unique(results_final_early$change), no_species=c(17,5,2), total_species=24)
-# nrow(results_table_early[results_table_early$change=="No change",]) ## 5 species unchanged
-# nrow(results_table_early[results_table_early$change=="Decrease",]) ## 17 species decreasing
-# nrow(results_table_early[results_table_early$change=="Increase",]) ## 2 species increasing
-results_final_early$percentage <- (results_final_early$no_species / results_final_early$total_species)*100
-
-## create late comparison data frame
-results_final_late <- data.frame(comparison="2000-2012", change=unique(results_final_late$change), no_species=c(24,4,3), total_species=31)
-# nrow(results_table_late[results_table_late$change=="No change",]) ## 4 species unchanged
-# nrow(results_table_late[results_table_late$change=="Decrease",]) ## 3 species decreasing
-# nrow(results_table_late[results_table_late$change=="Increase",]) ## 24 species increasing
-results_final_late$percentage <- (results_final_late$no_species / results_final_late$total_species)*100
-
-## create overall comparison data frame
-results_final_overall <- data.frame(comparison="1985-2012", change=unique(results_final_overall$change), no_species=c(9,6,6), total_species=21)
-# nrow(results_table_overall[results_table_overall$change=="No change",]) ## 6 species unchanged
-# nrow(results_table_overall[results_table_overall$change=="Decrease",]) ## 6 species decreasing
-# nrow(results_table_overall[results_table_overall$change=="Increase",]) ## 9 species increasing
-results_final_overall$percentage <- (results_final_overall$no_species / results_final_overall$total_species)*100
+results_final_early$comparison <- "1985-2000"
+results_final_late$comparison <- "2000-2012"
+results_final_overall$comparison <- "1985-2012"
 
 ## rbind all results together 
 model_comp_results <- rbind(results_final_early, results_final_late, results_final_overall)
@@ -550,6 +806,10 @@ library(ggplot2)
 levels(model_comp_results$change)
 model_comp_results$change <- factor(model_comp_results$change, levels=c("Increase", "No change", "Decrease"))
 levels(model_comp_results$change)
+model_comp_results$comparison <- as.factor(model_comp_results$comparison)
+levels(model_comp_results$comparison)
+model_comp_results$comparison <- factor(model_comp_results$comparison, levels=c("1985-2000", "2000-2012", "1985-2012"))
+levels(model_comp_results$comparison)
 
 ## pretty graph
 png("../Graphs/Model_comps/Model_comp_results_all_spp_no_zeros2.png", height = 100, width = 120, units = "mm", res = 300)
@@ -581,114 +841,114 @@ ggplot(data=model_comp_results, aes(x=comparison, y=percentage, fill=change)) +
   theme(legend.margin=margin(c(-15,40,-5,-20)), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
 dev.off()
-
-#### produce graph for percentage of specialists and generalists 
-## add specialist/generalist data
-spec_gen <- read.csv("../Data/UKBMS_data/UKBMS_UKspecieslist.csv", header=TRUE)
-
-## merge datasets
-results_table_early <- merge(results_table_early, spec_gen, by.x="species", by.y="BMSCODE")
-results_table_early <- results_table_early[-c(6,7,9,10)] # remove unecessary columns
-results_table_early_wc <- results_table_early[results_table_early$STRATEGY=="Wider countryside sp",]
-results_table_early_hs <- results_table_early[results_table_early$STRATEGY=="Habitat specialist",]
-
-results_table_late <- merge(results_table_late, spec_gen, by.x="species", by.y="BMSCODE")
-results_table_late <- results_table_late[-c(6,7,9,10)] # remove unecessary columns
-results_table_late_wc <- results_table_late[results_table_late$STRATEGY=="Wider countryside sp",]
-results_table_late_hs <- results_table_late[results_table_late$STRATEGY=="Habitat specialist",]
-
-results_table_overall <- merge(results_table_overall, spec_gen, by.x="species", by.y="BMSCODE")
-results_table_overall <- results_table_overall[-c(6,7,9,10)] # remove unecessary columns
-results_table_overall_wc <- results_table_overall[results_table_overall$STRATEGY=="Wider countryside sp",]
-results_table_overall_hs <- results_table_overall[results_table_overall$STRATEGY=="Habitat specialist",]
-
-## produce percentages of species (EARLY WIDER COUNTRYSIDE)
-results_final_early_wc <- data.frame(comparison="Early short term", change=unique(results_table_early_wc$change), strategy="Wider countryside sp", no_species=c(13,6,2), total_species=21)
-nrow(results_table_early_wc[results_table_early_wc$change=="No change",]) ## 6 wider countryside species no change
-nrow(results_table_early_wc[results_table_early_wc$change=="Decrease",]) ## 13 wider countryside species decreasing
-nrow(results_table_early_wc[results_table_early_wc$change=="Increase",]) ## 2 wider counytrside species increasing
-results_final_early_wc$percentage <- (results_final_early_wc$no_species / results_final_early_wc$total_species)*100
-
-## produce percentages of species (EARLY SPECIALISTS)
-results_final_early_hs <- data.frame(comparison="Early short term", change=unique(results_table_early_wc$change), strategy="Habitat specialist", no_species=c(0,6,2), total_species=8)
-nrow(results_table_early_hs[results_table_early_hs$change=="No change",]) ## 6 wider countryside species no change
-nrow(results_table_early_hs[results_table_early_hs$change=="Decrease",]) ## 0 wider countryside species decreasing
-nrow(results_table_early_hs[results_table_early_hs$change=="Increase",]) ## 2 wider counytrside species increasing
-results_final_early_hs$percentage <- (results_final_early_hs$no_species / results_final_early_hs$total_species)*100
-
-## produce percentages of species (LATE WIDER COUNTRYSIDE)
-results_final_late_wc <- data.frame(comparison="Late short term", change=unique(results_table_late_wc$change), strategy="Wider countryside sp", no_species=c(3,17,2), total_species=22)
-nrow(results_table_late_wc[results_table_late_wc$change=="No change",]) ## 3 wider countryside species no change
-nrow(results_table_late_wc[results_table_late_wc$change=="Decrease",]) ## 2 wider countryside species decreasing
-nrow(results_table_late_wc[results_table_late_wc$change=="Increase",]) ## 17 wider counytrside species increasing
-results_final_late_wc$percentage <- (results_final_late_wc$no_species / results_final_late_wc$total_species)*100
-
-## produce percentages of species (LATE SPECIALISTS)
-results_final_late_hs <- data.frame(comparison="Late short term", change=unique(results_table_late_hs$change), strategy="Habitat specialist", no_species=c(2,5,1), total_species=8)
-nrow(results_table_late_hs[results_table_late_hs$change=="No change",]) ## 2 wider countryside species no change
-nrow(results_table_late_hs[results_table_late_hs$change=="Decrease",]) ## 1 wider countryside species decreasing
-nrow(results_table_late_hs[results_table_late_hs$change=="Increase",]) ## 5 wider counytrside species increasing
-results_final_late_hs$percentage <- (results_final_late_hs$no_species / results_final_late_hs$total_species)*100
-
-## produce percentages of species (OVERALL WIDER COUNTRYSIDE)
-results_final_overall_wc <- data.frame(comparison="Long term", change=unique(results_table_overall_wc$change), strategy="Wider countryside sp", no_species=c(5,9,6), total_species=20)
-nrow(results_table_overall_wc[results_table_overall_wc$change=="No change",]) ## 6 wider countryside species no change
-nrow(results_table_overall_wc[results_table_overall_wc$change=="Decrease",]) ## 5 wider countryside species decreasing
-nrow(results_table_overall_wc[results_table_overall_wc$change=="Increase",]) ## 9 wider counytrside species increasing
-results_final_overall_wc$percentage <- (results_final_overall_wc$no_species / results_final_overall_wc$total_species)*100
-
-## produce percentages of species (OVERALL SPECIALISTS)
-results_final_overall_hs <- data.frame(comparison="Long term", change=unique(results_table_overall_hs$change), strategy="Habitat specialist", no_species=c(1,1,5), total_species=7)
-nrow(results_table_overall_hs[results_table_overall_hs$change=="No change",]) ## 5 wider countryside species no change
-nrow(results_table_overall_hs[results_table_overall_hs$change=="Decrease",]) ## 1 wider countryside species decreasing
-nrow(results_table_overall_hs[results_table_overall_hs$change=="Increase",]) ## 1 wider counytrside species increasing
-results_final_overall_hs$percentage <- (results_final_overall_hs$no_species / results_final_overall_hs$total_species)*100
-
-## rbind all results together 
-model_comp_results_wc <- rbind(results_final_early_wc, results_final_late_wc, results_final_overall_wc)
-model_comp_results_hs <- rbind(results_final_early_hs, results_final_late_hs, results_final_overall_hs)
-## save file
-write.csv(model_comp_results_woodland, file="../Results/Butterfly_results/model_comp_percentages_woodland.csv", row.names=FALSE)
-
-####### plot 2 graphs - one for wider countryside and one for specialists ##########
-library(ggplot2)
-
-## change levels of change so they go in correct order
-levels(model_comp_results_wc$change)
-model_comp_results_wc$change <- factor(model_comp_results_wc$change, levels=c("Increase", "No change", "Decrease"))
-levels(model_comp_results_wc$change)
-
-levels(model_comp_results_hs$change)
-model_comp_results_hs$change <- factor(model_comp_results_hs$change, levels=c("Increase", "No change", "Decrease"))
-levels(model_comp_results_hs$change)
-
-## wider countryside species
-png("../Graphs/Model_comps/Model_comp_results_wc.png", height = 100, width = 120, units = "mm", res = 300)
-ggplot(data=model_comp_results_wc, aes(x=comparison, y=percentage, fill=change)) +
-  geom_bar(stat="identity", width=0.4) +
-  labs(y="Percentage of species", x="", fill="") +
-  scale_fill_manual(values = c("#339900", "#999999", "#990000")) +
-  theme_bw() +
-  theme(axis.text.x=element_text(colour = "black")) +
-  theme(axis.text.y=element_text(colour = "black")) +
-  scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
-dev.off()
-
-## habitat specialist species
-png("../Graphs/Model_comps/Model_comp_results_hs.png", height = 100, width = 120, units = "mm", res = 300)
-ggplot(data=model_comp_results_hs, aes(x=comparison, y=percentage, fill=change)) +
-  geom_bar(stat="identity", width=0.4) +
-  labs(y="Percentage of species", x="", fill="") +
-  scale_fill_manual(values = c("#339900", "#999999", "#990000")) +
-  theme_bw() +
-  theme(axis.text.x=element_text(colour = "black")) +
-  theme(axis.text.y=element_text(colour = "black")) +
-  scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
-dev.off()
+# 
+# #### produce graph for percentage of specialists and generalists 
+# ## add specialist/generalist data
+# spec_gen <- read.csv("../Data/UKBMS_data/UKBMS_UKspecieslist.csv", header=TRUE)
+# 
+# ## merge datasets
+# results_table_early <- merge(results_table_early, spec_gen, by.x="species", by.y="BMSCODE")
+# results_table_early <- results_table_early[-c(6,7,9,10)] # remove unecessary columns
+# results_table_early_wc <- results_table_early[results_table_early$STRATEGY=="Wider countryside sp",]
+# results_table_early_hs <- results_table_early[results_table_early$STRATEGY=="Habitat specialist",]
+# 
+# results_table_late <- merge(results_table_late, spec_gen, by.x="species", by.y="BMSCODE")
+# results_table_late <- results_table_late[-c(6,7,9,10)] # remove unecessary columns
+# results_table_late_wc <- results_table_late[results_table_late$STRATEGY=="Wider countryside sp",]
+# results_table_late_hs <- results_table_late[results_table_late$STRATEGY=="Habitat specialist",]
+# 
+# results_table_overall <- merge(results_table_overall, spec_gen, by.x="species", by.y="BMSCODE")
+# results_table_overall <- results_table_overall[-c(6,7,9,10)] # remove unecessary columns
+# results_table_overall_wc <- results_table_overall[results_table_overall$STRATEGY=="Wider countryside sp",]
+# results_table_overall_hs <- results_table_overall[results_table_overall$STRATEGY=="Habitat specialist",]
+# 
+# ## produce percentages of species (EARLY WIDER COUNTRYSIDE)
+# results_final_early_wc <- data.frame(comparison="Early short term", change=unique(results_table_early_wc$change), strategy="Wider countryside sp", no_species=c(13,6,2), total_species=21)
+# nrow(results_table_early_wc[results_table_early_wc$change=="No change",]) ## 6 wider countryside species no change
+# nrow(results_table_early_wc[results_table_early_wc$change=="Decrease",]) ## 13 wider countryside species decreasing
+# nrow(results_table_early_wc[results_table_early_wc$change=="Increase",]) ## 2 wider counytrside species increasing
+# results_final_early_wc$percentage <- (results_final_early_wc$no_species / results_final_early_wc$total_species)*100
+# 
+# ## produce percentages of species (EARLY SPECIALISTS)
+# results_final_early_hs <- data.frame(comparison="Early short term", change=unique(results_table_early_wc$change), strategy="Habitat specialist", no_species=c(0,6,2), total_species=8)
+# nrow(results_table_early_hs[results_table_early_hs$change=="No change",]) ## 6 wider countryside species no change
+# nrow(results_table_early_hs[results_table_early_hs$change=="Decrease",]) ## 0 wider countryside species decreasing
+# nrow(results_table_early_hs[results_table_early_hs$change=="Increase",]) ## 2 wider counytrside species increasing
+# results_final_early_hs$percentage <- (results_final_early_hs$no_species / results_final_early_hs$total_species)*100
+# 
+# ## produce percentages of species (LATE WIDER COUNTRYSIDE)
+# results_final_late_wc <- data.frame(comparison="Late short term", change=unique(results_table_late_wc$change), strategy="Wider countryside sp", no_species=c(3,17,2), total_species=22)
+# nrow(results_table_late_wc[results_table_late_wc$change=="No change",]) ## 3 wider countryside species no change
+# nrow(results_table_late_wc[results_table_late_wc$change=="Decrease",]) ## 2 wider countryside species decreasing
+# nrow(results_table_late_wc[results_table_late_wc$change=="Increase",]) ## 17 wider counytrside species increasing
+# results_final_late_wc$percentage <- (results_final_late_wc$no_species / results_final_late_wc$total_species)*100
+# 
+# ## produce percentages of species (LATE SPECIALISTS)
+# results_final_late_hs <- data.frame(comparison="Late short term", change=unique(results_table_late_hs$change), strategy="Habitat specialist", no_species=c(2,5,1), total_species=8)
+# nrow(results_table_late_hs[results_table_late_hs$change=="No change",]) ## 2 wider countryside species no change
+# nrow(results_table_late_hs[results_table_late_hs$change=="Decrease",]) ## 1 wider countryside species decreasing
+# nrow(results_table_late_hs[results_table_late_hs$change=="Increase",]) ## 5 wider counytrside species increasing
+# results_final_late_hs$percentage <- (results_final_late_hs$no_species / results_final_late_hs$total_species)*100
+# 
+# ## produce percentages of species (OVERALL WIDER COUNTRYSIDE)
+# results_final_overall_wc <- data.frame(comparison="Long term", change=unique(results_table_overall_wc$change), strategy="Wider countryside sp", no_species=c(5,9,6), total_species=20)
+# nrow(results_table_overall_wc[results_table_overall_wc$change=="No change",]) ## 6 wider countryside species no change
+# nrow(results_table_overall_wc[results_table_overall_wc$change=="Decrease",]) ## 5 wider countryside species decreasing
+# nrow(results_table_overall_wc[results_table_overall_wc$change=="Increase",]) ## 9 wider counytrside species increasing
+# results_final_overall_wc$percentage <- (results_final_overall_wc$no_species / results_final_overall_wc$total_species)*100
+# 
+# ## produce percentages of species (OVERALL SPECIALISTS)
+# results_final_overall_hs <- data.frame(comparison="Long term", change=unique(results_table_overall_hs$change), strategy="Habitat specialist", no_species=c(1,1,5), total_species=7)
+# nrow(results_table_overall_hs[results_table_overall_hs$change=="No change",]) ## 5 wider countryside species no change
+# nrow(results_table_overall_hs[results_table_overall_hs$change=="Decrease",]) ## 1 wider countryside species decreasing
+# nrow(results_table_overall_hs[results_table_overall_hs$change=="Increase",]) ## 1 wider counytrside species increasing
+# results_final_overall_hs$percentage <- (results_final_overall_hs$no_species / results_final_overall_hs$total_species)*100
+# 
+# ## rbind all results together 
+# model_comp_results_wc <- rbind(results_final_early_wc, results_final_late_wc, results_final_overall_wc)
+# model_comp_results_hs <- rbind(results_final_early_hs, results_final_late_hs, results_final_overall_hs)
+# ## save file
+# write.csv(model_comp_results_woodland, file="../Results/Butterfly_results/model_comp_percentages_woodland.csv", row.names=FALSE)
+# 
+# ####### plot 2 graphs - one for wider countryside and one for specialists ##########
+# library(ggplot2)
+# 
+# ## change levels of change so they go in correct order
+# levels(model_comp_results_wc$change)
+# model_comp_results_wc$change <- factor(model_comp_results_wc$change, levels=c("Increase", "No change", "Decrease"))
+# levels(model_comp_results_wc$change)
+# 
+# levels(model_comp_results_hs$change)
+# model_comp_results_hs$change <- factor(model_comp_results_hs$change, levels=c("Increase", "No change", "Decrease"))
+# levels(model_comp_results_hs$change)
+# 
+# ## wider countryside species
+# png("../Graphs/Model_comps/Model_comp_results_wc.png", height = 100, width = 120, units = "mm", res = 300)
+# ggplot(data=model_comp_results_wc, aes(x=comparison, y=percentage, fill=change)) +
+#   geom_bar(stat="identity", width=0.4) +
+#   labs(y="Percentage of species", x="", fill="") +
+#   scale_fill_manual(values = c("#339900", "#999999", "#990000")) +
+#   theme_bw() +
+#   theme(axis.text.x=element_text(colour = "black")) +
+#   theme(axis.text.y=element_text(colour = "black")) +
+#   scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
+#   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
+# dev.off()
+# 
+# ## habitat specialist species
+# png("../Graphs/Model_comps/Model_comp_results_hs.png", height = 100, width = 120, units = "mm", res = 300)
+# ggplot(data=model_comp_results_hs, aes(x=comparison, y=percentage, fill=change)) +
+#   geom_bar(stat="identity", width=0.4) +
+#   labs(y="Percentage of species", x="", fill="") +
+#   scale_fill_manual(values = c("#339900", "#999999", "#990000")) +
+#   theme_bw() +
+#   theme(axis.text.x=element_text(colour = "black")) +
+#   theme(axis.text.y=element_text(colour = "black")) +
+#   scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
+#   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
+# dev.off()
 
 # ##########################################################
 # ##### Make the same graph for woodland species only ######
