@@ -27,6 +27,8 @@ pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2.csv", 
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE)
 bird_common <- read.csv("../Data/BTO_data/pop_estimates_birds.csv", header=TRUE)
 WCBS_data <- read.csv("../Data/UKBMS_data/WCBS_data.csv", header=TRUE)
+## bird phylogeny info 
+species_traits <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", header=TRUE)
 
 ######### UKBMS ###########
 ## remove unneccessary columns from WCBS data
@@ -105,6 +107,11 @@ write.csv(results_table_abund_ukbms, file = "../Results/Model_outputs/UKBMS/aver
 #################################
 #### Abundance model for CBC ####
 #################################
+## merge in phylogeny info 
+species_traits <- species_traits[,c(2,3,4)]
+pair_attr_CBC <- merge(pair_attr_CBC, species_traits, by.x="spp", by.y="species_code", all=FALSE)
+pair_attr_CBC <- droplevels(pair_attr_CBC)
+length(unique(pair_attr_CBC$spp)) # 29 species
 
 ## merge the two datasets
 pair_attr_CBC <- merge(pair_attr_CBC, bird_common, by.x="spp", by.y="species_code", all=FALSE)
@@ -126,10 +133,10 @@ hist(pair_attr_CBC$pop_estimate_sqrt)
 
 ### main model with pop_estimate as a measure of commonness
 start_time <- Sys.time()
-common_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + pop_estimate_log + (1|pair.id) + (1|spp), data = pair_attr_CBC)
+common_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + pop_estimate_log + family + (1|pair.id) + (1|spp), data = pair_attr_CBC)
 end_time <- Sys.time()
 end_time - start_time ## 26.14 seconds
-summary(common_model_cbc) ## non-significant
+summary(common_model_cbc) ## non-significant (still non-significant with genus and family included)
 anova(common_model_cbc) 
 results_table_abund_cbc <- data.frame(summary(common_model_cbc)$coefficients[,1:5]) ## 29 species
 write.csv(results_table_abund_cbc, file = "../Results/Model_outputs/CBC/average_abund_cbc.csv", row.names=TRUE)
@@ -588,12 +595,12 @@ pair_attr_cbc <- pair_attr_cbc[-c(21:25)]
 
 ###### run model with strategy and year interaction
 start_time <- Sys.time()
-abund_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*ab_change_85_96 + (1|pair.id) + (1|spp), data = pair_attr_cbc)
+abund_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*ab_change_85_96 + family + (1|pair.id) + (1|spp), data = pair_attr_cbc)
 end_time <- Sys.time()
 end_time - start_time ## 3.994 seconds
 
 summary(abund_model_cbc)
-anova(abund_model_cbc)
+anova(abund_model_cbc) ## non-significant (still non-significant with genus and family added)
 results_table_abund_cbc <- data.frame(summary(abund_model_cbc)$coefficients[,1:5]) ## 23 species
 write.csv(results_table_abund_cbc, file = "../Results/Model_outputs/CBC/change_abund_cbc.csv", row.names=TRUE)
 
