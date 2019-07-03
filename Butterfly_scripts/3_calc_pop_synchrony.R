@@ -199,6 +199,11 @@ length(unique(final_pair_data$spp)) ## 35 species
 
 write.csv(final_pair_data, file="../Data/Butterfly_sync_data/final_pair_data_all_spp_no_zeros2.csv", row.names=FALSE) ## save final pair data for all 37 species
 
+final_pair <- read.csv("../Data/Butterfly_sync_data/final_pair_data_all_spp_no_zeros2.csv", header=TRUE) 
+final_pair_meadow<-final_pair[(final_pair$spp==75),]
+write.csv(final_pair_meadow, file="../Data/Butterfly_sync_data/final_pair_data_meadow.csv", row.names=FALSE) 
+
+
 write.csv(final_summ_stats, file="../Data/Butterfly_sync_data/final_summ_stats_all_spp_no_zeros2.csv", row.names=FALSE) ## save final summ stats for all 37 species
 
 # ###########################
