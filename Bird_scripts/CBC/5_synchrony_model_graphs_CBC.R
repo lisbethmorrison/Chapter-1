@@ -65,10 +65,12 @@ FCI_plot_scaled_error <- ggplot(results_final_all_spp, aes(x = parameter, y = re
   geom_hline(yintercept = 100, linetype = "dashed") +
   labs(size=3) +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
+        axis.text.x = element_text(color="black"), axis.text.y = element_text(color="black"))
 FCI_plot_scaled_error
 
 ggsave("../Graphs/Connectivity_plots/FCI_all_spp_CBC_scaled_error3.png", plot = FCI_plot_scaled_error, width=5, height=5)
+ggsave("../Graphs/Presentation/FCI_CBC.png", plot = FCI_plot_scaled_error, width=5, height=5)
 
 ##### method to obtain smoothed values with 95% confidence intervals for indicator
 loess_model <- loess(rescaled_FCI~parameter, data=results_final_all_spp)

@@ -22,6 +22,10 @@ results_table_winter_rain <- read.csv("../Results/Climate_results/winter_rainfal
 results_table_spring_rain <- read.csv("../Results/Climate_results/spring_rainfall_synchrony.csv", header=TRUE)
 results_table_summer_rain <- read.csv("../Results/Climate_results/summer_rainfall_synchrony.csv", header=TRUE)
 results_table_autumn_rain <- read.csv("../Results/Climate_results/autumn_rainfall_synchrony.csv", header=TRUE)
+results_table_winter_temp <- read.csv("../Results/Climate_results/winter_temp_synchrony.csv", header=TRUE)
+results_table_spring_temp <- read.csv("../Results/Climate_results/spring_temp_synchrony.csv", header=TRUE)
+results_table_summer_temp <- read.csv("../Results/Climate_results/summer_temp_synchrony.csv", header=TRUE)
+results_table_autumn_temp <- read.csv("../Results/Climate_results/autumn_temp_synchrony.csv", header=TRUE)
 
 ## read in strategy data
 spp_data <- read.csv("../Data/UKBMS_data/UKBMS_UKspecieslist.csv", header=TRUE)
@@ -75,27 +79,144 @@ FCI_plot_scaled <- ggplot(results_final_all_spp, aes(x = parameter, y = rescaled
   scale_x_continuous(breaks=seq(1985,2012,3)) +
   geom_hline(yintercept = 100, linetype = "dashed") +
   theme_bw() +
-  theme(text = element_text(size = 10)) +
+  theme(text = element_text(size = 11)) +
   labs(size=3) +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
+        axis.text.x = element_text(color="black"), axis.text.y = element_text(color="black"))
 FCI_plot_scaled
 ggsave("../Graphs/Connectivity_plots/FCI_plot_all_spp_scaled3.png", plot = FCI_plot_scaled, width=7, height=5)
+#ggsave("../Graphs/Presentation/FCI_UKBMS.png", plot = FCI_plot_scaled, width=7, height=5)
 
-### add climate (rainfall) data in background
+### add season to datasets
 results_table_autumn_rain$category <- "autumn"
 results_table_spring_rain$category <- "spring"
 results_table_summer_rain$category <- "summer"
 results_table_winter_rain$category <- "winter"
 
+results_table_autumn_temp$category <- "autumn"
+results_table_spring_temp$category <- "spring"
+results_table_summer_temp$category <- "summer"
+results_table_winter_temp$category <- "winter"
+
+results_final_all_spp$category <- "population"
+names(results_final_all_spp)[1] <- "synchrony"
+names(results_final_all_spp)[5] <- "rescaled_sync"
+
 ## merge files
 rainfall_synchrony <- rbind(results_table_autumn_rain, results_table_spring_rain, results_table_summer_rain, results_table_winter_rain)
+temp_synchrony <- rbind(results_table_autumn_temp, results_table_spring_temp, results_table_summer_temp, results_table_winter_temp)
+rainfall_synchrony$category <- factor(rainfall_synchrony$category, levels=c("spring", "summer", "autumn", "winter"))
+temp_synchrony$category <- factor(temp_synchrony$category, levels=c("spring", "summer", "autumn", "winter"))
 
+## plot rainfall synchrony
+rainfall_sync_plot <- ggplot(rainfall_synchrony, aes(x = parameter, y = rescaled_sync, group=category)) +
+  stat_smooth(aes(colour=category), method=loess, se=FALSE) +
+  geom_errorbar(aes(colour=category, ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5, position=myjit) +
+  geom_point(size=2, aes(colour=category), position=myjit) + 
+  labs(x = "Mid-year of moving window", y = "Rainfall synchrony") +
+  scale_y_continuous(breaks=seq(90,110,0.01)) +
+  geom_hline(yintercept = 100, linetype = "dashed") +
+  scale_x_continuous(breaks=seq(1985,2012,3)) +
+  scale_color_manual(values=c("tomato1", "yellowgreen", "cyan3", "medium purple")) +
+  theme_bw() +
+  theme(text = element_text(size = 16)) +
+  labs(size=3) +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
+        axis.text.x = element_text(color="black"), axis.text.y = element_text(color="black"))
+rainfall_sync_plot
+ggsave("../Graphs/Climate/rainfall_synchrony.png", plot = rainfall_sync_plot, width=10, height=8)
 
+## plot temperature synchrony
+temp_sync_plot <- ggplot(temp_synchrony, aes(x = parameter, y = rescaled_sync, group=category)) +
+  stat_smooth(aes(colour=category), method=loess, se=FALSE) +
+  geom_errorbar(aes(colour=category, ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5, position=myjit) +
+  geom_point(size=2, aes(colour=category), position=myjit) + 
+  labs(x = "Mid-year of moving window", y = "Temperture synchrony") +
+  scale_y_continuous(breaks=seq(90,110,0.01)) +
+  geom_hline(yintercept = 100, linetype = "dashed") +
+  scale_x_continuous(breaks=seq(1985,2012,3)) +
+  scale_color_manual(values=c("tomato1", "yellowgreen", "cyan3", "medium purple")) +
+  theme_bw() +
+  theme(text = element_text(size = 16)) +
+  labs(size=3) +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
+        axis.text.x = element_text(color="black"), axis.text.y = element_text(color="black"))
+temp_sync_plot
+ggsave("../Graphs/Climate/temperature_synchrony.png", plot = temp_sync_plot, width=10, height=8)
 
+## combine population and temperature synchrony data
+pop_temp_sync <- rbind(results_final_all_spp, temp_synchrony)
+levels(as.factor(pop_temp_sync$category))
+pop_temp_sync$category <- factor(pop_temp_sync$category, levels=c("population", "spring", "summer", "autumn", "winter"))
+levels(pop_temp_sync$category)
 
+## plot graph
+pop_temp_plot <- ggplot(pop_temp_sync, aes(x = parameter, y = rescaled_sync, group=category)) +
+  stat_smooth(aes(colour=category), method=loess, se=FALSE) +
+  geom_errorbar(aes(colour=category, ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5, position=myjit) +
+  geom_point(size=2, aes(colour=category), position=myjit) + 
+  labs(x = "Mid-year of moving window", y = "Synchrony") +
+  scale_y_continuous(breaks=seq(20,120,10)) +
+  scale_x_continuous(breaks=seq(1985,2012,3)) +
+  geom_hline(yintercept = 100, linetype = "dashed") +
+  scale_color_manual(values=c("black", "tomato1", "yellowgreen", "cyan3", "medium purple")) +
+  theme_bw() +
+  theme(text = element_text(size = 16)) +
+  labs(size=3) +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
+        axis.text.x = element_text(color="black"), axis.text.y = element_text(color="black"))
+pop_temp_plot
+ggsave("../Graphs/Climate/population_temperature_synchrony2.png", plot = pop_temp_plot, width=10, height=8)
 
+pop_rain_sync <- rbind(results_final_all_spp, rainfall_synchrony)
+levels(as.factor(pop_rain_sync$category))
+pop_rain_sync$category <- factor(pop_rain_sync$category, levels=c("population", "spring", "summer", "autumn", "winter"))
+levels(pop_rain_sync$category)
 
+## plot graph
+pop_rain_plot <- ggplot(pop_rain_sync, aes(x = parameter, y = rescaled_sync, group=category)) +
+  stat_smooth(aes(colour=category), method=loess, se=FALSE) +
+  geom_errorbar(aes(colour=category, ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5, position=myjit) +
+  geom_point(size=2, aes(colour=category), position=myjit) + 
+  labs(x = "Mid-year of moving window", y = "Synchrony") +
+  scale_y_continuous(breaks=seq(20,120,10)) +
+  scale_x_continuous(breaks=seq(1985,2012,3)) +
+  geom_hline(yintercept = 100, linetype = "dashed") +
+  scale_color_manual(values=c("black", "tomato1", "yellowgreen", "cyan3", "medium purple")) +
+  theme_bw() +
+  theme(text = element_text(size = 16)) +
+  labs(size=3) +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
+        axis.text.x = element_text(color="black"), axis.text.y = element_text(color="black"))
+pop_rain_plot
+ggsave("../Graphs/Climate/population_rainfall_synchrony2.png", plot = pop_rain_plot, width=10, height=8)
+
+############ jitter code #################
+myjit <- ggproto("fixJitter", PositionDodge,
+                 width = 0.5,
+                 dodge.width = 0.15,
+                 jit = NULL,
+                 compute_panel =  function (self, data, params, scales) 
+                 {
+                   
+                   #Generate Jitter if not yet
+                   if(is.null(self$jit) ) {
+                     self$jit <-jitter(rep(0, nrow(data)), amount=self$dodge.width)
+                   }
+                   
+                   data <- ggproto_parent(PositionDodge, self)$compute_panel(data, params, scales)
+                   
+                   data$x <- data$x + self$jit
+                   #For proper error extensions
+                   if("xmin" %in% colnames(data)) data$xmin <- data$xmin + self$jit
+                   if("xmax" %in% colnames(data)) data$xmax <- data$xmax + self$jit
+                   data
+                 } )
 
 
 
@@ -112,7 +233,7 @@ FCI_BBS <- ggplot(results_final_all_spp_BBS, aes(x = parameter, y = rescaled_FCI
   scale_y_continuous(breaks=seq(-20,180,20)) +
   scale_x_continuous(breaks=seq(1999,2012,3)) +
   theme_bw() +
-  theme(text = element_text(size = 10)) +
+  theme(text = element_text(size = 11)) +
   geom_hline(yintercept = 100, linetype = "dashed") +
   labs(size=3) +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
@@ -127,7 +248,7 @@ FCI_CBC <- ggplot(results_final_all_spp_CBC, aes(x = parameter, y = rescaled_FCI
   scale_y_continuous(breaks=seq(90,120,5)) +
   scale_x_continuous(breaks=seq(1985,1996,3)) +
   theme_bw() +
-  theme(text = element_text(size = 10)) +
+  theme(text = element_text(size = 11)) +
   geom_hline(yintercept = 100, linetype = "dashed") +
   labs(size=3) +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
@@ -143,19 +264,20 @@ ggarrange(FCI_plot_scaled,
 dev.off()
 
 ####### also add in percentage change bar graphs for ms ########
-model_comp_UKBMS <- read.csv("../Results/Butterfly_results/model_comp_percentages_no_zeros2.csv", header=TRUE)
-model_comp_CBC <- read.csv("../Results/Bird_results/model_comp_percentages_CBC_no_zeros2.csv", header=TRUE)
-model_comp_BBS <- read.csv("../Results/Bird_results/model_comp_percentages_BBS.csv", header=TRUE)
+UKBMS_percentages <- read.csv("../Results/Butterfly_results/model_comp_percentages_no_zeros2.csv", header=TRUE)
+CBC_percentages <- read.csv("../Results/Bird_results/cbc_overall_trends.csv", header=TRUE)
+BBS_percentages <- read.csv("../Results/Bird_results/bbs_overall_trends.csv", header=TRUE)
 
-model_comp_CBC$comparison <- "1985-1996"
-model_comp_BBS$comparison <- "1999-2012"
+CBC_percentages$comparison <- "1985-1996"
+BBS_percentages$comparison <- "1999-2012"
 
-model_comp_birds <- rbind(model_comp_BBS, model_comp_CBC)
+model_comp_birds <- rbind(BBS_percentages, CBC_percentages)
 model_comp_birds$comparison <- factor(model_comp_birds$comparison, levels=c("1985-1996", "1999-2012"))
 model_comp_birds$change <- factor(model_comp_birds$change, levels=c("Increase", "No change", "Decrease"))
-model_comp_UKBMS$change <- factor(model_comp_UKBMS$change, levels=c("Increase", "No change", "Decrease"))
+UKBMS_percentages$comparison <- factor(UKBMS_percentages$comparison, levels=c("1985-2000", "2000-2012", "1985-2012"))
+UKBMS_percentages$change <- factor(UKBMS_percentages$change, levels=c("Increase", "No change", "Decrease"))
 
-butterfly <- ggplot(data=model_comp_UKBMS, aes(x=comparison, y=percentage, fill=change)) +
+butterfly <- ggplot(data=UKBMS_percentages, aes(x=comparison, y=percentage, fill=change)) +
   geom_bar(stat="identity", width=0.7) +
   labs(y="Percentage of species", x="", fill="") +
   scale_fill_manual(values = c("#339900", "#999999", "#990000")) +
@@ -165,12 +287,12 @@ butterfly <- ggplot(data=model_comp_UKBMS, aes(x=comparison, y=percentage, fill=
   scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
   theme(legend.position="bottom",legend.direction="horizontal") +
   guides(fill = guide_legend(override.aes = list(size = 1))) +
-  theme(text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
+  theme(text = element_text(size = 11), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
 butterfly
 ## without overall change
-model_comp_UKBMS <- model_comp_UKBMS[!model_comp_UKBMS$comparison == "1985-2012",]
-butterfly2 <- ggplot(data=model_comp_UKBMS, aes(x=comparison, y=percentage, fill=change)) +
+UKBMS_percentages <- UKBMS_percentages[!UKBMS_percentages$comparison == "1985-2012",]
+butterfly2 <- ggplot(data=UKBMS_percentages, aes(x=comparison, y=percentage, fill=change)) +
   geom_bar(stat="identity", width=0.7) +
   labs(y="Percentage of species", x="", fill="") +
   scale_fill_manual(values = c("#339900", "#999999", "#990000")) +
@@ -180,7 +302,7 @@ butterfly2 <- ggplot(data=model_comp_UKBMS, aes(x=comparison, y=percentage, fill
   scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
   theme(legend.position="bottom",legend.direction="horizontal") +
   guides(fill = guide_legend(override.aes = list(size = 1))) +
-  theme(text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
+  theme(text = element_text(size = 11), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
 butterfly2
 
@@ -194,7 +316,7 @@ birds <- ggplot(data=model_comp_birds, aes(x=comparison, y=percentage, fill=chan
   guides(fill = guide_legend(override.aes = list(size = 6))) +
   scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
   theme(legend.position="top") +
-  theme(text = element_text(size = 8), panel.border = element_blank(), 
+  theme(text = element_text(size = 11), panel.border = element_blank(), 
         panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
 birds
 
@@ -215,7 +337,7 @@ birds <- birds + theme(legend.position="none")
 
 percentages <- grid.arrange(butterfly2, legend, birds, ncol=1, nrow = 3, widths = c(2.7), heights = c(2.5, 0.4, 2.5))
 
-png("../Graphs/FINAL/Figure2_2.png", height = 150, width = 220, units = "mm", res = 300)
+png("../Graphs/FINAL/Figure2_final.png", height = 150, width = 220, units = "mm", res = 300)
 grid.arrange(FCI_plot_scaled, percentages,
              FCI_CBC, FCI_BBS, 
              layout_matrix=cbind(c(1,3), c(1,4), c(2,2)), nrow=2)
