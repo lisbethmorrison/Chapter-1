@@ -68,7 +68,40 @@ write.csv(pair_attr, file = "../Data/Bird_sync_data/pair_attr_CBC_no_zeros2.csv"
 
 ########## READ IN PAIR ATTRIBUTE FILE ################
 pair_attr <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2.csv", header=TRUE)
+## climate data
+final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp_CBC.csv", header=TRUE)  
 
+## merge in climate data
+## just summer and autumn temperature (this is the only significant change in climate data)
+final_pair_data_sum_temp <- final_pair_data_temp[final_pair_data_temp$season=="c",] ## summer
+final_pair_data_aut_temp <- final_pair_data_temp[final_pair_data_temp$season=="d",] ## autumn
+names(final_pair_data_sum_temp)[3] <- "lag0_summer"
+names(final_pair_data_aut_temp)[3] <- "lag0_autumn"
+
+## remove some columns (season, start and end year)
+final_pair_data_sum_temp <- subset(final_pair_data_sum_temp, select = -c(5:7))
+final_pair_data_aut_temp <- subset(final_pair_data_aut_temp, select = -c(5:7))
+
+### merge in summer temp
+pair_attr_1 <- merge(pair_attr, final_pair_data_sum_temp, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))  # merge the site comparisons in one direction - site a to a, b to b
+summer_reverse <- final_pair_data_sum_temp
+names(summer_reverse)[1:2] <- c("site2", "site1")
+pair_attr_2 <- merge(pair_attr, summer_reverse, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))	# merge the site comparisons in the same direction using site_data_reverse
+pair_attr <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
+length(unique(pair_attr$spp))## 29 species
+length(unique(pair_attr$site1)) # 109
+length(unique(pair_attr$site2)) # 109 
+## merge in autumn temp
+pair_attr_1 <- merge(pair_attr, final_pair_data_aut_temp, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))  # merge the site comparisons in one direction - site a to a, b to b
+autumn_reverse <- final_pair_data_aut_temp
+names(autumn_reverse)[1:2] <- c("site2", "site1")
+pair_attr_2 <- merge(pair_attr, autumn_reverse, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))	# merge the site comparisons in the same direction using site_data_reverse
+pair_attr <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
+length(unique(pair_attr$spp))## 29 species
+length(unique(pair_attr$site1)) # 109
+length(unique(pair_attr$site2)) # 109 
+
+##
 pair_attr$pair.id <- as.character(pair_attr$pair.id)
 pair_attr$spp <- as.factor(pair_attr$spp)
 pair_attr$end.year <- as.factor(pair_attr$end.year)
@@ -78,6 +111,73 @@ str(pair_attr)
 ################################################
 ##  model to produce one line for all species ##
 ################################################
+
+### run model with spring rainfall 
+all_spp_model_temp <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + lag0_summer + lag0_autumn + (1|pair.id) + (1|spp)-1, data = pair_attr)
+summary(all_spp_model_temp) 
+anova(all_spp_model_temp) ## summer and autumn temp are non-significant
+
+pop_temp_model <- data.frame(summary(all_spp_model_temp)$coefficients[,1:3])
+names(pop_temp_model) <- c("FCI", "SD", "t")
+pop_temp_model$parameter <- paste(row.names(pop_temp_model))
+rownames(pop_temp_model) <- 1:nrow(pop_temp_model)
+
+results_tab5 <- NULL
+results_tab1 <- pop_temp_model[grep("mean_northing", pop_temp_model$parameter),]
+results_tab2 <- pop_temp_model[grep("distance", pop_temp_model$parameter),]
+results_tab3 <- pop_temp_model[grep("hab_sim", pop_temp_model$parameter),]
+results_tab4 <- pop_temp_model[grep("lag0_summer", pop_temp_model$parameter),]
+results_tab5 <- pop_temp_model[grep("lag0_autumn", pop_temp_model$parameter),]
+results_tab6 <- rbind(results_tab4, results_tab1, results_tab2, results_tab3, results_tab4, results_tab5)
+pop_temp_model <- pop_temp_model[!pop_temp_model$parameter%in%results_tab6$parameter,]
+
+## change parameter names to year
+pop_temp_model$parameter <- rep(1985:1996)
+
+### rescale estimate, SD and CI ### 
+pop_temp_model$rescaled_FCI <- pop_temp_model$FCI*(100/pop_temp_model$FCI[1])
+pop_temp_model$rescaled_sd <- pop_temp_model$SD*(100/pop_temp_model$FCI[1])
+pop_temp_model$rescaled_ci <- pop_temp_model$rescaled_sd*1.96
+
+## save final results table ##
+write.csv(pop_temp_model, file = "../Results/Bird_results/results_final_all_spp_temp_CBC.csv", row.names=FALSE)
+
+## graph
+FCI_plot_CBC_temp <- ggplot(pop_temp_model, aes(x = parameter, y = rescaled_FCI)) +
+  stat_smooth(colour="black", method=loess, se=FALSE) +
+  geom_errorbar(aes(ymin = rescaled_FCI - rescaled_sd, ymax = rescaled_FCI + rescaled_sd), width=0.2, size = 0.5) +
+  geom_point(size=2) + 
+  labs(x = "Mid-year of moving window", y = "Population synchrony") +
+  #scale_y_continuous(breaks=seq(40,160,10)) +
+  scale_x_continuous(breaks=seq(1985,1996,3)) +
+  geom_hline(yintercept = 100, linetype = "dashed") +
+  theme_bw() +
+  theme(text = element_text(size = 16)) +
+  labs(size=3) +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
+        axis.text.x = element_text(color="black"), axis.text.y = element_text(color="black"))
+FCI_plot_CBC_temp
+ggsave("../Graphs/Connectivity_plots/FCI_plot_temp_CBC.png", plot = FCI_plot_CBC_temp, width=7, height=5)
+
+############################## merge in species data (family) ###############################
+## subset family and genus info
+## family/genus data
+species_traits <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", header=TRUE)
+species_traits <- species_traits[,c(2,3,4)]
+pair_attr <- merge(pair_attr, species_traits, by.x="spp", by.y="species_code", all=FALSE)
+pair_attr <- droplevels(pair_attr)
+length(unique(pair_attr$spp)) # 29 species
+summary(pair_attr)
+
+### run model with family to test for a relationship with synchrony
+all_spp_model_family <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + family + (1|pair.id) + (1|spp), data = pair_attr)
+summary(all_spp_model_family) 
+anova(all_spp_model_family) ## family significant (p=0.000462)
+
+all_spp_model_genus <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + genus + (1|pair.id) + (1|spp), data = pair_attr)
+summary(all_spp_model_genus) 
+anova(all_spp_model_genus) ## genus significant (p=0.0232)
 
 ## model with intercept
 start_time <- Sys.time()

@@ -12,6 +12,7 @@ rm(list=ls()) # clear R
 library(lme4)
 library(lmerTest)
 library(broom)
+library(MuMIn)
 
 ################################
 ## CREATE PAIR ATTRIBUTE DATA ##
@@ -68,7 +69,12 @@ pair_attr <- droplevels(pair_attr)
 ## remove columns not needed
 pair_attr <- pair_attr[-c(9:10, 18, 20:48, 50:52, 54:56)]
 summary(pair_attr)
-## 28 species - NA's are there because spp 100 has no mobility data
+length(unique(pair_attr$spp)) # 32 species
+## 32 species - NA's are there because spp 100 has no mobility data
+
+### merge in climate data
+## just autumn temperature for now
+final_pair_data_aut_temp <- final_pair_data_temp[final_p]
 
 ## create pair.id variable and make species and year variables factors ## 
 str(pair_attr)
@@ -86,8 +92,68 @@ write.csv(pair_attr, file = "../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv
 ####################################################################################################
 
 pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", header=TRUE) # load up pair attribute data to save time
-species_traits <- read.csv("../Data/UKBMS_data/species.traits.full.table.csv", header=TRUE)
-  
+### subset meadow brown for Matt
+pair_attr_meadow<-pair_attr[(pair_attr$common_name=="Meadow brown"),]
+## save file
+write.csv(pair_attr_meadow, file = "../Data/Butterfly_sync_data/pair_attr_meadow_brown.csv", row.names = FALSE) # save pair_attr file 
+
+## climate data
+#final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp.csv", header=TRUE)  
+final_pair_data_rain <- read.csv("../Data/MetOffice_data/final_pair_data_mean_rainfall2.csv", header=TRUE)
+final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp2.csv", header=TRUE)
+
+################################################################
+## merge in climate data
+# ## just autumn rainfall for now
+# final_pair_data_spring_rain <- final_pair_data_rain[final_pair_data_rain$season=="b",] ## spring rainfall significantly increased in synchrony between 85-00
+# names(final_pair_data_spring_rain)[3] <- "lag0_spring_rain"
+
+## spring and summer temperature (both significant increases over both time periods)
+final_pair_data_spr_temp <- final_pair_data_temp[final_pair_data_temp$season=="b",] ## spring
+final_pair_data_sum_temp <- final_pair_data_temp[final_pair_data_temp$season=="c",] ## summer
+names(final_pair_data_spr_temp)[3] <- "lag0_spr_temp"
+names(final_pair_data_sum_temp)[3] <- "lag0_sum_temp"
+## remove some columns (season, start and end year)
+final_pair_data_spr_temp <- subset(final_pair_data_spr_temp, select = -c(5:7))
+final_pair_data_sum_temp <- subset(final_pair_data_sum_temp, select = -c(5:7))
+
+### merge in spring temp
+pair_attr_temp <- pair_attr
+pair_attr_1 <- merge(pair_attr_temp, final_pair_data_spr_temp, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"), all=FALSE)  # merge the site comparisons in one direction - site a to a, b to b
+spring_reverse <- final_pair_data_spr_temp
+names(spring_reverse)[1:2] <- c("site2", "site1")
+pair_attr_2 <- merge(pair_attr_temp, spring_reverse, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"), all=FALSE)	# merge the site comparisons in the same direction using site_data_reverse
+pair_attr_temp <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
+pair_attr_temp <- unique(pair_attr_temp)
+length(unique(pair_attr_temp$spp))## 24 species
+length(unique(pair_attr_temp$site1)) # 2482
+length(unique(pair_attr_temp$site2)) # 2471 
+### merge in summer temp
+pair_attr_1 <- merge(pair_attr_temp, final_pair_data_sum_temp, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))  # merge the site comparisons in one direction - site a to a, b to b
+summer_reverse <- final_pair_data_sum_temp
+names(summer_reverse)[1:2] <- c("site2", "site1")
+pair_attr_2 <- merge(pair_attr_temp, summer_reverse, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))	# merge the site comparisons in the same direction using site_data_reverse
+pair_attr_temp <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
+length(unique(pair_attr_temp$spp))## 32 species
+length(unique(pair_attr_temp$site1)) # 2482
+length(unique(pair_attr_temp$site2)) # 2471 
+
+
+## remove some columns (season, start and end year)
+final_pair_data_spring_rain <- subset(final_pair_data_spring_rain, select = -c(5:7))
+length(unique(final_pair_data_spring_rain$site1)) # 671
+length(unique(final_pair_data_spring_rain$site2)) # 671
+
+### merge in spring rain
+pair_attr_1 <- merge(pair_attr, final_pair_data_spring_rain, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))  # merge the site comparisons in one direction - site a to a, b to b
+spring_reverse <- final_pair_data_spring_rain
+names(spring_reverse)[1:2] <- c("site2", "site1")
+pair_attr_2 <- merge(pair_attr, spring_reverse, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))	# merge the site comparisons in the same direction using site_data_reverse
+pair_attr <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
+length(unique(pair_attr$spp))## 32 species
+length(unique(pair_attr$site1)) # 635
+length(unique(pair_attr$site2)) # 658 (less than in pop pair_attr)
+
 ## make sure correct variables are factors ## 
 str(pair_attr)
 pair_attr$spp <- as.factor(pair_attr$spp)
@@ -101,7 +167,57 @@ pair_attr$pair.id <- as.character(pair_attr$pair.id)
 ###############################################
 length(unique(pair_attr$spp)) ## 32 species
 
+### run model with spring rainfall 
+all_spp_model_sum_temp <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + lag0_sum_temp + (1|pair.id) + (1|spp), data = pair_attr_temp)
+summary(all_spp_model_sum_temp) 
+anova(all_spp_model_sum_temp) ## summer temperature is significant (positive, p<0.00001)
+
+pop_rain_model <- data.frame(summary(all_spp_model_spring_rain)$coefficients[,1:3])
+names(pop_rain_model) <- c("FCI", "SD", "t")
+pop_rain_model$parameter <- paste(row.names(pop_rain_model))
+rownames(pop_rain_model) <- 1:nrow(pop_rain_model)
+
+results_tab5 <- NULL
+results_tab1 <- pop_rain_model[grep("mean_northing", pop_rain_model$parameter),]
+results_tab2 <- pop_rain_model[grep("distance", pop_rain_model$parameter),]
+results_tab3 <- pop_rain_model[grep("renk_hab_sim", pop_rain_model$parameter),]
+results_tab4 <- pop_rain_model[grep("lag0_spring_rain", pop_rain_model$parameter),]
+results_tab5 <- rbind(results_tab4, results_tab1, results_tab2, results_tab3, results_tab4)
+pop_rain_model <- pop_rain_model[!pop_rain_model$parameter%in%results_tab5$parameter,]
+
+## change parameter names to year
+pop_rain_model$parameter <- rep(1985:2012)
+
+### rescale estimate, SD and CI ### 
+pop_rain_model$rescaled_FCI <- pop_rain_model$FCI*(100/pop_rain_model$FCI[1])
+pop_rain_model$rescaled_sd <- pop_rain_model$SD*(100/pop_rain_model$FCI[1])
+pop_rain_model$rescaled_ci <- pop_rain_model$rescaled_sd*1.96
+
+## save final results table ##
+write.csv(pop_rain_model, file = "../Results/Butterfly_results/results_final_all_spp_spring_rain.csv", row.names=FALSE)
+
+## graph
+FCI_plot_spring_rain <- ggplot(pop_rain_model, aes(x = parameter, y = rescaled_FCI)) +
+  stat_smooth(colour="black", method=loess, se=FALSE) +
+  geom_errorbar(aes(ymin = rescaled_FCI - rescaled_sd, ymax = rescaled_FCI + rescaled_sd), width=0.2, size = 0.5) +
+  geom_point(size=2) + 
+  labs(x = "Mid-year of moving window", y = "Population synchrony") +
+  #scale_y_continuous(breaks=seq(40,160,10)) +
+  scale_x_continuous(breaks=seq(1985,2012,3)) +
+  geom_hline(yintercept = 100, linetype = "dashed") +
+  theme_bw() +
+  theme(text = element_text(size = 16)) +
+  labs(size=3) +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
+        axis.text.x = element_text(color="black"), axis.text.y = element_text(color="black"))
+FCI_plot_spring_rain
+ggsave("../Graphs/Connectivity_plots/FCI_plot_spring_rain.png", plot = FCI_plot_spring_rain, width=7, height=5)
+
+
+
 ############################## merge in species data (family) ###############################
+species_traits <- read.csv("../Data/UKBMS_data/species.traits.full.table.csv", header=TRUE)
 ## subset family and genus info
 species_traits <- species_traits[,c(3,4,39)]
 pair_attr <- merge(pair_attr, species_traits, by.x="spp", by.y="species", all=FALSE)
@@ -124,6 +240,8 @@ all_spp_model_int <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.y
 fixed_results <- data.frame(summary(all_spp_model_int)$coefficients[,1:5])
 fixed_results$parameter <- paste(row.names(fixed_results))
 rownames(fixed_results) <- 1:nrow(fixed_results)
+r.squaredGLMM(all_spp_model_int)
+## R^2 marginal (fixed) = 0.020, R^2 conditional (random) = 0.222
 ## remove mid.year rows
 fixed_results <- fixed_results[-c(1,5:31),]
 ## save results
@@ -143,12 +261,7 @@ results_table_all_spp$parameter <- paste(row.names(results_table_all_spp))
 rownames(results_table_all_spp) <- 1:nrow(results_table_all_spp)
 
 ## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-results_tab4 <- NULL
-results_tab1 <- results_table_all_spp[grep("mean_northing", results_table_all_spp$parameter),]
-results_tab2 <- results_table_all_spp[grep("distance", results_table_all_spp$parameter),]
-results_tab3 <- results_table_all_spp[grep("renk_hab_sim", results_table_all_spp$parameter),]
-results_tab4 <- rbind(results_tab4, results_tab1, results_tab2, results_tab3)
-results_table_all_spp <- results_table_all_spp[!results_table_all_spp$parameter%in%results_tab4$parameter,]
+results_table_all_spp <- results_table_all_spp[grep("mid.year", results_table_all_spp$parameter),]
 
 ## change parameter names to year
 results_table_all_spp$parameter <- rep(1985:2012)
@@ -161,6 +274,13 @@ results_table_all_spp$rescaled_ci <- results_table_all_spp$rescaled_sd*1.96
 ## save final results table ##
 write.csv(results_table_all_spp, file = "../Results/Butterfly_results/results_final_all_spp_no_zeros2.csv", row.names=FALSE)
 
+## obtain bootstrap confidence intervals
+start_time = Sys.time()
+confint(all_spp_model, method="boot", boot.type="basic", nsim=10)
+end_time = Sys.time()
+run_time = end_time - start_time
+print(paste0("TOTAL RUN TIME: ", run_time)) ## takes about 5min per simulation
+## but lots of warnings:  extreme order statistics used as endpoints
 
 ##############################################
 ## model for all species without covariates ##
