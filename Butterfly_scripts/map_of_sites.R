@@ -11,14 +11,53 @@ rm(list=ls()) # clear R
 
 
 library(ggmap)
+library(maps)
 library(ggplot2)
+library(gganimate)
 library(tidyverse)
 library(sf)
+library(gifski)
+library(mapproj)
 
 ## add data
 pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE)
 site_data <- read.csv("../Data/UKBMS_data/pair_attr_mean_northing_dist_sim.csv", header = TRUE)
   
+#### gif for pint talk
+## site number and lat long only
+site1 <- unique(subset(site_data[c(1,3,4)]))
+site2 <- unique(subset(site_data[c(2,5,6)]))
+colnames(site1) <- c("site", "easting", "northing")
+colnames(site2) <- c("site", "easting", "northing")
+site_list <- rbind(site1, site2)
+site_list <- unique(site_list)
+
+lat_long <- site_list %>%
+  st_as_sf(coords = c("easting", "northing"), crs = 27700) %>%
+  st_transform(4326) %>%
+  st_coordinates() %>%
+  as_tibble()
+site_list <- cbind(site_list, lat_long)
+site_list <- transform( site_list, site = sample(site))
+
+UK <- map_data("world") %>% filter(region=="UK")
+
+p <- 
+ggplot() +
+  geom_polygon(data = UK, aes(x=long, y = lat, group = group, cumulative=TRUE), fill="grey44", alpha=0.3) +
+  geom_point(data=site_list, aes(x=X, y=Y, cumulative=TRUE), size = 3, shape = 21, fill="cadetblue4", alpha = 0.7) +
+  theme_void() + coord_map() +
+  
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        axis.ticks = element_blank(),
+        plot.title = element_text(hjust = 0, size = 16, vjust=0)) +
+  transition_manual(site, cumulative = TRUE)
+anim1 <- animate(p, width = 400, height = 500)
+anim_save("../pintofscience.gif", animation = anim1)
+
 ### save data on included sites for plot
 # create the following: site, spp for which it is included for. Do this for each TP.
 ## TP1 = 1980 DATA i.e. early
