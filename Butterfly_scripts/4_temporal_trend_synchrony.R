@@ -99,8 +99,8 @@ write.csv(pair_attr_meadow, file = "../Data/Butterfly_sync_data/pair_attr_meadow
 
 ## climate data
 #final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp.csv", header=TRUE)  
-final_pair_data_rain <- read.csv("../Data/MetOffice_data/final_pair_data_mean_rainfall2.csv", header=TRUE)
-final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp2.csv", header=TRUE)
+final_pair_data_rain <- read.csv("../Data/MetOffice_data/final_pair_data_mean_rainfall3.csv", header=TRUE)
+final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp3.csv", header=TRUE)
 
 ################################################################
 ## merge in climate data
@@ -108,101 +108,97 @@ final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_te
 # final_pair_data_spring_rain <- final_pair_data_rain[final_pair_data_rain$season=="b",] ## spring rainfall significantly increased in synchrony between 85-00
 # names(final_pair_data_spring_rain)[3] <- "lag0_spring_rain"
 
-## spring and summer temperature (both significant increases over both time periods)
-final_pair_data_spr_temp <- final_pair_data_temp[final_pair_data_temp$season=="b",] ## spring
+## summer, autumn and winter temperature and rainfall (these all decline then increase over time)
 final_pair_data_sum_temp <- final_pair_data_temp[final_pair_data_temp$season=="c",] ## summer
-names(final_pair_data_spr_temp)[3] <- "lag0_spr_temp"
-names(final_pair_data_sum_temp)[3] <- "lag0_sum_temp"
-## remove some columns (season, start and end year)
-final_pair_data_spr_temp <- subset(final_pair_data_spr_temp, select = -c(5:7))
-final_pair_data_sum_temp <- subset(final_pair_data_sum_temp, select = -c(5:7))
+final_pair_data_aut_temp <- final_pair_data_temp[final_pair_data_temp$season=="d",] ## autumn
+final_pair_data_win_temp <- final_pair_data_temp[final_pair_data_temp$season=="a",] ## winter
 
-### merge in spring temp
-pair_attr_temp <- pair_attr
-pair_attr_1 <- merge(pair_attr_temp, final_pair_data_spr_temp, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"), all=FALSE)  # merge the site comparisons in one direction - site a to a, b to b
-spring_reverse <- final_pair_data_spr_temp
-names(spring_reverse)[1:2] <- c("site2", "site1")
-pair_attr_2 <- merge(pair_attr_temp, spring_reverse, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"), all=FALSE)	# merge the site comparisons in the same direction using site_data_reverse
-pair_attr_temp <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
-pair_attr_temp <- unique(pair_attr_temp)
-length(unique(pair_attr_temp$spp))## 24 species
-length(unique(pair_attr_temp$site1)) # 2482
-length(unique(pair_attr_temp$site2)) # 2471 
+names(final_pair_data_sum_temp)[3] <- "lag0_sum_temp"
+names(final_pair_data_aut_temp)[3] <- "lag0_aut_temp"
+names(final_pair_data_win_temp)[3] <- "lag0_win_temp"
+
+## remove some columns (season, start and end year)
+final_pair_data_sum_temp <- subset(final_pair_data_sum_temp, select = -c(5:7))
+final_pair_data_aut_temp <- subset(final_pair_data_aut_temp, select = -c(5:7))
+final_pair_data_win_temp <- subset(final_pair_data_win_temp, select = -c(5:7))
+
 ### merge in summer temp
-pair_attr_1 <- merge(pair_attr_temp, final_pair_data_sum_temp, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))  # merge the site comparisons in one direction - site a to a, b to b
+pair_attr_temp <- pair_attr
+pair_attr_1 <- merge(pair_attr_temp, final_pair_data_sum_temp, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"), all=FALSE)  # merge the site comparisons in one direction - site a to a, b to b
 summer_reverse <- final_pair_data_sum_temp
 names(summer_reverse)[1:2] <- c("site2", "site1")
-pair_attr_2 <- merge(pair_attr_temp, summer_reverse, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))	# merge the site comparisons in the same direction using site_data_reverse
+pair_attr_2 <- merge(pair_attr_temp, summer_reverse, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"), all=FALSE)	# merge the site comparisons in the same direction using site_data_reverse
+pair_attr_temp <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
+pair_attr_temp <- unique(pair_attr_temp)
+length(unique(pair_attr_temp$spp))## 32 species
+length(unique(pair_attr_temp$site1)) # 454
+length(unique(pair_attr_temp$site2)) # 473 
+### merge in autumn temp
+pair_attr_1 <- merge(pair_attr_temp, final_pair_data_aut_temp, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))  # merge the site comparisons in one direction - site a to a, b to b
+autumn_reverse <- final_pair_data_aut_temp
+names(autumn_reverse)[1:2] <- c("site2", "site1")
+pair_attr_2 <- merge(pair_attr_temp, autumn_reverse, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))	# merge the site comparisons in the same direction using site_data_reverse
+pair_attr_temp <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
+length(unique(pair_attr_temp$spp))## 32 species
+length(unique(pair_attr_temp$site1)) # 2482
+length(unique(pair_attr_temp$site2)) # 2471 
+### merge in winter temp
+pair_attr_1 <- merge(pair_attr_temp, final_pair_data_win_temp, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))  # merge the site comparisons in one direction - site a to a, b to b
+winter_reverse <- final_pair_data_win_temp
+names(winter_reverse)[1:2] <- c("site2", "site1")
+pair_attr_2 <- merge(pair_attr_temp, winter_reverse, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))	# merge the site comparisons in the same direction using site_data_reverse
 pair_attr_temp <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
 length(unique(pair_attr_temp$spp))## 32 species
 length(unique(pair_attr_temp$site1)) # 2482
 length(unique(pair_attr_temp$site2)) # 2471 
 
-
-## remove some columns (season, start and end year)
-final_pair_data_spring_rain <- subset(final_pair_data_spring_rain, select = -c(5:7))
-length(unique(final_pair_data_spring_rain$site1)) # 671
-length(unique(final_pair_data_spring_rain$site2)) # 671
-
-### merge in spring rain
-pair_attr_1 <- merge(pair_attr, final_pair_data_spring_rain, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))  # merge the site comparisons in one direction - site a to a, b to b
-spring_reverse <- final_pair_data_spring_rain
-names(spring_reverse)[1:2] <- c("site2", "site1")
-pair_attr_2 <- merge(pair_attr, spring_reverse, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))	# merge the site comparisons in the same direction using site_data_reverse
-pair_attr <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
-length(unique(pair_attr$spp))## 32 species
-length(unique(pair_attr$site1)) # 635
-length(unique(pair_attr$site2)) # 658 (less than in pop pair_attr)
-
 ## make sure correct variables are factors ## 
-str(pair_attr)
-pair_attr$spp <- as.factor(pair_attr$spp)
-pair_attr$start.year <- as.factor(pair_attr$start.year)
-pair_attr$end.year <- as.factor(pair_attr$end.year)
-pair_attr$mid.year <- as.factor(pair_attr$mid.year)
-pair_attr$pair.id <- as.character(pair_attr$pair.id)
+str(pair_attr_temp)
+pair_attr_temp$spp <- as.factor(pair_attr_temp$spp)
+pair_attr_temp$start.year <- as.factor(pair_attr_temp$start.year)
+pair_attr_temp$end.year <- as.factor(pair_attr_temp$end.year)
+pair_attr_temp$mid.year <- as.factor(pair_attr_temp$mid.year)
+pair_attr_temp$pair.id <- as.character(pair_attr_temp$pair.id)
 
 ###############################################
 ### run the synchrony model for all species ###
 ###############################################
 length(unique(pair_attr$spp)) ## 32 species
 
-### run model with spring rainfall 
-all_spp_model_sum_temp <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + lag0_sum_temp + (1|pair.id) + (1|spp), data = pair_attr_temp)
-summary(all_spp_model_sum_temp) 
-anova(all_spp_model_sum_temp) ## summer temperature is significant (positive, p<0.00001)
+### run model with summer, autumn and winter temperature
+all_spp_model_temp <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + lag0_sum_temp + lag0_aut_temp + lag0_win_temp + (1|pair.id) + (1|spp), data = pair_attr_temp)
+summary(all_spp_model_temp) 
+anova(all_spp_model_temp) ## summer and autumn temperature are significant, winter is non-significant
+## summer is positive and autumn is negative
 
-pop_rain_model <- data.frame(summary(all_spp_model_spring_rain)$coefficients[,1:3])
-names(pop_rain_model) <- c("FCI", "SD", "t")
-pop_rain_model$parameter <- paste(row.names(pop_rain_model))
-rownames(pop_rain_model) <- 1:nrow(pop_rain_model)
+## same model without intercept
+all_spp_model_temp2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + lag0_sum_temp + lag0_aut_temp + lag0_win_temp + (1|pair.id) + (1|spp)-1, data = pair_attr_temp)
 
-results_tab5 <- NULL
-results_tab1 <- pop_rain_model[grep("mean_northing", pop_rain_model$parameter),]
-results_tab2 <- pop_rain_model[grep("distance", pop_rain_model$parameter),]
-results_tab3 <- pop_rain_model[grep("renk_hab_sim", pop_rain_model$parameter),]
-results_tab4 <- pop_rain_model[grep("lag0_spring_rain", pop_rain_model$parameter),]
-results_tab5 <- rbind(results_tab4, results_tab1, results_tab2, results_tab3, results_tab4)
-pop_rain_model <- pop_rain_model[!pop_rain_model$parameter%in%results_tab5$parameter,]
+pop_temp_model <- data.frame(summary(all_spp_model_temp2)$coefficients[,1:3])
+names(pop_temp_model) <- c("FCI", "SD", "t")
+pop_temp_model$parameter <- paste(row.names(pop_temp_model))
+rownames(pop_temp_model) <- 1:nrow(pop_temp_model)
+
+pop_temp_model <- pop_temp_model[grep("mid.year", pop_temp_model$parameter),]
 
 ## change parameter names to year
-pop_rain_model$parameter <- rep(1985:2012)
+pop_temp_model$parameter <- rep(1985:2012)
 
 ### rescale estimate, SD and CI ### 
-pop_rain_model$rescaled_FCI <- pop_rain_model$FCI*(100/pop_rain_model$FCI[1])
-pop_rain_model$rescaled_sd <- pop_rain_model$SD*(100/pop_rain_model$FCI[1])
-pop_rain_model$rescaled_ci <- pop_rain_model$rescaled_sd*1.96
+pop_temp_model$rescaled_FCI <- pop_temp_model$FCI*(100/pop_temp_model$FCI[1])
+pop_temp_model$rescaled_sd <- pop_temp_model$SD*(100/pop_temp_model$FCI[1])
+pop_temp_model$rescaled_ci <- pop_temp_model$rescaled_sd*1.96
 
 ## save final results table ##
-write.csv(pop_rain_model, file = "../Results/Butterfly_results/results_final_all_spp_spring_rain.csv", row.names=FALSE)
+write.csv(pop_temp_model, file = "../Results/Butterfly_results/results_final_all_spp_temperature.csv", row.names=FALSE)
 
 ## graph
-FCI_plot_spring_rain <- ggplot(pop_rain_model, aes(x = parameter, y = rescaled_FCI)) +
+FCI_plot_temperature <- ggplot(pop_temp_model, aes(x = parameter, y = rescaled_FCI)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
   geom_errorbar(aes(ymin = rescaled_FCI - rescaled_sd, ymax = rescaled_FCI + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
   labs(x = "Mid-year of moving window", y = "Population synchrony") +
-  #scale_y_continuous(breaks=seq(40,160,10)) +
+  scale_y_continuous(breaks=seq(0,160,20)) +
   scale_x_continuous(breaks=seq(1985,2012,3)) +
   geom_hline(yintercept = 100, linetype = "dashed") +
   theme_bw() +
@@ -211,10 +207,17 @@ FCI_plot_spring_rain <- ggplot(pop_rain_model, aes(x = parameter, y = rescaled_F
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
         axis.text.x = element_text(color="black"), axis.text.y = element_text(color="black"))
-FCI_plot_spring_rain
-ggsave("../Graphs/Connectivity_plots/FCI_plot_spring_rain.png", plot = FCI_plot_spring_rain, width=7, height=5)
+FCI_plot_temperature
+ggsave("../Graphs/Connectivity_plots/FCI_plot_temperature.png", plot = FCI_plot_temperature, width=7, height=5)
 
 
+## make sure correct variables are factors ## 
+str(pair_attr)
+pair_attr$spp <- as.factor(pair_attr$spp)
+pair_attr$start.year <- as.factor(pair_attr$start.year)
+pair_attr$end.year <- as.factor(pair_attr$end.year)
+pair_attr$mid.year <- as.factor(pair_attr$mid.year)
+pair_attr$pair.id <- as.character(pair_attr$pair.id)
 
 ############################## merge in species data (family) ###############################
 species_traits <- read.csv("../Data/UKBMS_data/species.traits.full.table.csv", header=TRUE)
