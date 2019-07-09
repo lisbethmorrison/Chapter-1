@@ -439,13 +439,12 @@ winter_rain_plot <- ggplot(winter_rain, aes(x = parameter, y = rescaled_sync)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
   geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
-  labs(x = "Mid-year of moving window", y = "Climate synchrony") +
+  labs(x = "Mid-year of moving window", y = "Rainfall synchrony") +
   #scale_y_continuous(breaks=seq(40,160,10)) +
   scale_x_continuous(breaks=seq(1999,2012,3)) +
   geom_hline(yintercept = 100, linetype = "dashed") +
-  ggtitle("Winter rainfall") +
   theme_bw() +
-  theme(text = element_text(size = 10)) +
+  theme(text = element_text(size = 16)) +
   labs(size=3) +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
@@ -455,13 +454,12 @@ spring_rain_plot <- ggplot(spring_rain, aes(x = parameter, y = rescaled_sync)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
   geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
-  labs(x = "Mid-year of moving window", y = "Climate synchrony") +
+  labs(x = "Mid-year of moving window", y = "Rainfall synchrony") +
   #scale_y_continuous(breaks=seq(40,160,10)) +
   scale_x_continuous(breaks=seq(1999,2012,3)) +
   geom_hline(yintercept = 100, linetype = "dashed") +
-  ggtitle("Spring rainfall") +
   theme_bw() +
-  theme(text = element_text(size = 10)) +
+  theme(text = element_text(size = 16)) +
   labs(size=3) +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
@@ -471,13 +469,12 @@ summer_rain_plot <- ggplot(summer_rain, aes(x = parameter, y = rescaled_sync)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
   geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
-  labs(x = "Mid-year of moving window", y = "Climate synchrony") +
+  labs(x = "Mid-year of moving window", y = "Rainfall synchrony") +
   #scale_y_continuous(breaks=seq(40,160,10)) +
   scale_x_continuous(breaks=seq(1999,2012,3)) +
   geom_hline(yintercept = 100, linetype = "dashed") +
-  ggtitle("Summer rainfall") +
   theme_bw() +
-  theme(text = element_text(size = 10)) +
+  theme(text = element_text(size = 16)) +
   labs(size=3) +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
@@ -487,13 +484,12 @@ autumn_rain_plot <- ggplot(autumn_rain, aes(x = parameter, y = rescaled_sync)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
   geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
-  labs(x = "Mid-year of moving window", y = "Climate synchrony") +
+  labs(x = "Mid-year of moving window", y = "Rainfall synchrony") +
   #scale_y_continuous(breaks=seq(40,160,10)) +
   scale_x_continuous(breaks=seq(1999,2012,3)) +
   geom_hline(yintercept = 100, linetype = "dashed") +
-  ggtitle("Autumn rainfall") +
   theme_bw() +
-  theme(text = element_text(size = 10)) +
+  theme(text = element_text(size = 16)) +
   labs(size=3) +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
@@ -502,7 +498,7 @@ autumn_rain_plot
 ## save all 4 rainfall plots
 library(ggpubr)
 rain_plots <- ggarrange(winter_rain_plot, spring_rain_plot, summer_rain_plot, autumn_rain_plot,
-                        ncol = 2, nrow = 2)
+                        hjust = 0, ncol = 2, nrow = 2, labels = c("(a)", "(b)", "(c)", "(d)"))
 rain_plots
 ggsave("../Graphs/Climate/seasonal_rainfall_synchrony_BBS3.png", plot = rain_plots, width=12, height=10)
 
@@ -638,13 +634,12 @@ winter_temp_plot <- ggplot(winter_temp, aes(x = parameter, y = rescaled_sync)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
   geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
-  labs(x = "Mid-year of moving window", y = "Climate synchrony") +
+  labs(x = "Mid-year of moving window", y = "Temperature synchrony") +
   #scale_y_continuous(breaks=seq(40,160,10)) +
   scale_x_continuous(breaks=seq(1999,2012,3)) +
   geom_hline(yintercept = 100, linetype = "dashed") +
-  ggtitle("Winter temperature") +
   theme_bw() +
-  theme(text = element_text(size = 10)) +
+  theme(text = element_text(size = 16)) +
   labs(size=3) +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
@@ -654,13 +649,12 @@ spring_temp_plot <- ggplot(spring_temp, aes(x = parameter, y = rescaled_sync)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
   geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
-  labs(x = "Mid-year of moving window", y = "Climate synchrony") +
+  labs(x = "Mid-year of moving window", y = "Temperature synchrony") +
   #scale_y_continuous(breaks=seq(40,160,10)) +
   scale_x_continuous(breaks=seq(1999,2012,3)) +
   geom_hline(yintercept = 100, linetype = "dashed") +
-  ggtitle("Spring temperature") +
   theme_bw() +
-  theme(text = element_text(size = 10)) +
+  theme(text = element_text(size = 16)) +
   labs(size=3) +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
@@ -670,13 +664,12 @@ summer_temp_plot <- ggplot(summer_temp, aes(x = parameter, y = rescaled_sync)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
   geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
-  labs(x = "Mid-year of moving window", y = "Climate synchrony") +
+  labs(x = "Mid-year of moving window", y = "Temperature synchrony") +
   #scale_y_continuous(breaks=seq(40,160,10)) +
   scale_x_continuous(breaks=seq(1999,2012,3)) +
   geom_hline(yintercept = 100, linetype = "dashed") +
-  ggtitle("Summer temperature") +
   theme_bw() +
-  theme(text = element_text(size = 10)) +
+  theme(text = element_text(size = 16)) +
   labs(size=3) +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
@@ -686,13 +679,12 @@ autumn_temp_plot <- ggplot(autumn_temp, aes(x = parameter, y = rescaled_sync)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
   geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
-  labs(x = "Mid-year of moving window", y = "Climate synchrony") +
+  labs(x = "Mid-year of moving window", y = "Temperature synchrony") +
   #scale_y_continuous(breaks=seq(40,160,10)) +
   scale_x_continuous(breaks=seq(1999,2012,3)) +
   geom_hline(yintercept = 100, linetype = "dashed") +
-  ggtitle("Autumn temperature") +
   theme_bw() +
-  theme(text = element_text(size = 10)) +
+  theme(text = element_text(size = 16)) +
   labs(size=3) +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
@@ -701,7 +693,7 @@ autumn_temp_plot
 ## save all 4 temperature plots
 library(ggpubr)
 temp_plots <- ggarrange(winter_temp_plot, spring_temp_plot, summer_temp_plot, autumn_temp_plot,
-                        ncol = 2, nrow = 2)
+                        hjust = 0, ncol = 2, nrow = 2, labels = c("(a)", "(b)", "(c)", "(d)"))
 temp_plots
 ggsave("../Graphs/Climate/seasonal_temperature_synchrony_BBS3.png", plot = temp_plots, width=12, height=10)
 
