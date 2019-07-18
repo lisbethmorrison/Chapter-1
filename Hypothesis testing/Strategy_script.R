@@ -17,7 +17,7 @@ options(scipen=999)
 
 ## read data
 pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", header=TRUE) # butterfly pair attribute data
-pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2.csv", header=TRUE) # CBC pair attribute data
+pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2_correct.csv", header=TRUE) # CBC pair attribute data
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) # BBS pair attribute data
 ## bird phylogeny info 
 species_traits <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", header=TRUE)
@@ -47,7 +47,7 @@ write.csv(results_table_average_spec, file = "../Results/Model_outputs/UKBMS/ave
 species_traits <- species_traits[,c(2,3,4)]
 pair_attr_CBC <- merge(pair_attr_CBC, species_traits, by.x="spp", by.y="species_code", all=FALSE)
 pair_attr_CBC <- droplevels(pair_attr_CBC)
-length(unique(pair_attr_CBC$spp)) # 29 species
+length(unique(pair_attr_CBC$spp)) # 26 species
 
 str(pair_attr_CBC)
 pair_attr_CBC$mid.year <- as.character(pair_attr_CBC$mid.year)
@@ -55,12 +55,12 @@ pair_attr_CBC$pair.id <- as.character(pair_attr_CBC$pair.id)
 pair_attr_CBC$spp <- as.factor(pair_attr_CBC$spp)
 
 ## run model with specialism as fixed categorical variable
-strategy_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + specialism + family + (1|pair.id) + (1|spp), data = pair_attr_CBC)
+strategy_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + specialism + (1|family) + (1|pair.id) + (1|spp), data = pair_attr_CBC)
+## no errors
 summary(strategy_model_cbc)
-anova(strategy_model_cbc)
-## non-significant (p=0.55) (still non-significant with genus and family included in model)
-results_table_average_spec <- data.frame(summary(strategy_model_cbc)$coefficients[,1:5]) ## 29 species
-write.csv(results_table_average_spec, file = "../Results/Model_outputs/CBC/average_spec_cbc.csv", row.names=TRUE) # 24 species
+anova(strategy_model_cbc) ## specialism is non-significant (p=0.09)
+results_table_average_spec <- data.frame(summary(strategy_model_cbc)$coefficients[,1:5]) ## 26 species
+write.csv(results_table_average_spec, file = "../Results/Model_outputs/CBC/average_spec_cbc_correct.csv", row.names=TRUE) # 24 species
 
 ## check fit
 sresid <- resid(strategy_model_cbc, type="pearson")
@@ -279,7 +279,6 @@ butterfly_spec2 <- ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Speci
 butterfly_spec2
 dev.off()
 
-
 install.packages("ggpubr")
 library(ggpubr)
 png("../Graphs/FINAL/Figure3_2.png", height = 200, width = 150, units = "mm", res = 300)
@@ -326,83 +325,97 @@ pair_attr_cbc$specialism <- as.factor(pair_attr_cbc$specialism)
 pair_attr_cbc$hab_sim <- as.factor(pair_attr_cbc$hab_sim)
 
 ###### run model with strategy and year interaction
-spec_model_cbc2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*specialism + family + (1|pair.id) + (1|spp), data = pair_attr_cbc)
-summary(spec_model_cbc2)
-## intercept is mid.year 1985 and generalists
+spec_model_cbc2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*specialism + (1|family) + (1|pair.id) + (1|spp), data = pair_attr_cbc)
+## no errors
+summary(spec_model_cbc2) ## interaction is significant (p=0.000705)
 anova(spec_model_cbc2)
-## mid.year*strategy interaction is NON-significant overall (still non-significant with family and genus included)
 ## save model output
-results_table_strategy_cbc <- data.frame(summary(spec_model_cbc2)$coefficients[,1:5]) ## 29 species
-write.csv(results_table_strategy_cbc, file = "../Results/Model_outputs/CBC/change_spec_cbc.csv", row.names=TRUE)
+results_table_strategy_cbc <- data.frame(summary(spec_model_cbc2)$coefficients[,1:5]) ## 26 species
+write.csv(results_table_strategy_cbc, file = "../Results/Model_outputs/CBC/change_spec_cbc_correct.csv", row.names=TRUE)
 
-# ## predict new data
-# newdata_cbc <- expand.grid(mean_northing=mean(pair_attr_cbc$mean_northing), distance=mean(pair_attr_cbc$distance), hab_sim=sample(pair_attr_cbc$hab_sim,1),
-#                        mid.year=unique(pair_attr_cbc$mid.year), specialism=unique(pair_attr_cbc$specialism),
-#                        pair.id=sample(pair_attr_cbc$pair.id,10), spp=sample(pair_attr_cbc$spp,10))
-# 
-# newdata_cbc$lag0 <- predict(spec_model_cbc2, newdata=newdata_cbc, re.form=NA)
-# 
-# mm <- model.matrix(terms(spec_model_cbc2), newdata_cbc)
-# pvar1 <- diag(mm %*% tcrossprod(vcov(spec_model_cbc2),mm))
-# tvar1 <- pvar1+VarCorr(spec_model_cbc2)$spp[1]+VarCorr(spec_model_cbc2)$pair.id[1]
-# cmult <- 2
-# 
-# newdata_cbc <- data.frame(
-#   newdata_cbc
-#   , plo = newdata_cbc$lag0-1.96*sqrt(pvar1)
-#   , phi = newdata_cbc$lag0+1.96*sqrt(pvar1)
-#   , tlo = newdata_cbc$lag0-1.96*sqrt(tvar1)
-#   , thi = newdata_cbc$lag0+1.96*sqrt(tvar1)
-# )
-# 
-# ## run model without specialism or species random effect to obtain residuals
-# spec_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id), data=pair_attr_cbc)
-# pair_attr_cbc$residuals <- resid(spec_cbc)
-# 
-# ## create dataframe which calculates mean, SD and SE of residuals for each species
-# summary_cbc <- pair_attr_cbc %>% group_by(spp, specialism, mid.year) %>% 
-#   summarise_at(vars(residuals), funs(mean,std.error,sd))
-# 
-# ## change values
-# newdata_cbc$mid.year <- revalue(newdata_cbc$mid.year, c("1984.5"="1985"))
-# newdata_cbc$mid.year <- revalue(newdata_cbc$mid.year, c("1995.5"="1996"))
-# colnames(newdata_cbc)[5] <- "Specialism"
-# newdata_cbc$Specialism <- revalue(newdata_cbc$Specialism, c("generalist"="Generalist"))
-# newdata_cbc$Specialism <- revalue(newdata_cbc$Specialism, c("specialist"="Specialist"))
-# ## same for summary dataframe
-# summary_cbc$mid.year <- revalue(summary_cbc$mid.year, c("1984.5"="1985"))
-# summary_cbc$mid.year <- revalue(summary_cbc$mid.year, c("1995.5"="1996"))
-# colnames(summary_cbc)[2] <- "Specialism"
-# summary_cbc$Specialism <- revalue(summary_cbc$Specialism, c("generalist"="Generalist"))
-# summary_cbc$Specialism <- revalue(summary_cbc$Specialism, c("specialist"="Specialist"))
-# 
-# ## plot graph with raw data residuals (+SE error bars) and fitted lines
-# png("../Graphs/Specialism/Specialism_change_predicted_cbc.png", height = 80, width = 120, units = "mm", res = 300)
-# pd <- position_dodge(0.2)
-# ggplot(summary_cbc, aes(x = mid.year, y = mean, group=Specialism)) +
-#   geom_point(aes(shape=Specialism), colour="grey", size = 2, position=pd) +
-#   scale_shape_manual(values=c(16,4)) +
-#   geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position=pd) +
-#   geom_line(data=newdata_cbc, aes(x=mid.year, y=lag0, linetype=Specialism), lwd=1) +
-#   labs(x="Mid year of moving window", y="Population synchrony") +
-#   theme_bw() +
-#   theme(text = element_text(size = 10), panel.border = element_blank(), panel.grid.major = element_blank(),
-#         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-# dev.off()
-# 
-# ## plot graph with fitted line and confidence interval error bars
-# png("../Graphs/Specialism/Specialism_change_predicted_cbc2.png", height = 100, width = 120, units = "mm", res = 300)
-# pd <- position_dodge(0.1)
-# ggplot(newdata_cbc, aes(x=mid.year, y=lag0, group=Specialism)) +
-#   geom_point(position=pd) +
-#   geom_line(aes(linetype=Specialism), size=1, position=pd) +
-#   labs(x="Year", y="Population synchrony") +
-#   theme_bw() +
-#   geom_linerange(aes(ymin=plo, ymax=phi), position=pd) +
-#   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-#         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-# dev.off()
-# ## plot shows that generalists are declining in connectivity over time, whereas specialists are increasing
+## predict new data
+newdata_cbc <- expand.grid(mean_northing=mean(pair_attr_cbc$mean_northing), distance=mean(pair_attr_cbc$distance), hab_sim=sample(pair_attr_cbc$hab_sim,1),
+                       mid.year=unique(pair_attr_cbc$mid.year), specialism=unique(pair_attr_cbc$specialism), family=sample(pair_attr_cbc$family,10),
+                       pair.id=sample(pair_attr_cbc$pair.id,10), spp=sample(pair_attr_cbc$spp,10))
+
+newdata_cbc$lag0 <- predict(spec_model_cbc2, newdata=newdata_cbc, re.form=NA)
+
+mm <- model.matrix(terms(spec_model_cbc2), newdata_cbc)
+pvar1 <- diag(mm %*% tcrossprod(vcov(spec_model_cbc2),mm))
+tvar1 <- pvar1+VarCorr(spec_model_cbc2)$spp[1]+VarCorr(spec_model_cbc2)$pair.id[1]
+cmult <- 2
+
+newdata_cbc <- data.frame(
+  newdata_cbc
+  , plo = newdata_cbc$lag0-1.96*sqrt(pvar1)
+  , phi = newdata_cbc$lag0+1.96*sqrt(pvar1)
+  , tlo = newdata_cbc$lag0-1.96*sqrt(tvar1)
+  , thi = newdata_cbc$lag0+1.96*sqrt(tvar1)
+)
+
+## run model without specialism or species random effect to obtain residuals
+spec_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|family) + (1|pair.id), data=pair_attr_cbc)
+pair_attr_cbc$residuals <- resid(spec_cbc)
+
+## create dataframe which calculates mean, SD and SE of residuals for each species
+summary_cbc <- pair_attr_cbc %>% group_by(spp, specialism, mid.year) %>%
+  summarise_at(vars(residuals), funs(mean,std.error,sd))
+
+## change values
+newdata_cbc$mid.year <- revalue(newdata_cbc$mid.year, c("1984.5"="1985"))
+newdata_cbc$mid.year <- revalue(newdata_cbc$mid.year, c("1995.5"="1996"))
+colnames(newdata_cbc)[5] <- "Specialism"
+newdata_cbc$Specialism <- revalue(newdata_cbc$Specialism, c("generalist"="Generalist"))
+newdata_cbc$Specialism <- revalue(newdata_cbc$Specialism, c("specialist"="Specialist"))
+## same for summary dataframe
+summary_cbc$mid.year <- revalue(summary_cbc$mid.year, c("1984.5"="1985"))
+summary_cbc$mid.year <- revalue(summary_cbc$mid.year, c("1995.5"="1996"))
+colnames(summary_cbc)[2] <- "Specialism"
+summary_cbc$Specialism <- revalue(summary_cbc$Specialism, c("generalist"="Generalist"))
+summary_cbc$Specialism <- revalue(summary_cbc$Specialism, c("specialist"="Specialist"))
+
+## plot graph with raw data residuals (+SE error bars) and fitted lines
+png("../Graphs/Specialism/Specialism_change_predicted_cbc.png", height = 150, width = 180, units = "mm", res = 300)
+ggplot(summary_cbc, aes(x = mid.year, y = mean, group=Specialism)) +
+  geom_point(aes(shape=Specialism), colour="grey66", size = 3, position = myjit) +
+  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey66", width=0.2, position = myjit) +
+  geom_line(data=newdata_cbc, aes(x=mid.year, y=lag0, linetype=Specialism), colour="black", lwd=1) +
+  labs(x="Mid year of moving window", y="Population synchrony") +
+  theme_bw() +
+  theme(legend.key.width = unit(0.8,"cm"), legend.key = element_rect(size = 2), text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.margin=margin(c(-10,20,-10,0)),
+        axis.text.x=element_text(colour="black"), axis.text.y = element_text(colour="black")) +
+  scale_linetype_manual(name=" ",
+                        labels=c("Generalist", "Specialist"), values=c(1,2)) +
+  scale_shape_manual(name="Biotype specialism", 
+                     labels=c("Generalist", "Specialist"), values=c(16,4)) +
+  guides(shape = guide_legend(override.aes = list(size = 3))) +
+  guides(linetype = guide_legend(override.aes = list(size = 0.5)))
+dev.off()
+
+## plot shows that specialists are increasing in synchrony, whereas generalists are relatively constant over time
+
+############ jitter code #################
+myjit <- ggproto("fixJitter", PositionDodge,
+                 width = 0.5,
+                 dodge.width = 0.15,
+                 jit = NULL,
+                 compute_panel =  function (self, data, params, scales) 
+                 {
+                   
+                   #Generate Jitter if not yet
+                   if(is.null(self$jit) ) {
+                     self$jit <-jitter(rep(0, nrow(data)), amount=self$dodge.width)
+                   }
+                   
+                   data <- ggproto_parent(PositionDodge, self)$compute_panel(data, params, scales)
+                   
+                   data$x <- data$x + self$jit
+                   #For proper error extensions
+                   if("xmin" %in% colnames(data)) data$xmin <- data$xmin + self$jit
+                   if("xmax" %in% colnames(data)) data$xmax <- data$xmax + self$jit
+                   data
+                 } )
 
 ##### bbs dataset #####
 ############################### interaction in model #################################

@@ -19,7 +19,7 @@ options(scipen=999)
 
 ## read in synchrony data
 pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", header=TRUE) 
-pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2.csv", header=TRUE) 
+pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2_correct.csv", header=TRUE) 
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) 
 wingspan <- read.csv("../Data/UKBMS_data/butterflywingspans.csv", header=TRUE)
 bird_dispersal <- read.csv("../Data/Woodland_bird_dispersal_Paradis1998.csv", header=TRUE)
@@ -200,7 +200,7 @@ length(unique(bird_dispersal$Species_code)) ## only 23 species have dispersal da
 ## merge pair_attr with bird dispersal data
 pair_attr_CBC <- merge(pair_attr_CBC, bird_dispersal, by.x="spp", by.y="Species_code", all=FALSE)
 pair_attr_CBC <- na.omit(pair_attr_CBC) ## remove NAs (one species == redstart)
-length(unique(pair_attr_CBC$spp)) ## 21 species
+length(unique(pair_attr_CBC$spp)) ## 20 species
 
 ## breeding arithmetic mean dispersal
 dispersal_model_cbc2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + Breeding_AM + (1|spp) + (1|pair.id), data=pair_attr_CBC)
@@ -223,12 +223,14 @@ pair_attr_CBC$Breeding_AM <- as.numeric(pair_attr_CBC$Breeding_AM)
 pair_attr_CBC$Breeding_AM_score2 <- cut(pair_attr_CBC$Breeding_AM, 2, labels=c("low", "high"))
 pair_attr_CBC$Breeding_AM_score2 <- as.factor(pair_attr_CBC$Breeding_AM_score2)
 
-dispersal_model_cbc4 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + Breeding_AM_score2 + family + (1|spp) + (1|pair.id), data=pair_attr_CBC)
+pair_attr_CBC <- droplevels(pair_attr_CBC)
+
+dispersal_model_cbc4 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + Breeding_AM_score2 + (1|family) + (1|spp) + (1|pair.id), data=pair_attr_CBC)
+## no errors
 summary(dispersal_model_cbc4)
-anova(dispersal_model_cbc4)
-## not significant (still non-significant with genus and family added)
-results_table_mob_cbc <- data.frame(summary(dispersal_model_cbc4)$coefficients[,1:5]) ## 21 species
-write.csv(results_table_mob_cbc, file = "../Results/Model_outputs/CBC/average_mob_cbc.csv", row.names=TRUE)
+anova(dispersal_model_cbc4) ## dispersal score is non-significant (p=0.63)
+results_table_mob_cbc <- data.frame(summary(dispersal_model_cbc4)$coefficients[,1:5]) ## 20 species
+write.csv(results_table_mob_cbc, file = "../Results/Model_outputs/CBC/average_mob_cbc_correct.csv", row.names=TRUE)
 
 ################################
 #### Mobility model for BBS ####
@@ -585,13 +587,19 @@ pair_attr_cbc$Breeding_AM_score2 <- cut(pair_attr_cbc$Breeding_AM, 2, labels=FAL
 pair_attr_cbc$Breeding_AM_score2 <- as.factor(pair_attr_cbc$Breeding_AM_score2)
 pair_attr_cbc <- na.omit(pair_attr_cbc)
 
-dispersal_model_cbc3 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*Breeding_AM_score2 + genus + (1|spp) + (1|pair.id), data=pair_attr_cbc)
+dispersal_model_cbc3 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*Breeding_AM_score2 + (1|family) + (1|spp) + (1|pair.id), data=pair_attr_cbc)
+## singular fit error (species RE has variance very close to 0)
 summary(dispersal_model_cbc3)
-anova(dispersal_model_cbc3)
-## interaction is non-significant (still non-significant with family and genus added)
+## run model without species random effect and check if results are similar
+dispersal_model_cbc4 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*Breeding_AM_score2 + (1|family) + (1|pair.id), data=pair_attr_cbc)
+summary(dispersal_model_cbc4)
+## results very similar
+## save results from model with species and family RE
+
+anova(dispersal_model_cbc3) ## interaction is non-significant (p=0.116)
 ## save model output
-results_table_dispersal_cbc <- data.frame(summary(dispersal_model_cbc3)$coefficients[,1:5])
-write.csv(results_table_dispersal_cbc, file = "../Results/Model_outputs/CBC/change_mob_cbc.csv", row.names=TRUE)
+results_table_dispersal_cbc <- data.frame(summary(dispersal_model_cbc3)$coefficients[,1:5]) ## 20 species
+write.csv(results_table_dispersal_cbc, file = "../Results/Model_outputs/CBC/change_mob_cbc_correct.csv", row.names=TRUE)
 
 ## save main (true) model results
 main_result_table <- data.frame(anova(dispersal_model_cbc3)[5]) ## save anova table from main model
