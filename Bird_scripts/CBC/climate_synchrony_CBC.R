@@ -14,7 +14,7 @@ options(scipen=999)
 ## read in data
 mean_temp <- read.csv("../Data/MetOffice_data/Mean_temp_1980_2016_final.csv", header=TRUE)
 rainfall <- read.csv("../Data/MetOffice_data/Mean_rainfall_1980_2016_final.csv", header=TRUE)
-pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2.csv", header=TRUE)
+pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2_correct.csv", header=TRUE)
 
 ##### CALCULATE SEASONAL MEAN TEMPERATURE SYNCHRONY
 
@@ -24,7 +24,7 @@ site2 <- unique(subset(pair_attr_CBC[c(3,12,13)]))
 colnames(site1) <- c("site", "east", "north")
 colnames(site2) <- c("site", "east", "north")
 site_list <- rbind(site1, site2)
-site_list <- unique(site_list) ## 109 sites
+site_list <- unique(site_list) ## 106 sites
 
 ## change coordinates from 1km to 5km
 nrow(site_list)   
@@ -37,17 +37,17 @@ for (i in 1:length(site_list$north)){
   site_list$north.5k[i]<-(site_list$north[i]%/%10000)*10000+y
 } ## 206900 changes to 207500
 
-site_list<-site_list[,c(1,4,5)] ## 109 sites
+site_list<-site_list[,c(1,4,5)] ## 106 sites
 ## remove duplicates where two sites have the same 5km easting and northing
-site_list2 <- site_list[!duplicated(t(apply(site_list[2:3], 1, sort))),] ## 99 sites
+site_list2 <- site_list[!duplicated(t(apply(site_list[2:3], 1, sort))),] ## 96 sites
 
 ## merge pair_attr site data with mean_temp (left with only CBC sites)
 mean_temp <- merge(mean_temp, site_list2, by.x=c("easting", "northing"), by.y=c("east.5k", "north.5k"))
-length(unique(mean_temp$site)) # all 109 sites which match with climate and CBC data
+length(unique(mean_temp$site)) # all 96 sites which match with climate and CBC data
 
 ## merge pair_attr site data with rainfall (left with only UKBMS sites)
 rainfall <- merge(rainfall, site_list2, by.x=c("easting", "northing"), by.y=c("east.5k", "north.5k"))
-length(unique(rainfall$site)) # 109 sites
+length(unique(rainfall$site)) # 96 sites
 
 ##########################################################################################################
 ################################### CALCULATE SYNCHRONY ##################################################
@@ -58,14 +58,14 @@ length(unique(rainfall$site)) # 109 sites
 final_pair_data <- NULL
 season <- unique(mean_temp$ag)
 ### split based on season ###
-for (g in season[1]){print(g)} # loop through each season
+for (g in season){ # loop through each season
   season_data <- mean_temp[mean_temp$ag==g,]
   total_comp <- NULL
   print(paste("season",g))    
   
   year.list<-1980:1991
   
-  for (i in year.list[1]){print(i)} # loop through year.list
+  for (i in year.list){# loop through year.list
     start.year<-i
     mid.year<-i+4.5
     print(paste("mid.year=",mid.year)) 
@@ -175,7 +175,7 @@ site_list <- unique(site_list) ## 109 sites!!
 head(final_pair_data)
 unique(final_pair_data$mid.year)
 ## save data
-write.csv(final_pair_data, file="../Data/MetOffice_data/final_pair_data_mean_temp_CBC3.csv", row.names=FALSE)
+write.csv(final_pair_data, file="../Data/MetOffice_data/final_pair_data_mean_temp_CBC3_correct.csv", row.names=FALSE)
 
 ################## RAINFALL ###################
 
@@ -293,7 +293,7 @@ for (g in season){ # loop through each season
 head(final_pair_data)
 
 ## save file
-write.csv(final_pair_data, file="../Data/MetOffice_data/final_pair_data_mean_rainfall_CBC3.csv", row.names=FALSE)
+write.csv(final_pair_data, file="../Data/MetOffice_data/final_pair_data_mean_rainfall_CBC3_correct.csv", row.names=FALSE)
 
 
 #############################################################################################################################
@@ -303,8 +303,22 @@ write.csv(final_pair_data, file="../Data/MetOffice_data/final_pair_data_mean_rai
 rm(list=ls()) # clear R
 
 ## read in final pair data for temp and rainfall
-final_pair_data_rain <- read.csv("../Data/MetOffice_data/final_pair_data_mean_rainfall_CBC3.csv", header=TRUE)
-final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp_CBC3.csv", header=TRUE)  
+final_pair_data_rain <- read.csv("../Data/MetOffice_data/final_pair_data_mean_rainfall_CBC3_correct.csv", header=TRUE)
+final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp_CBC3_correct.csv", header=TRUE)  
+
+hist(final_pair_data_temp$lag0) ## very right-skewed
+hist(final_pair_data_rain$lag0) ## very right-skewed
+
+## change values that are >0 to just above 0
+## otherwise logit transformation doesn't work 
+final_pair_data_rain$lag0[final_pair_data_rain$lag0<0 ] <- 0.000001
+
+logitTransform <- function(p) { log(p/(1-p)) }
+final_pair_data_temp$lag0_logit <- logitTransform(final_pair_data_temp$lag0)
+final_pair_data_rain$lag0_logit <- logitTransform(final_pair_data_rain$lag0)
+
+hist(final_pair_data_temp$lag0_logit) ## looks normally distributed 
+hist(final_pair_data_rain$lag0_logit) ## looks normally distributed but still some outliers (which are the transformed negative values)
 
 ######################
 ###### Rainfall ######
