@@ -114,7 +114,7 @@ for (g in spp.list){ # loop through spp.list
     # unique(pair.list$site1)[!unique(pair.list$site1)%in%unique(site_data$site_a)]   # how many sites are missing attribute data
     
     ## remove site pair comparisons more than 100km apart
-    site_data_pair <- site_data_pair[site_data_pair$distance <= 100000,]
+    site_data_pair <- site_data_pair[site_data_pair$distance <= 100,]
     
     pair.list<-merge(pair.list,site_data_pair,by.x=c("site1", "site2"),by.y=c("site1", "site2"))[,1:2] 
     
@@ -201,17 +201,19 @@ head(final_summ_stats)
 
 length(unique(final_pair_data$spp)) ## 30 species
 
-final_summ_stats$spp <- as.factor(final_summ_stats$spp) ## 33 species
-final_pair_data_summ <- count(final_summ_stats, "spp") ## nrow of each species
+final_summ_stats$spp <- as.factor(final_summ_stats$spp) ## 32 species
+final_pair_data_summ <- final_summ_stats %>% 
+  group_by(spp) %>% 
+  summarise(n = n()) ## nrow of each species
 ## only include species with complete time series (i.e. nrow=12)
-final_pair_data_summ <- final_pair_data_summ[final_pair_data_summ$freq>=12,] ## 30 species (2 species removed)
+final_pair_data_summ <- final_pair_data_summ[final_pair_data_summ$n>=12,] ## 27 species (5 species removed)
 ## merge back into final_pair_data
 final_pair_data <- merge(final_pair_data, final_pair_data_summ, by="spp", all=FALSE)
-length(unique(final_pair_data$spp)) ## 30 species (no zeros), 33 species (zeros)
+length(unique(final_pair_data$spp)) ## 27 species
 
-write.csv(final_pair_data, file="../Data/Bird_sync_data/final_pair_data_all_spp_CBC_no_zeros2.csv", row.names=FALSE) ## save final pair data for all 33 species
+write.csv(final_pair_data, file="../Data/Bird_sync_data/final_pair_data_all_spp_CBC_no_zeros2_correct.csv", row.names=FALSE) ## save final pair data for all 33 species
 
-write.csv(final_summ_stats, file="../Data/Bird_sync_data/final_summ_stats_all_spp_CBC_no_zeros2.csv", row.names=FALSE) ## save final summ stats for all 33 species
+write.csv(final_summ_stats, file="../Data/Bird_sync_data/final_summ_stats_all_spp_CBC_no_zeros2_correct.csv", row.names=FALSE) ## save final summ stats for all 33 species
 
 ########################## NOT USED ANYMORE ##############################
 

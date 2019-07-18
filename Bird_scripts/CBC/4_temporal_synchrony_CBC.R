@@ -19,7 +19,7 @@ options(scipen=999)
 ################################
 ## add data ##
 #final_pair_data <- read.csv("../Data/Bird_sync_data/final_pair_data_all_spp_CBC_zeros.csv", header = TRUE) # pair attr synchrony data
-final_pair_data <- read.csv("../Data/Bird_sync_data/final_pair_data_all_spp_CBC_no_zeros2.csv", header = TRUE) # pair attr synchrony data
+final_pair_data <- read.csv("../Data/Bird_sync_data/final_pair_data_all_spp_CBC_no_zeros2_correct.csv", header = TRUE) # pair attr synchrony data
 site_data <- read.csv("../Data/BTO_data/pair_attr_mean_north_dist_hab_sim_CBC.csv", header = TRUE) # pair attr site data
 
 ## merge to site data for each species ##
@@ -56,18 +56,18 @@ pair_attr$hab_sim <- as.factor(pair_attr$hab_sim)
 pair_attr <- subset(pair_attr, spp!= "323") # all sites have hab_sim = 1, spp = lesser spotted woodpecker
 pair_attr <- subset(pair_attr, spp!= "370") # all sites have hab_sim = 1, spp = nightingale 
 
-length(unique(pair_attr$spp)) # 29 species (no zeros), 31 species (zeros)
+length(unique(pair_attr$spp)) # 26 species
 
 ## merge in trait data (specialism and dispersal distance)
 specialism <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", header=TRUE)
 pair_attr <- merge(pair_attr, specialism, by.x="spp", by.y="species_code")
-length(unique(pair_attr$spp)) ## 28 species (no zeros), 31 species (zeros)
+length(unique(pair_attr$spp)) ## 26 species
 
-write.csv(pair_attr, file = "../Data/Bird_sync_data/pair_attr_CBC_no_zeros2.csv", row.names = FALSE) # save pair_attr file (31 spp)
+write.csv(pair_attr, file = "../Data/Bird_sync_data/pair_attr_CBC_no_zeros2_correct.csv", row.names = FALSE) # save pair_attr file (31 spp)
 
 
 ########## READ IN PAIR ATTRIBUTE FILE ################
-pair_attr <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2.csv", header=TRUE)
+pair_attr <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2_correct.csv", header=TRUE)
 ## climate data
 final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp_CBC.csv", header=TRUE)  
 
@@ -167,21 +167,22 @@ species_traits <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv"
 species_traits <- species_traits[,c(2,3,4)]
 pair_attr <- merge(pair_attr, species_traits, by.x="spp", by.y="species_code", all=FALSE)
 pair_attr <- droplevels(pair_attr)
-length(unique(pair_attr$spp)) # 29 species
+length(unique(pair_attr$spp)) # 26 species
 summary(pair_attr)
 
 ### run model with family to test for a relationship with synchrony
 all_spp_model_family <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + family + (1|pair.id) + (1|spp), data = pair_attr)
 summary(all_spp_model_family) 
-anova(all_spp_model_family) ## family significant (p=0.000462)
+anova(all_spp_model_family) ## family significant (p=0.042)
 
 all_spp_model_genus <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + genus + (1|pair.id) + (1|spp), data = pair_attr)
 summary(all_spp_model_genus) 
-anova(all_spp_model_genus) ## genus significant (p=0.0232)
+anova(all_spp_model_genus) ## genus non-significant (p=0.21)
 
 ## model with intercept
 start_time <- Sys.time()
 all_spp_model_int <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
+summary(all_spp_model_int)
 end_time <- Sys.time()
 end_time - start_time # 20.5 seconds
 
@@ -192,10 +193,10 @@ rownames(fixed_results) <- 1:nrow(fixed_results)
 ## remove mid.year rows
 fixed_results <- fixed_results[-c(1,5:15),]
 ## save results
-write.csv(fixed_results, file = "../Results/Model_outputs/fixed_effect_results_cbc_no_zeros2.csv", row.names=FALSE)
+write.csv(fixed_results, file = "../Results/Model_outputs/fixed_effect_results_cbc_no_zeros2_correct.csv", row.names=FALSE)
 
 ## model without intercept
-all_spp_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id)-1, data = pair_attr)
+all_spp_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp)-1, data = pair_attr)
 summary(all_spp_model) 
 anova(all_spp_model)
 
@@ -229,7 +230,7 @@ results_table_all_spp$rescaled_sd <- results_table_all_spp$SD*(100/results_table
 results_table_all_spp$rescaled_ci <- results_table_all_spp$rescaled_sd*1.96
 
 ## save final results table ##
-write.csv(results_table_all_spp, file = "../Results/Bird_results/results_final_all_spp_CBC_no_zeros2.csv", row.names=FALSE)
+write.csv(results_table_all_spp, file = "../Results/Bird_results/results_final_all_spp_CBC_no_zeros2_correct.csv", row.names=FALSE)
 
 ## same model but without covariates
 all_spp_model2 <- lmer(lag0 ~ mid.year + (1|pair.id) + (1|spp), data = pair_attr)

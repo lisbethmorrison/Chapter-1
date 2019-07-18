@@ -15,7 +15,7 @@ library(gridExtra)
 ####################################
 
 ### read in results tables ###
-results_final_all_spp <- read.csv("../Results/Bird_results/results_final_all_spp_CBC_no_zeros2.csv", header=TRUE)
+results_final_all_spp <- read.csv("../Results/Bird_results/results_final_all_spp_CBC_no_zeros2_correct.csv", header=TRUE)
 results_final_sp <- read.csv("../Results/Bird_results/results_final_spp_CBC_no_zeros2.csv", header=TRUE)
 results_final_spec <- read.csv("../Results/Bird_results/results_final_spec_CBC_no_zeros2.csv", header=TRUE) 
 
@@ -69,7 +69,7 @@ FCI_plot_scaled_error <- ggplot(results_final_all_spp, aes(x = parameter, y = re
         axis.text.x = element_text(color="black"), axis.text.y = element_text(color="black"))
 FCI_plot_scaled_error
 
-ggsave("../Graphs/Connectivity_plots/FCI_all_spp_CBC_scaled_error3.png", plot = FCI_plot_scaled_error, width=5, height=5)
+ggsave("../Graphs/Connectivity_plots/FCI_all_spp_CBC_scaled_error3_correct.png", plot = FCI_plot_scaled_error, width=5, height=5)
 ggsave("../Graphs/Presentation/FCI_CBC.png", plot = FCI_plot_scaled_error, width=5, height=5)
 
 ##### method to obtain smoothed values with 95% confidence intervals for indicator
@@ -85,7 +85,7 @@ FCI_indicator_plot <- FCI_indicator_plot[-c(4:6,9:10)]
 FCI_indicator_plot <- FCI_indicator_plot[c(4,5,1,3,2)]
 names(FCI_indicator_plot) <-  c("year", "unsmoothed", "smoothed", "upperCI", "lowerCI")
 ## save file
-write.csv(FCI_indicator_plot, file="../Connectivity fiche/Data files/CBC/CBC trend data.csv", row.names=FALSE)
+write.csv(FCI_indicator_plot, file="../Connectivity fiche/Data files/CBC/CBC trend data_correct.csv", row.names=FALSE)
 
 #### plot for specialist/generalist ####
 results_final_spec$Strategy <- as.factor(results_final_spec$Strategy)
