@@ -260,7 +260,7 @@ site2 <- unique(final_pair_data[,2, drop=FALSE])
 colnames(site1)[1] <- "site"
 colnames(site2)[1] <- "site"
 site_list <- rbind(site1, site2)
-site_list <- unique(site_list) ## 686 sites
+site_list <- unique(site_list) ## 487 sites
 
 ## save data
 write.csv(final_pair_data, file="../Data/MetOffice_data/final_pair_data_mean_temp2.csv", row.names=FALSE)
@@ -392,6 +392,10 @@ rm(list=ls()) # clear R
 final_pair_data_rain <- read.csv("../Data/MetOffice_data/final_pair_data_mean_rainfall3.csv", header=TRUE)
 final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp3.csv", header=TRUE)  
 
+## change values that are >0 to just above 0
+## otherwise logit transformation doesn't work 
+final_pair_data_rain$lag0[final_pair_data_rain$lag0<0 ] <- 0.000001
+
 # final_pair_data_temp <- unique(final_pair_data_temp) ## 989,319 
 # final_pair_data_rain <- unique(final_pair_data_rain) ## 990,084
 
@@ -428,7 +432,11 @@ autumn_rainfall <- droplevels(autumn_rainfall)
 library(lme4)
 
 ###### WINTER RAINFALL ######
-winter_rainfall_model <- lmer(lag0 ~ mid.year + (1|pair.id)-1, data=winter_rainfall)
+
+logitTransform <- function(p) { log(p/(1-p)) }
+winter_rainfall$lag0_logit <- logitTransform(winter_rainfall$lag0)
+
+winter_rainfall_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=winter_rainfall)
 summary(winter_rainfall_model)
 ## save results
 results_table_winter_rain <- data.frame(summary(winter_rainfall_model)$coefficients[,1:3])
@@ -452,7 +460,7 @@ results_table_winter_rain <- subset(results_table_winter_rain, select = -c(new_s
 write.csv(results_table_winter_rain, file = "../Results/Climate_results/winter_rainfall_synchrony3.csv", row.names=FALSE)
 
 ###### SPRING RAINFALL ######
-spring_rainfall_model <- lmer(lag0 ~ mid.year + (1|pair.id)-1, data=spring_rainfall)
+spring_rainfall_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=spring_rainfall)
 summary(spring_rainfall_model)
 ## save results
 results_table_spring_rain <- data.frame(summary(spring_rainfall_model)$coefficients[,1:3])
@@ -476,7 +484,7 @@ results_table_spring_rain <- subset(results_table_spring_rain, select = -c(new_s
 write.csv(results_table_spring_rain, file = "../Results/Climate_results/spring_rainfall_synchrony3.csv", row.names=FALSE)
 
 ###### SUMMER RAINFALL ######
-summer_rainfall_model <- lmer(lag0 ~ mid.year + (1|pair.id)-1, data=summer_rainfall)
+summer_rainfall_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=summer_rainfall)
 summary(summer_rainfall_model)
 ## save results
 results_table_summer_rain <- data.frame(summary(summer_rainfall_model)$coefficients[,1:3])
@@ -500,7 +508,7 @@ results_table_summer_rain <- subset(results_table_summer_rain, select = -c(new_s
 write.csv(results_table_summer_rain, file = "../Results/Climate_results/summer_rainfall_synchrony3.csv", row.names=FALSE)
 
 ###### AUTUMN RAINFALL ######
-autumn_rainfall_model <- lmer(lag0 ~ mid.year + (1|pair.id)-1, data=autumn_rainfall)
+autumn_rainfall_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=autumn_rainfall)
 summary(autumn_rainfall_model)
 plot(autumn_rainfall_model)
 qqnorm(residuals(autumn_rainfall_model))
@@ -624,7 +632,7 @@ autumn_temp <- droplevels(autumn_temp)
 library(lme4)
 
 ###### WINTER TEMPERATURE ######
-winter_temp_model <- lmer(lag0 ~ mid.year + (1|pair.id)-1, data=winter_temp)
+winter_temp_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=winter_temp)
 summary(winter_temp_model)
 ## save results
 results_table_winter_temp <- data.frame(summary(winter_temp_model)$coefficients[,1:3])
@@ -648,7 +656,7 @@ results_table_winter_temp <- subset(results_table_winter_temp, select = -c(new_s
 write.csv(results_table_winter_temp, file = "../Results/Climate_results/winter_temp_synchrony3.csv", row.names=FALSE)
 
 ###### SPRING TEMPERATURE ######
-spring_temp_model <- lmer(lag0 ~ mid.year + (1|pair.id)-1, data=spring_temp)
+spring_temp_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=spring_temp)
 summary(spring_temp_model)
 ## save results
 results_table_spring_temp <- data.frame(summary(spring_temp_model)$coefficients[,1:3])
@@ -672,7 +680,24 @@ results_table_spring_temp <- subset(results_table_spring_temp, select = -c(new_s
 write.csv(results_table_spring_temp, file = "../Results/Climate_results/spring_temp_synchrony3.csv", row.names=FALSE)
 
 ###### SUMMER TEMPERATURE ######
-summer_temp_model <- lmer(lag0 ~ mid.year + (1|pair.id)-1, data=summer_temp)
+# logitTransform <- function(p) { log(p/(1-p)) }
+# summer_temp$lag0_logit <- logitTransform(summer_temp$lag0)
+# 
+# hist(summer_temp$lag0)
+# hist(summer_temp$lag0_logit)
+# 
+# summer_temp_model1 <- lmer(lag0 ~ mid.year + (1|pair.id)-1, data=summer_temp)
+summer_temp_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=summer_temp)
+
+# qqnorm(residuals(summer_temp_model1))
+# qqline(residuals(summer_temp_model1))
+# plot(summer_temp_model1)
+# 
+# qqnorm(residuals(summer_temp_model))
+# qqline(residuals(summer_temp_model))
+# plot(summer_temp_model)
+
+
 summary(summer_temp_model)
 ## save results
 results_table_summer_temp <- data.frame(summary(summer_temp_model)$coefficients[,1:3])
@@ -696,7 +721,7 @@ results_table_summer_temp <- subset(results_table_summer_temp, select = -c(new_s
 write.csv(results_table_summer_temp, file = "../Results/Climate_results/summer_temp_synchrony3.csv", row.names=FALSE)
 
 ###### AUTUMN TEMPERATURE ######
-autumn_temp_model <- lmer(lag0 ~ mid.year + (1|pair.id)-1, data=autumn_temp)
+autumn_temp_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=autumn_temp)
 summary(autumn_temp_model)
 ## save results
 results_table_autumn_temp <- data.frame(summary(autumn_temp_model)$coefficients[,1:3])
@@ -850,6 +875,13 @@ final_pair_late_temp <- rbind(final_pair_2000, final_pair_2012) # comparison of 
 ## early model (85-00) for each season
 season_early <- unique(final_pair_data_temp$season)
 
+# 
+# logitTransform <- function(p) { log(p/(1-p)) }
+# final_pair_data_temp$lag0_logit <- logitTransform(final_pair_data_temp$lag0)
+# 
+# hist(final_pair_data_temp$lag0)
+# hist(final_pair_data_temp$lag0_logit)
+
 results_table_early<-NULL
 for (i in season_early){
   print(i)
@@ -857,7 +889,18 @@ for (i in season_early){
   ## create unique pair_attr for each species
   final_pair_season <- final_pair_early_temp[final_pair_early_temp$season==i,]
     
-    early_model <- (lmer(lag0 ~ mid.year + (1|pair.id), data = final_pair_season))
+    # early_model_2 <- lmer(lag0 ~ mid.year + (1|pair.id), data = final_pair_season)
+    early_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id), data = final_pair_season)
+    
+    # qqnorm(residuals(early_model))
+    # qqline(residuals(early_model))
+    # plot(early_model)
+    # 
+    # qqnorm(residuals(early_model_2))
+    # qqline(residuals(early_model_2))
+    # plot(early_model_2)
+    
+    
     summary(early_model)
     anova(early_model)
     
@@ -880,7 +923,7 @@ for (i in season_late){
   ## create unique pair_attr for each species
   final_pair_season <- final_pair_late_temp[final_pair_late_temp$season==i,]
   
-  late_model <- (lmer(lag0 ~ mid.year + (1|pair.id), data = final_pair_season))
+  late_model <- (lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id), data = final_pair_season))
   summary(late_model)
   anova(late_model)
   
@@ -950,17 +993,34 @@ for (i in season_late){
 ## save table
 write.csv(results_table_late2, file="../Results/Climate_results/model_comp_results_rain_00_12_UKBMS3.csv", row.names=FALSE)
 
+
+temp1 <- final_pair_data_temp[(final_pair_data_temp$season=="c" & final_pair_data_temp$mid.year==1984.5),]
+hist(temp1$lag0)
+temp2 <- final_pair_data_temp[(final_pair_data_temp$season=="c" & final_pair_data_temp$mid.year==1999.5),]
+hist(temp2$lag0)
+temp3 <- final_pair_data_temp[(final_pair_data_temp$season=="c" & final_pair_data_temp$mid.year==2011.5),]
+hist(temp3$lag0)
+
+temp_sum <- final_pair_data_temp[(final_pair_data_temp$season=="c"),]
+hist(temp_sum$lag0)
+temp_aut <- final_pair_data_temp[(final_pair_data_temp$season=="d"),]
+hist(temp_aut$lag0)
+temp_win <- final_pair_data_temp[(final_pair_data_temp$season=="a"),]
+hist(temp_win$lag0)
+temp_spr <- final_pair_data_temp[(final_pair_data_temp$season=="b"),]
+hist(temp_spr$lag0)
+
 ## number of sites
 site1 <- unique(final_pair_data_temp[,1, drop=FALSE])
 site2 <- unique(final_pair_data_temp[,2, drop=FALSE])
 colnames(site1)[1] <- "site"
 colnames(site2)[1] <- "site"
 site_list <- rbind(site1, site2)
-site_list <- unique(site_list) ## 672 sites
+site_list <- unique(site_list) ## 487 sites
 
 site1 <- unique(final_pair_data_rain[,1, drop=FALSE])
 site2 <- unique(final_pair_data_rain[,2, drop=FALSE])
 colnames(site1)[1] <- "site"
 colnames(site2)[1] <- "site"
-site_list <- rbind(site1, site2)
-site_list <- unique(site_list) ## 672 sites
+site_list2 <- rbind(site1, site2)
+site_list2 <- unique(site_list) ## 487 sites
