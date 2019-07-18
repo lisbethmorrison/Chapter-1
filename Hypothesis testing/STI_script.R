@@ -19,7 +19,7 @@ options(scipen=999)
 
 ## read in synchrony data
 pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", header=TRUE) 
-pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2.csv", header=TRUE) 
+pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2_correct.csv", header=TRUE) 
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) 
 bird_STI <- read.csv("../Data/birds_STI.csv", header=TRUE)
 butterfly_STI <- read.csv("../Data/butterflies_STI.csv", header=TRUE)
@@ -116,7 +116,7 @@ write.csv(results_table_STI_mob_ukbms, file = "../Results/Model_outputs/UKBMS/av
 
 ## merge datasets
 pair_attr_CBC <- merge(pair_attr_CBC, bird_STI, by.x="spp", by.y="species_code") ## 31 species
-length(unique(pair_attr_CBC$spp)) # 29 species
+length(unique(pair_attr_CBC$spp)) # 26 species
 str(pair_attr_CBC)
 
 pair_attr_CBC$pair.id <- as.character(pair_attr_CBC$pair.id)
@@ -124,21 +124,22 @@ pair_attr_CBC$spp <- as.factor(pair_attr_CBC$spp)
 pair_attr_CBC$mid.year <- as.factor(pair_attr_CBC$mid.year)
 
 climate_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + STI + (1|spp) + (1|pair.id), data=pair_attr_CBC)
-summary(climate_cbc) ## STI non-significant (p=0.58) (still non-significant with genus and family)
+summary(climate_cbc) ## STI non-significant (p=0.96) (still non-significant with family, p=0.124)
 anova(climate_cbc)
-results_table_STI_cbc <- data.frame(summary(climate_cbc)$coefficients[,1:5]) ## 29 species
-write.csv(results_table_STI_cbc, file = "../Results/Model_outputs/CBC/average_STI_cbc.csv", row.names=TRUE)
+results_table_STI_cbc <- data.frame(summary(climate_cbc)$coefficients[,1:5]) ## 26 species
+write.csv(results_table_STI_cbc, file = "../Results/Model_outputs/CBC/average_STI_cbc_correct.csv", row.names=TRUE)
 
 ## same model with STI as group
 pair_attr_CBC$STI <- as.numeric(pair_attr_CBC$STI)
 pair_attr_CBC$STI_score <- cut(pair_attr_CBC$STI, 2, labels=FALSE)
 pair_attr_CBC$STI_score <- as.factor(pair_attr_CBC$STI_score)
 
-climate_cbc2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + STI_score + (1|spp) + (1|pair.id), data=pair_attr_CBC)
-summary(climate_cbc2) ## STI non-significant (p=0.95) 
+climate_cbc2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + STI_score + (1|family) + (1|spp) + (1|pair.id), data=pair_attr_CBC)
+## no errors
+summary(climate_cbc2) ## STI non-significant (p=0.0534) 
 anova(climate_cbc2)
-results_table_STI_cbc <- data.frame(summary(climate_cbc2)$coefficients[,1:5]) ## 29 species
-write.csv(results_table_STI_cbc, file = "../Results/Model_outputs/CBC/average_STIgroup_cbc.csv", row.names=TRUE)
+results_table_STI_cbc <- data.frame(summary(climate_cbc2)$coefficients[,1:5]) ## 26 species
+write.csv(results_table_STI_cbc, file = "../Results/Model_outputs/CBC/average_STIgroup_cbc_correct.csv", row.names=TRUE)
 
 ##### BBS
 ## merge datasets
@@ -608,9 +609,9 @@ myjit <- ggproto("fixJitter", PositionDodge,
 
 #### CBC
 ## read in pair_attr_CBC again
-pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2.csv", header=TRUE) 
+pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2_correct.csv", header=TRUE) 
 pair_attr_CBC <- merge(pair_attr_CBC, bird_STI, by.x="spp", by.y="species_code") ## 31 species
-length(unique(pair_attr_CBC$spp)) # 29 species
+length(unique(pair_attr_CBC$spp)) # 26 species
 pair_attr_CBC$pair.id <- as.character(pair_attr_CBC$pair.id)
 pair_attr_CBC$spp <- as.factor(pair_attr_CBC$spp)
 pair_attr_CBC$mid.year <- as.factor(pair_attr_CBC$mid.year)
@@ -618,7 +619,7 @@ pair_attr_CBC$mid.year <- as.factor(pair_attr_CBC$mid.year)
 pair_attr_cbc_1985 <- pair_attr_CBC[pair_attr_CBC$mid.year==1984.5,]
 pair_attr_cbc_1996 <- pair_attr_CBC[pair_attr_CBC$mid.year==1995.5,]
 pair_attr_cbc <- rbind(pair_attr_cbc_1985, pair_attr_cbc_1996)
-length(unique(pair_attr_cbc$spp)) ## 29 species
+length(unique(pair_attr_cbc$spp)) ## 26 species
 
 pair_attr_cbc$mid.year <- as.factor(pair_attr_cbc$mid.year)
 pair_attr_cbc$pair.id <- as.character(pair_attr_cbc$pair.id)
@@ -636,11 +637,12 @@ pair_attr_cbc$STI <- as.numeric(pair_attr_cbc$STI)
 pair_attr_cbc$STI_score <- cut(pair_attr_cbc$STI, 2, labels=FALSE)
 pair_attr_cbc$STI_score <- as.factor(pair_attr_cbc$STI_score)
 
-climate_cbc_change2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*STI_score + (1|pair.id) + (1|spp), data = pair_attr_cbc)
+climate_cbc_change2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*STI_score + (1|family) + (1|pair.id) + (1|spp), data = pair_attr_cbc)
+## no errors
 summary(climate_cbc_change2)
-anova(climate_cbc_change2) ## interaction is non-significant (p=0.703)
-results_table_STI_change_cbc <- data.frame(summary(climate_cbc_change2)$coefficients[,1:5]) ## 29 species
-write.csv(results_table_STI_change_cbc, file = "../Results/Model_outputs/CBC/change_STIgroup_cbc.csv", row.names=TRUE)
+anova(climate_cbc_change2) ## interaction is non-significant (p=0.342) 
+results_table_STI_change_cbc <- data.frame(summary(climate_cbc_change2)$coefficients[,1:5]) ## 26 species
+write.csv(results_table_STI_change_cbc, file = "../Results/Model_outputs/CBC/change_STIgroup_cbc_correct.csv", row.names=TRUE)
 
 ## is mobility still significant with STI in the model?
 pair_attr_cbc <- merge(pair_attr_cbc, bird_dispersal, by.x="spp", by.y="Species_code", all=FALSE)
