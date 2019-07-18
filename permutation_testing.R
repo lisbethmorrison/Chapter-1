@@ -7,11 +7,20 @@
 ## Change + mobility
 ## Change + abundance 00-12
 ## Change + STI
+## mean northing
+## distance
+## habitat similarity
 
 #### BBS
 ## Change + specialism
 ## Change + mobility
 ## Change + STI
+## distance
+## habitat similarity
+
+#### CBC
+## Change + specialism
+## average + abundance
 
 rm(list=ls()) # clear R
 
@@ -29,7 +38,6 @@ library(doSNOW)
 ## read in data
 pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", header=TRUE) 
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) 
-pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2.csv", header=TRUE)
 
 ##### UKBMS (northing, distance and habitat similarity)
 pair_attr$mid.year <- as.factor(pair_attr$mid.year)
@@ -365,78 +373,78 @@ diff.observed <- true_hab_bbs$F.value ## true F value
 pvalue = sum(abs(perm_hab_bbs$F.value) >= abs(diff.observed)) / number_of_permutations
 pvalue ## 0.019 significant
 
-#############################################################
-#############################################################
-##### CBC (distance)
-pair_attr_CBC$mid.year <- as.factor(pair_attr_CBC$mid.year)
-pair_attr_CBC$pair.id <- as.character(pair_attr_CBC$pair.id)
-pair_attr_CBC$spp <- as.factor(pair_attr_CBC$spp)
-
-############## DISTANCE #################
-## run true model
-fixed_model_CBC <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr_CBC)
-
-## don't need to run the model again (use the same one as northing, but extract distance)
-true_result_table <- data.frame(anova(fixed_model_CBC)[5]) ## save anova table from main model
-true_result_table$i <- 0 ## make i column with zeros 
-true_result_table$parameter <- paste(row.names(true_result_table)) ## move row.names to parameter column
-rownames(true_result_table) <- 1:nrow(true_result_table) ## change row names to numbers
-## remove rows with mean_northing, renk hab sim and mid year F values (only interested in distance)
-true_result_table <- true_result_table[!(true_result_table$parameter %in% c("mean_northing", "hab_sim", "mid.year")), ]
-
-## run 999 permutation tests
-
-n_sims <- 999
-cores <- parallel::detectCores()
-cl <- makeSOCKcluster(cores[1]-1) # not to overload your computer
-registerDoSNOW(cl)
-
-## this code creates a progress percentage bar
-pb <- txtProgressBar(max = n_sims, style = 3)
-progress <- function(n) setTxtProgressBar(pb, n)
-opts <- list(progress=progress) 
-
-para_start_time = Sys.time()
-cbc_perm_distance <- foreach (i=1:n_sims, .options.snow = opts, .combine=rbind, .packages='lme4') %dopar% {
-  print(i)
-  pair_attr_CBC$distance_shuffle <- sample(pair_attr_CBC$distance) ## randomly shuffle northing varaible
-  model <- lmer(lag0 ~ distance_shuffle + mean_northing + hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr_CBC)
-  ## run model with shuffled variable
-  ## save results
-  anoresult<-anova(model)
-  data.frame(anoresult, i=i)
-}
-close(pb)
-stopCluster(cl)
-para_end_time = Sys.time()
-para_run_time = para_end_time - para_start_time
-print(paste0("TOTAL RUN TIME: ", para_run_time)) ## 46 minutes for 999 runs!
-
-### save results
-cbc_perm_distance$parameter <- paste(row.names(cbc_perm_distance)) ## move row.names to parameter column
-rownames(cbc_perm_distance) <- 1:nrow(cbc_perm_distance) ## change row names to numbers
-cbc_perm_distance <- cbc_perm_distance[,-c(1:3)] ## remove unnecessary columns
-## only interested in mobility main effect
-cbc_perm_distance <- cbc_perm_distance[grep("distance_shuffle", cbc_perm_distance$parameter),]
-final_results_table <- rbind(true_result_table, cbc_perm_distance) ## bind the two data frames together
-
-F_value <- with(final_results_table, final_results_table$F.value[final_results_table$i==0]) ## true F value from main model
-hist(final_results_table$F.value) + abline(v=F_value, col="red") ## plot distribution of F values with vertical line (true F value)
-
-## save file
-write.csv(final_results_table, file = "../Results/Model_outputs/CBC/perm_distance_cbc.csv", row.names=TRUE)
-## read in file
-perm_distance_cbc <- read.csv("../Results/Model_outputs/CBC/perm_distance_cbc.csv", header=TRUE) 
-
-## Calculate p value
-number_of_permutations <- 1000
-true_distance_cbc <- perm_distance_cbc[perm_distance_cbc$i==0,]
-perm_distance_cbc <- perm_distance_cbc[!perm_distance_cbc$i==0,] ## remove true value to calc. p value
-diff.observed <- true_distance_cbc$F.value ## true F value
-
-# P-value is the fraction of how many times the permuted difference is equal or more extreme than the observed difference
-pvalue = sum(abs(perm_distance_cbc$F.value) >= abs(diff.observed)) / number_of_permutations
-pvalue ## 0 significant
+# #############################################################
+# #############################################################
+# ##### CBC (distance)
+# pair_attr_CBC$mid.year <- as.factor(pair_attr_CBC$mid.year)
+# pair_attr_CBC$pair.id <- as.character(pair_attr_CBC$pair.id)
+# pair_attr_CBC$spp <- as.factor(pair_attr_CBC$spp)
+# 
+# ############## DISTANCE #################
+# ## run true model
+# fixed_model_CBC <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr_CBC)
+# 
+# ## don't need to run the model again (use the same one as northing, but extract distance)
+# true_result_table <- data.frame(anova(fixed_model_CBC)[5]) ## save anova table from main model
+# true_result_table$i <- 0 ## make i column with zeros 
+# true_result_table$parameter <- paste(row.names(true_result_table)) ## move row.names to parameter column
+# rownames(true_result_table) <- 1:nrow(true_result_table) ## change row names to numbers
+# ## remove rows with mean_northing, renk hab sim and mid year F values (only interested in distance)
+# true_result_table <- true_result_table[!(true_result_table$parameter %in% c("mean_northing", "hab_sim", "mid.year")), ]
+# 
+# ## run 999 permutation tests
+# 
+# n_sims <- 999
+# cores <- parallel::detectCores()
+# cl <- makeSOCKcluster(cores[1]-1) # not to overload your computer
+# registerDoSNOW(cl)
+# 
+# ## this code creates a progress percentage bar
+# pb <- txtProgressBar(max = n_sims, style = 3)
+# progress <- function(n) setTxtProgressBar(pb, n)
+# opts <- list(progress=progress) 
+# 
+# para_start_time = Sys.time()
+# cbc_perm_distance <- foreach (i=1:n_sims, .options.snow = opts, .combine=rbind, .packages='lme4') %dopar% {
+#   print(i)
+#   pair_attr_CBC$distance_shuffle <- sample(pair_attr_CBC$distance) ## randomly shuffle northing varaible
+#   model <- lmer(lag0 ~ distance_shuffle + mean_northing + hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr_CBC)
+#   ## run model with shuffled variable
+#   ## save results
+#   anoresult<-anova(model)
+#   data.frame(anoresult, i=i)
+# }
+# close(pb)
+# stopCluster(cl)
+# para_end_time = Sys.time()
+# para_run_time = para_end_time - para_start_time
+# print(paste0("TOTAL RUN TIME: ", para_run_time)) ## 46 minutes for 999 runs!
+# 
+# ### save results
+# cbc_perm_distance$parameter <- paste(row.names(cbc_perm_distance)) ## move row.names to parameter column
+# rownames(cbc_perm_distance) <- 1:nrow(cbc_perm_distance) ## change row names to numbers
+# cbc_perm_distance <- cbc_perm_distance[,-c(1:3)] ## remove unnecessary columns
+# ## only interested in mobility main effect
+# cbc_perm_distance <- cbc_perm_distance[grep("distance_shuffle", cbc_perm_distance$parameter),]
+# final_results_table <- rbind(true_result_table, cbc_perm_distance) ## bind the two data frames together
+# 
+# F_value <- with(final_results_table, final_results_table$F.value[final_results_table$i==0]) ## true F value from main model
+# hist(final_results_table$F.value) + abline(v=F_value, col="red") ## plot distribution of F values with vertical line (true F value)
+# 
+# ## save file
+# write.csv(final_results_table, file = "../Results/Model_outputs/CBC/perm_distance_cbc.csv", row.names=TRUE)
+# ## read in file
+# perm_distance_cbc <- read.csv("../Results/Model_outputs/CBC/perm_distance_cbc.csv", header=TRUE) 
+# 
+# ## Calculate p value
+# number_of_permutations <- 1000
+# true_distance_cbc <- perm_distance_cbc[perm_distance_cbc$i==0,]
+# perm_distance_cbc <- perm_distance_cbc[!perm_distance_cbc$i==0,] ## remove true value to calc. p value
+# diff.observed <- true_distance_cbc$F.value ## true F value
+# 
+# # P-value is the fraction of how many times the permuted difference is equal or more extreme than the observed difference
+# pvalue = sum(abs(perm_distance_cbc$F.value) >= abs(diff.observed)) / number_of_permutations
+# pvalue ## 0 significant
 
 ###########################################################
 ####################### SPECIALISM ######################## 
@@ -445,6 +453,7 @@ pvalue ## 0 significant
 ## read in data
 pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", header=TRUE) 
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) 
+pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2_correct.csv", header=TRUE)
 
 ##### UKBMS (change over time)
 #### subset only years 1985, 2000 and 2012
@@ -654,6 +663,78 @@ diff.observed <- true_change_spec_bbs$F.value ## true F value
 # P-value is the fraction of how many times the permuted difference is equal or more extreme than the observed difference
 pvalue = sum(abs(perm_change_spec_bbs$F.value) >= abs(diff.observed)) / number_of_permutations
 pvalue ## 0.056 non-significant
+
+####################################################
+####################################################
+#### CBC (change over time)
+pair_attr_cbc_1985 <- pair_attr_CBC[pair_attr_CBC$mid.year==1984.5,]
+pair_attr_cbc_1996 <- pair_attr_CBC[pair_attr_CBC$mid.year==1995.5,]
+pair_attr_cbc <- rbind(pair_attr_cbc_1985, pair_attr_cbc_1996)
+
+pair_attr_cbc$mid.year <- as.factor(pair_attr_cbc$mid.year)
+pair_attr_cbc$pair.id <- as.character(pair_attr_cbc$pair.id)
+pair_attr_cbc$spp <- as.factor(pair_attr_cbc$spp)
+pair_attr_cbc$specialism <- as.factor(pair_attr_cbc$specialism)
+
+## run true model
+spec_model_cbc2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*specialism + (1|family) + (1|pair.id) + (1|spp), data = pair_attr_cbc)
+## save true model results (to merge in with bootstrapped models later)
+main_result_table <- data.frame(anova(spec_model_cbc2)[5]) ## save anova table from main model
+main_result_table$i <- 0 ## make i column with zeros 
+main_result_table$parameter <- paste(row.names(main_result_table)) ## move row.names to parameter column
+rownames(main_result_table) <- 1:nrow(main_result_table) ## change row names to numbers
+## remove rows with mean northing, distance, renk hab sim, specialism and mid year F values (only interested in specialism*midyear interaction)
+main_result_table <- main_result_table[ !(main_result_table$parameter %in% c("mean_northing", "distance", "hab_sim", "mid.year", "specialism")), ]
+
+## run 999 permutation tests
+## Set up number of cores to run on (7)
+cores=detectCores()
+cl <- makeCluster(cores[1]-1) #not to overload your computer
+registerDoParallel(cl)
+
+n_sims <- 999
+para_start_time = Sys.time()
+cbc_spec_para <- foreach (i=1:n_sims,  .combine=rbind, .packages='lme4') %dopar% {
+  print(i)
+  pair_attr_cbc$spec_shuffle <- sample(pair_attr_cbc$specialism) ## randomly shuffle specialism varaible
+  model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*spec_shuffle + (1|family) + (1|pair.id) + (1|spp), data = pair_attr_cbc)
+  ## run model with shuffled variable
+  ## save results
+  anoresult<-anova(model)
+  data.frame(anoresult, i=i)
+}
+stopCluster(cl)
+para_end_time = Sys.time()
+para_run_time = para_end_time - para_start_time
+print(paste0("TOTAL RUN TIME: ", para_run_time)) ## 9.618 minutes for 999 runs!
+
+### save results
+cbc_spec_para$parameter <- paste(row.names(cbc_spec_para)) ## move row.names to parameter column
+rownames(cbc_spec_para) <- 1:nrow(cbc_spec_para) ## change row names to numbers
+cbc_spec_para <- cbc_spec_para[,-c(1:3)] ## remove unnecessary columns
+## only interested in specialism interaction
+cbc_spec_para <- cbc_spec_para[grep("mid.year:spec_shuffle", cbc_spec_para$parameter),]
+
+final_results_table <- rbind(main_result_table, cbc_spec_para) ## bind the two data frames together
+
+F_value <- with(final_results_table, final_results_table$F.value[final_results_table$i==0]) ## true F value from main model
+hist(final_results_table$F.value) + abline(v=F_value, col="red") ## plot distribution of F values with vertical line (true F value)
+
+## save file
+write.csv(final_results_table, file = "../Results/Model_outputs/CBC/perm_change_spec_cbc.csv", row.names=TRUE)
+## read in file
+perm_change_spec_cbc <- read.csv("../Results/Model_outputs/CBC/perm_change_spec_cbc.csv", header=TRUE) 
+
+## Calculate p value
+number_of_permutations <- 1000
+true_change_spec_cbc <- perm_change_spec_cbc[perm_change_spec_cbc$i==0,]
+perm_change_spec_cbc <- perm_change_spec_cbc[!perm_change_spec_cbc$i==0,] ## remove true value to calc. p value
+diff.observed <- true_change_spec_cbc$F.value ## true F value
+
+# P-value is the fraction of how many times the permuted difference is equal or more extreme than the observed difference
+pvalue = sum(abs(perm_change_spec_cbc$F.value) >= abs(diff.observed)) / number_of_permutations
+pvalue ## 0.001
+
 
 ###########################################################
 ######################## MOBILITY ######################### 
@@ -1140,15 +1221,15 @@ pvalue ## 0 significant
 ##### Average abundance (CBC)
 ## read in data
 bird_common <- read.csv("../Data/BTO_data/pop_estimates_birds.csv", header=TRUE)
-pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2.csv", header=TRUE)
+pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2_correct.csv", header=TRUE)
 
 ## merge the two datasets
 pair_attr_CBC <- merge(pair_attr_CBC, bird_common, by.x="spp", by.y="species_code", all=FALSE)
 ## rescale variables
-pair_attr_CBC$pop_estimate_log <- log(pair_attr_CBC$pop_estimate)
+pair_attr_CBC$pop_estimate_standardise <- (pair_attr_CBC$pop_estimate - mean(na.omit(pair_attr_CBC$pop_estimate)))/sd(na.omit(pair_attr_CBC$pop_estimate))
 
 ## true model
-common_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + pop_estimate_log + (1|pair.id) + (1|spp), data = pair_attr_CBC)
+common_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + pop_estimate_standardise + (1|pair.id) + (1|spp), data = pair_attr_CBC)
 ## save true model results (to merge in with bootstrapped models later)
 main_result_table <- data.frame(anova(common_model_cbc)[5]) ## save anova table from main model
 main_result_table$i <- 0 ## make i column with zeros 
@@ -1172,7 +1253,7 @@ opts <- list(progress=progress)
 para_start_time = Sys.time()
 cbc_abund_para <- foreach (i=1:n_sims, .options.snow = opts, .combine=rbind, .packages='lme4') %dopar% {
   print(i)
-  pair_attr_CBC$abund_shuffle <- sample(pair_attr_CBC$pop_estimate_log) ## randomly shuffle specialism varaible
+  pair_attr_CBC$abund_shuffle <- sample(pair_attr_CBC$pop_estimate_standardise) ## randomly shuffle specialism varaible
   model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + abund_shuffle + (1|pair.id) + (1|spp), data = pair_attr_CBC)
   ## run model with shuffled variable
   ## save results
@@ -1209,7 +1290,7 @@ diff.observed <- true_average_abund_cbc$F.value ## true F value
 
 # P-value is the fraction of how many times the permuted difference is equal or more extreme than the observed difference
 pvalue = sum(abs(perm_average_abund_cbc$F.value) >= abs(diff.observed)) / number_of_permutations
-pvalue ## 0.092 non-significant
+pvalue ## 0.006
 
 ##############################################################
 ############################ STI ############################# 
