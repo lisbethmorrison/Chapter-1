@@ -23,11 +23,11 @@ ukbms_common <- read.csv("../Results/Model_outputs/UKBMS/average_abund_ukbms.csv
 ukbms_sti <- read.csv( "../Results/Model_outputs/UKBMS/average_STIgroup_ukbms.csv", header=TRUE)
 ukbms_fixed <- read.csv("../Results/Model_outputs/UKBMS/fixed_effect_results_ukbms.csv", header=TRUE)
 ## cbc birds
-cbc_strat <- read.csv( "../Results/Model_outputs/CBC/average_spec_cbc.csv", header=TRUE)
-cbc_mob <- read.csv("../Results/Model_outputs/CBC/average_mob_cbc.csv", header=TRUE)
-cbc_common <- read.csv("../Results/Model_outputs/CBC/average_abund_cbc.csv", header=TRUE)
-cbc_sti <- read.csv("../Results/Model_outputs/CBC/average_STIgroup_cbc.csv", header=TRUE)
-cbc_fixed <- read.csv("../Results/Model_outputs/CBC/fixed_effect_results_cbc.csv", header=TRUE)
+cbc_strat <- read.csv( "../Results/Model_outputs/CBC/average_spec_cbc_correct.csv", header=TRUE)
+cbc_mob <- read.csv("../Results/Model_outputs/CBC/average_mob_cbc_correct.csv", header=TRUE)
+cbc_common <- read.csv("../Results/Model_outputs/CBC/average_abund_cbc_correct.csv", header=TRUE)
+cbc_sti <- read.csv("../Results/Model_outputs/CBC/average_STIgroup_cbc_correct.csv", header=TRUE)
+cbc_fixed <- read.csv("../Results/Model_outputs/CBC/fixed_effect_results_cbc_no_zeros2_correct.csv", header=TRUE)
 ## bbs birds
 bbs_strat <- read.csv( "../Results/Model_outputs/BBS/average_spec_bbs.csv", header=TRUE)
 bbs_mob <- read.csv("../Results/Model_outputs/BBS/average_mob_bbs.csv", header=TRUE)
@@ -48,7 +48,7 @@ bbs_strat <- bbs_strat[-c(1:17),]
 bbs_mob <- bbs_mob[-c(1:17),] 
 bbs_common <- bbs_common[-c(1:17),] 
 bbs_sti <- bbs_sti[-c(1:17),]
-bbs_fixed <- bbs_fixed[-c(1,5:17),]
+bbs_fixed <- bbs_fixed[-c(4:5),]
 
 ## create column for scheme name
 ukbms_strat$Scheme <- "UKBMS"
@@ -73,6 +73,8 @@ names(ukbms_fixed)[6] <- "X"
 ukbms_fixed <- ukbms_fixed[,c(6,1,2,3,4,5,7)]
 names(cbc_fixed)[6] <- "X"
 cbc_fixed <- cbc_fixed[,c(6,1,2,3,4,5,7)]
+names(bbs_fixed)[6] <- "X"
+bbs_fixed <- bbs_fixed[,c(6,1,2,3,4,5,7)]
 
 average_synchrony <- rbind(ukbms_strat, ukbms_common, ukbms_mob, ukbms_sti, ukbms_fixed, cbc_strat, cbc_common, 
                            cbc_mob, cbc_sti, cbc_fixed, bbs_strat, bbs_common, bbs_mob, bbs_sti, bbs_fixed)
@@ -81,7 +83,7 @@ rownames(average_synchrony) <- 1:nrow(average_synchrony)
 
 ### Change viarable names
 lookup <- c("specialismwider.countryside"="Specialism", "specialismgeneralist"="Specialism", "specialismspecialist"="Specialism",
-            "pop_est_stand"="Abundance", "pop_estimate_log"="Abundance", "pop_estimate_log"="Abundance",
+            "pop_est_stand"="Abundance", "pop_estimate_standardise"="Abundance", "pop_estimate_log"="Abundance",
             "mobility_score2high"="Mobility", "Breeding_AM_score2high"="Mobility", "Breeding_AM_score22"="Mobility",
             "mean_northing"="Mean northing", "distance"="Distance", "renk_hab_sim"="Habitat similarity", "hab_sim"="Habitat similarity",
             "specialismspecialist"="Specialism", "hab_sim1"="Habitat similarity", "STI_score2"="STI")
@@ -103,7 +105,7 @@ ggplot(data=average_synchrony,aes(x=vars,y=Estimate, group=Scheme),position=posi
   scale_x_discrete(limits=c("Specialism", "Mobility", "Abundance", "STI", "Mean northing",  "Distance","Habitat similarity")) +
   geom_errorbar(aes(ymin=Estimate-CI,ymax=Estimate+CI), position=position_dodge(width=0.5),width=0.2) +
   geom_hline(yintercept=0,linetype="dashed") +
-  scale_y_continuous(breaks=seq(-0.1,0.2,0.05)) +
+  #scale_y_continuous(breaks=seq(-0.1,0.2,0.05)) +
   labs(x = "Fixed effects", y = "Standardised coefficient") +
   theme_bw() +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
