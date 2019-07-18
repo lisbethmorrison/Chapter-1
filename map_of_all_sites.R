@@ -14,7 +14,7 @@ library(gridExtra)
 
 ## add data
 pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", header=TRUE)
-pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2.csv", header=TRUE)
+pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2_correct.csv", header=TRUE)
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE)
 
 ###########################
@@ -45,7 +45,7 @@ site2 <- unique(subset(pair_attr_CBC[c(3,12,13)]))
 colnames(site1) <- c("site", "east", "north")
 colnames(site2) <- c("site", "east", "north")
 site_list_CBC <- rbind(site1, site2)
-site_list_CBC <- unique(site_list_CBC) ## 109 sites
+site_list_CBC <- unique(site_list_CBC) ## 106 sites
 
 ### divide by 10000 to work with Blighty
 site_list_CBC$east <- site_list_CBC$east/1000
