@@ -223,7 +223,7 @@ myjit <- ggproto("fixJitter", PositionDodge,
 
 ############### plot with all 3 temporal synchrony graphs for ms #########################
 results_final_all_spp_BBS <- read.csv("../Results/Bird_results/results_final_all_spp_BBS_final.csv", header=TRUE)
-results_final_all_spp_CBC <- read.csv("../Results/Bird_results/results_final_all_spp_CBC_no_zeros2.csv", header=TRUE)
+results_final_all_spp_CBC <- read.csv("../Results/Bird_results/results_final_all_spp_CBC_no_zeros2_correct.csv", header=TRUE)
 
 FCI_BBS <- ggplot(results_final_all_spp_BBS, aes(x = parameter, y = rescaled_FCI)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
@@ -245,7 +245,7 @@ FCI_CBC <- ggplot(results_final_all_spp_CBC, aes(x = parameter, y = rescaled_FCI
   geom_errorbar(aes(ymin = rescaled_FCI - rescaled_sd, ymax = rescaled_FCI + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
   labs(x = "Mid-year of moving window", y = "Population synchrony") +
-  scale_y_continuous(breaks=seq(90,120,5)) +
+  scale_y_continuous(breaks=seq(0,200,20)) +
   scale_x_continuous(breaks=seq(1985,1996,3)) +
   theme_bw() +
   theme(text = element_text(size = 11)) +
@@ -265,7 +265,7 @@ dev.off()
 
 ####### also add in percentage change bar graphs for ms ########
 UKBMS_percentages <- read.csv("../Results/Butterfly_results/model_comp_percentages_no_zeros2.csv", header=TRUE)
-CBC_percentages <- read.csv("../Results/Bird_results/cbc_overall_trends.csv", header=TRUE)
+CBC_percentages <- read.csv("../Results/Bird_results/cbc_overall_trends_correct.csv", header=TRUE)
 BBS_percentages <- read.csv("../Results/Bird_results/bbs_overall_trends.csv", header=TRUE)
 
 CBC_percentages$comparison <- "1985-1996"
