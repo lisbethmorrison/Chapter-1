@@ -8,7 +8,7 @@
 rm(list=ls()) # clear R
 
 ## load data
-final_data <- read.csv("../Data/Butterfly_sync_data/final_data_all_spp_no_zeros2.csv", header = TRUE) # add growth rate data
+final_data <- read.csv("../Data/Butterfly_sync_data/final_data_all_spp.csv", header = TRUE) # add growth rate data
 site_data <- read.csv("../Data/UKBMS_data/meadow_brown_sites.csv", header = TRUE)
 
 ## remove all species except meadow brown

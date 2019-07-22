@@ -11,9 +11,8 @@ rm(list=ls()) # clear R
 library(dplyr)
 
 ### add data
-#final_data <- read.csv("../Data/Bird_sync_data/final_data_all_spp_CBC_zeros.csv", header=TRUE) 
-#final_data <- read.csv("../Data/Bird_sync_data/final_data_all_spp_CBC_no_zeros.csv", header=TRUE) 
-final_data <- read.csv("../Data/Bird_sync_data/final_data_all_spp_CBC_no_zeros2.csv", header=TRUE) 
+
+final_data <- read.csv("../Data/Bird_sync_data/final_data_all_spp_CBC.csv", header=TRUE) 
 woodland_cbc <- read.csv("../Data/Bird_sync_data/cbc_woodland_birds.csv", header=TRUE)
 site_data <- read.csv("../Data/BTO_data/pair_attr_mean_north_dist_hab_sim_CBC.csv", header=TRUE)
 
@@ -199,8 +198,6 @@ for (g in spp.list){ # loop through spp.list
 head(final_pair_data)
 head(final_summ_stats)
 
-length(unique(final_pair_data$spp)) ## 30 species
-
 final_summ_stats$spp <- as.factor(final_summ_stats$spp) ## 32 species
 final_pair_data_summ <- final_summ_stats %>% 
   group_by(spp) %>% 
@@ -211,54 +208,7 @@ final_pair_data_summ <- final_pair_data_summ[final_pair_data_summ$n>=12,] ## 27 
 final_pair_data <- merge(final_pair_data, final_pair_data_summ, by="spp", all=FALSE)
 length(unique(final_pair_data$spp)) ## 27 species
 
-write.csv(final_pair_data, file="../Data/Bird_sync_data/final_pair_data_all_spp_CBC_no_zeros2_correct.csv", row.names=FALSE) ## save final pair data for all 33 species
+write.csv(final_pair_data, file="../Data/Bird_sync_data/final_pair_data_all_spp_CBC.csv", row.names=FALSE) ## save final pair data for all 33 species
 
-write.csv(final_summ_stats, file="../Data/Bird_sync_data/final_summ_stats_all_spp_CBC_no_zeros2_correct.csv", row.names=FALSE) ## save final summ stats for all 33 species
+write.csv(final_summ_stats, file="../Data/Bird_sync_data/final_summ_stats_all_spp_CBC.csv", row.names=FALSE) ## save final summ stats for all 33 species
 
-########################## NOT USED ANYMORE ##############################
-
-# ###########################
-# ## abundance calculation ##
-# ###########################
-# woodland_cbc <- read.csv("../Data/Bird_sync_data/cbc_woodland_birds.csv", header=TRUE)
-# 
-# woodland_cbc <- woodland_cbc[!woodland_cbc$species_code==508,] # removed siskin as not enough data (stops at first year, 1984.5)
-# woodland_cbc <- woodland_cbc[!woodland_cbc$species_code==460,] # remove pied flycatcher as very little data (stopped working at 1991.5)
-# woodland_cbc <- woodland_cbc[!woodland_cbc$species_code==522,] # removed hawfinch as not enough data (stops at first year, 1984.5)
-# woodland_cbc <- woodland_cbc[!woodland_cbc$species_code==57,] # removed capercaillie => gets removed at growth rate stage
-# woodland_cbc <- woodland_cbc[!woodland_cbc$species_code==515,] # removed common crossbill =>gets removed at growth rate stage
-# 
-# spp.list <- unique(woodland_cbc$species_code)
-# 
-# 
-# abundance.results <- NULL
-# 
-# for (g in spp.list){ # loop for each species #
-#   
-#   species.tab<-woodland_cbc[woodland_cbc$species_code==g,] 
-#   head(species.tab)
-#   print(paste("species",g))
-#   
-#   # create a table to assess how much data in each year for that species
-#   # then select only years that fulfill a minumum data criteria
-#   # allocate those years to 'year.list'     
-#   
-#   year.list <-1980:1991   # temp until above steps are complete
-#   
-#   for (i in year.list){
-#     
-#     start.year<-i
-#     mid.year<-i+4.5
-#     print(paste("mid.year=",mid.year))
-#     end.year<-i+9
-#     species.10.yr.data<-species.tab[species.tab$Year>=start.year&species.tab$Year<=end.year,]
-#     
-#     species<-g
-#     abundance.index <- mean(species.10.yr.data$Count)
-#     results.temp<-data.frame(start.year,mid.year,end.year,abundance.index,species)
-#     abundance.results<-rbind(abundance.results,results.temp)
-#     
-#   }
-# }
-# 
-# write.csv(abundance.results, file = "../Data/Bird_sync_data/abundance_data_BTO.csv", row.names = FALSE)

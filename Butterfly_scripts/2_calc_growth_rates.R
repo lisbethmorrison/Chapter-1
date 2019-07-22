@@ -80,27 +80,6 @@ final_data <- rbind(final_data, new_butterfly_final)   #  all species data
 
 } # end g in species
 
-# ## now remove sites which have less than 7 years of growth rate data (this is a later filter anyway - putting it here reduces time on synchrony script)
-# ## remove NAs for now
-# final_data2 <- subset(final_data, !is.na(gr))
-# final_data3 <- final_data2 %>% group_by(site, name) %>% summarise(length(gr))
-# final_data3 <- final_data3[final_data3$`length(gr)`>=7,] ## leave site and species combinations which have at least 7 years of data
-# length(unique(final_data3$site)) ## 768 sites
-# ## remove length(gr) column
-# final_data3$`length(gr)` <- NULL
-# ## now merge final_data3 with final_data so sites left are those with at least 7 years of data 
-# final_data <- merge(final_data, final_data3, by=c("site", "name"))
-# length(unique(final_data$site)) ## 768 sites
-
-# # this filter has been removed
-# ### drop sites with >50% zero counts ###
-# good_year_data <- zero_count_data[zero_count_data$good_years>5,] ## dataframe with species & site combo with more than 5 years of non-zero counts
-# final_data$rec_id <- paste(final_data$name, final_data$site, sep="_")
-# good_year_data$rec_id <- paste(good_year_data$SPECIES, good_year_data$SITE, sep="_")
-# 
-# final_data <- final_data[final_data$rec_id%in%good_year_data$rec_id,]
-# ## 59 species and 1055 sites
-
-write.csv(final_data, file = "../Data/Butterfly_sync_data/final_data_all_spp_no_zeros2.csv", row.names = FALSE)
-length(unique(final_data$name)) # 59 species
-length(unique(final_data$site)) # 768 sites
+write.csv(final_data, file = "../Data/Butterfly_sync_data/final_data_all_spp.csv", row.names = FALSE)
+length(unique(final_data$name)) # 60 species
+length(unique(final_data$site)) # 2415 sites

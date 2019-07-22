@@ -18,14 +18,12 @@ library(MuMIn)
 options(scipen=999)
 
 ## read in synchrony data
-pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", header=TRUE) 
-pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2_correct.csv", header=TRUE) 
+pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE) 
+pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE) 
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) 
 bird_STI <- read.csv("../Data/birds_STI.csv", header=TRUE)
 butterfly_STI <- read.csv("../Data/butterflies_STI.csv", header=TRUE)
 bird_dispersal <- read.csv("../Data/Woodland_bird_dispersal_Paradis1998.csv", header=TRUE)
-## bird phylogeny info 
-species_traits <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", header=TRUE)
 
 ############### AVERAGE SYNCHORNY #################
 
@@ -54,43 +52,6 @@ summary(climate_ukbms2) ## STI non-significant (p=0.155)
 results_table_STI_ukbms <- data.frame(summary(climate_ukbms2)$coefficients[,1:5]) ## 31 species
 write.csv(results_table_STI_ukbms, file = "../Results/Model_outputs/UKBMS/average_STIgroup_ukbms.csv", row.names=TRUE)
 
-### plot average synchrony result anyway
-## plot synchrony as a quadratic variable 
-climate_ukbms_poly <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + poly(STI,2) + (1|spp) + (1|pair.id), data=pair_attr)
-r.squaredGLMM(climate_ukbms_poly)
-## predict new data to plot graph
-newdata_ukbms <- expand.grid(mean_northing=mean(pair_attr$mean_northing), distance=mean(pair_attr$distance), 
-                           renk_hab_sim=mean(pair_attr$renk_hab_sim), pair.id=sample(pair_attr$pair.id,1),
-                           mid.year=mean(pair_attr$mid.year), spp=unique(pair_attr$spp),
-                           STI=unique(pair_attr$STI))
-newdata_ukbms$lag0 <- predict(climate_ukbms_poly, newdata=newdata_ukbms, re.form=NA)
-
-## model without STI and species random effect to get residuals for graph
-model_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data = pair_attr)
-pair_attr$residuals <- resid(model_ukbms)
-
-group_by(pair_attr, STI) %>% summarize(m = mean(lag0))
-## put mean of each group into pair_attr dataframe
-pair_attr <- ddply(pair_attr, "STI", transform, STI_mean = mean(lag0))
-## add mean to each residual
-pair_attr$residuals2 <- pair_attr$residuals + pair_attr$STI_mean
-
-## create new dataframe to calculate mean, SD and SE of residuals for each species
-summary_ukbms <- pair_attr %>% group_by(spp, STI) %>% 
-  summarise_at(vars(residuals2), funs(mean,std.error,sd))
-
-## plot graph with raw data residuals (+SE error bars) and polynomial line line
-png("../Graphs/STI/STI_average_predicted_ukbms.png", height = 100, width = 110, units = "mm", res = 300)
-ggplot(summary_ukbms, aes(x = STI, y = mean)) +
-  geom_point(size = 2, colour="grey66") +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), width=0.2, colour="grey66") +
-  geom_line(data=newdata_ukbms, aes(x=STI, y=lag0), colour="black", lwd=1) +
-  labs(x="Species Temperature Index", y="Population synchrony") +
-  theme_bw() +
-  theme(text = element_text(size = 6), panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-dev.off()
-
 ## test with mobility in the model too
 ## remove NA's (small white has no mobility data)
 pair_attr <- na.omit(pair_attr)
@@ -107,12 +68,6 @@ results_table_STI_mob_ukbms <- data.frame(summary(climate_mob_ukbms)$coefficient
 write.csv(results_table_STI_mob_ukbms, file = "../Results/Model_outputs/UKBMS/average_STI_mob_ukbms.csv", row.names=TRUE)
 
 ##### CBC
-# 
-# ## merge in phylogeny info 
-# species_traits <- species_traits[,c(2,3,4)]
-# pair_attr_CBC <- merge(pair_attr_CBC, species_traits, by.x="spp", by.y="species_code", all=FALSE)
-# pair_attr_CBC <- droplevels(pair_attr_CBC)
-# length(unique(pair_attr_CBC$spp)) # 29 species
 
 ## merge datasets
 pair_attr_CBC <- merge(pair_attr_CBC, bird_STI, by.x="spp", by.y="species_code") ## 31 species
@@ -127,7 +82,7 @@ climate_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + STI +
 summary(climate_cbc) ## STI non-significant (p=0.96) (still non-significant with family, p=0.124)
 anova(climate_cbc)
 results_table_STI_cbc <- data.frame(summary(climate_cbc)$coefficients[,1:5]) ## 26 species
-write.csv(results_table_STI_cbc, file = "../Results/Model_outputs/CBC/average_STI_cbc_correct.csv", row.names=TRUE)
+write.csv(results_table_STI_cbc, file = "../Results/Model_outputs/CBC/average_STI_cbc.csv", row.names=TRUE)
 
 ## same model with STI as group
 pair_attr_CBC$STI <- as.numeric(pair_attr_CBC$STI)
@@ -139,7 +94,7 @@ climate_cbc2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + STI_
 summary(climate_cbc2) ## STI non-significant (p=0.0534) 
 anova(climate_cbc2)
 results_table_STI_cbc <- data.frame(summary(climate_cbc2)$coefficients[,1:5]) ## 26 species
-write.csv(results_table_STI_cbc, file = "../Results/Model_outputs/CBC/average_STIgroup_cbc_correct.csv", row.names=TRUE)
+write.csv(results_table_STI_cbc, file = "../Results/Model_outputs/CBC/average_STIgroup_cbc.csv", row.names=TRUE)
 
 ##### BBS
 ## merge datasets
@@ -155,7 +110,6 @@ summary(climate_bbs) ## STI non-significant (p=0.099)
 results_table_STI_bbs <- data.frame(summary(climate_bbs)$coefficients[,1:5])
 write.csv(results_table_STI_bbs, file = "../Results/Model_outputs/BBS/average_STI_bbs.csv", row.names=TRUE)
 
-
 ## same model with STI as group
 pair_attr_BBS$STI <- as.numeric(pair_attr_BBS$STI)
 pair_attr_BBS$STI_score <- cut(pair_attr_BBS$STI, 2, labels=FALSE)
@@ -166,72 +120,10 @@ summary(climate_bbs2) ## STI score is significant (p=0.034)
 results_table_STI_bbs <- data.frame(summary(climate_bbs2)$coefficients[,1:5])
 write.csv(results_table_STI_bbs, file = "../Results/Model_outputs/BBS/average_STIgroup_bbs.csv", row.names=TRUE)
 
-## plot result
-## predict new data to plot graph
-pair_attr_BBS$mid.year <- as.factor(pair_attr_BBS$mid.year)
-newdata_bbs <- expand.grid(mean_northing=mean(pair_attr_BBS$mean_northing), distance=mean(pair_attr_BBS$distance), 
-                             renk_hab_sim=mean(pair_attr_BBS$renk_hab_sim), pair.id=sample(pair_attr_BBS$pair.id,1),
-                             mid.year=unique(pair_attr_BBS$mid.year), spp=unique(pair_attr_BBS$spp),
-                             STI_score=unique(pair_attr_BBS$STI_score))
-newdata_bbs$lag0 <- predict(climate_bbs2, newdata=newdata_bbs, re.form=NA)
-mm <- model.matrix(terms(climate_bbs2), newdata_bbs)
-pvar <- diag(mm %*% tcrossprod(vcov(climate_bbs2),mm))
-tvar <- pvar+VarCorr(climate_bbs2)$spp[1]+VarCorr(climate_bbs2)$pair.id[1]
-cmult <- 2
-
-newdata_bbs <- data.frame(
-  newdata_bbs
-  , plo = newdata_bbs$lag0-1.96*sqrt(pvar)
-  , phi = newdata_bbs$lag0+1.96*sqrt(pvar)
-  , tlo = newdata_bbs$lag0-1.96*sqrt(tvar)
-  , thi = newdata_bbs$lag0+1.96*sqrt(tvar)
-)
-
-## model without STI and species random effect to get residuals for graph
-model_bbs <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data = pair_attr_BBS)
-pair_attr_BBS$residuals <- resid(model_bbs)
-
-group_by(pair_attr_BBS, STI_score) %>% summarize(m = mean(lag0))
-## put mean of each group into pair_attr dataframe
-pair_attr_BBS <- ddply(pair_attr_BBS, "STI_score", transform, STI_mean = mean(lag0))
-## add mean to each residual
-pair_attr_BBS$residuals2 <- pair_attr_BBS$residuals + pair_attr_BBS$STI_mean
-
-## create new dataframe to calculate mean, SD and SE of residuals for each species
-summary_bbs <- pair_attr_BBS %>% group_by(spp, STI_score) %>% 
-  summarise_at(vars(residuals2), funs(mean,std.error,sd))
-
-## plot graph with raw data residuals (+SE error bars) and polynomial line line
-png("../Graphs/STI/STI_average_predicted_ukbms.png", height = 100, width = 110, units = "mm", res = 300)
-ggplot(summary_bbs, aes(x = STI_score, y = mean)) +
-  geom_point(size = 2, colour="grey66") +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), width=0.2, colour="grey66") +
-  geom_line(data=newdata_bbs, aes(x=STI_score, y=lag0), colour="black", lwd=1) +
-  labs(x="Species Temperature Index", y="Population synchrony") +
-  theme_bw() +
-  theme(text = element_text(size = 6), panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-dev.off()
-
-
-## does this change when mobility is added to the model? 
-## This model doesn't run with STI score - the species with low STI is removed as it doesn't have mobility data
-
-# pair_attr_BBS <- merge(pair_attr_BBS, bird_dispersal, by.x="spp", by.y="Species_code", all=FALSE)
-# pair_attr_BBS <- na.omit(pair_attr_BBS)
-# length(unique(pair_attr_BBS$spp)) # 17 species 
-# ## split breeding_AM into 2 groups 
-# pair_attr_BBS$Breeding_AM <- as.numeric(pair_attr_BBS$Breeding_AM)
-# pair_attr_BBS$Breeding_AM_score2 <- cut(pair_attr_BBS$Breeding_AM, 2, labels=FALSE)
-# pair_attr_BBS$Breeding_AM_score2 <- as.factor(pair_attr_BBS$Breeding_AM_score2)
-# 
-# climate_mob_bbs <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + STI_score + Breeding_AM_score2 + (1|spp) + (1|pair.id), data=pair_attr_BBS)
-# summary(climate_mob_bbs) ## STI and mobility non-significant
-
 ############### CHANGE IN SYNCHORNY #################
 
 ## read in pair_attr file again to make sure all species are there
-pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", header=TRUE) 
+pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE) 
 pair_attr <- merge(pair_attr, butterfly_STI, by.x="spp", by.y="species_code") ## 119 has no STI data
 length(unique(pair_attr$spp)) # 31 species
 summary(pair_attr)
@@ -609,7 +501,7 @@ myjit <- ggproto("fixJitter", PositionDodge,
 
 #### CBC
 ## read in pair_attr_CBC again
-pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2_correct.csv", header=TRUE) 
+pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE) 
 pair_attr_CBC <- merge(pair_attr_CBC, bird_STI, by.x="spp", by.y="species_code") ## 31 species
 length(unique(pair_attr_CBC$spp)) # 26 species
 pair_attr_CBC$pair.id <- as.character(pair_attr_CBC$pair.id)
@@ -642,30 +534,7 @@ climate_cbc_change2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year
 summary(climate_cbc_change2)
 anova(climate_cbc_change2) ## interaction is non-significant (p=0.342) 
 results_table_STI_change_cbc <- data.frame(summary(climate_cbc_change2)$coefficients[,1:5]) ## 26 species
-write.csv(results_table_STI_change_cbc, file = "../Results/Model_outputs/CBC/change_STIgroup_cbc_correct.csv", row.names=TRUE)
-
-## is mobility still significant with STI in the model?
-pair_attr_cbc <- merge(pair_attr_cbc, bird_dispersal, by.x="spp", by.y="Species_code", all=FALSE)
-pair_attr_cbc <- na.omit(pair_attr_cbc)
-length(unique(pair_attr_cbc$spp)) # 21 species 
-## split breeding_AM into 2 groups 
-pair_attr_cbc$Breeding_AM <- as.numeric(pair_attr_cbc$Breeding_AM)
-pair_attr_cbc$Breeding_AM_score2 <- cut(pair_attr_cbc$Breeding_AM, 2, labels=FALSE)
-pair_attr_cbc$Breeding_AM_score2 <- as.factor(pair_attr_cbc$Breeding_AM_score2)
-
-climate_mob_cbc_change <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*Breeding_AM_score2 +STI + (1|pair.id) + (1|spp), data = pair_attr_cbc)
-summary(climate_mob_cbc_change)
-anova(climate_mob_cbc_change) ## interaction and STI non-significant 
-results_table_STI_mob_change_cbc <- data.frame(summary(climate_mob_cbc_change)$coefficients[,1:5]) ## 29 species
-write.csv(results_table_STI_change_cbc, file = "../Results/Model_outputs/CBC/change_mob_STI_cbc.csv", row.names=TRUE)
-
-## is STI still significant with mobility in the model?
-climate_mob_cbc_change2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*STI + Breeding_AM_score2 + (1|pair.id) + (1|spp), data = pair_attr_cbc)
-summary(climate_mob_cbc_change2)
-anova(climate_mob_cbc_change2) ## interaction and mobility non-significant 
-results_table_STI_mob_change_cbc <- data.frame(summary(climate_mob_cbc_change2)$coefficients[,1:5]) ## 29 species
-write.csv(results_table_STI_mob_change_cbc, file = "../Results/Model_outputs/CBC/change_STI_mob_cbc.csv", row.names=TRUE)
-
+write.csv(results_table_STI_change_cbc, file = "../Results/Model_outputs/CBC/change_STIgroup_cbc.csv", row.names=TRUE)
 #### BBS
 ## read in pair_attr file again to make sure all species are there
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) 
@@ -690,7 +559,6 @@ summary(climate_bbs_change)
 anova(climate_bbs_change) ## interaction is significant (p=0.0332)
 results_table_STI_change_bbs <- data.frame(summary(climate_bbs_change)$coefficients[,1:5]) ## 24 species
 write.csv(results_table_STI_change_bbs, file = "../Results/Model_outputs/BBS/change_STI_bbs.csv", row.names=TRUE)
-#results_table_STI_change_bbs <- read.csv("../Results/Model_outputs/BBS/change_STI_bbs.csv", header=TRUE)
 
 ## split STI into two groups (low and high) to plot midyear*STI interaction result
 pair_attr_bbs$STI <- as.numeric(pair_attr_bbs$STI)
@@ -783,7 +651,7 @@ dev.off()
 
 ## include STI graph for manuscript
 library(ggpubr)
-png("../Graphs/FINAL/Figure5_2.png", height = 200, width = 150, units = "mm", res = 300)
+png("../Graphs/FINAL/Figure5.png", height = 200, width = 150, units = "mm", res = 300)
 ggarrange(bbs_mob, bbs_sti, 
           labels = c("(a)", "(b)"), font.label = list(size = 10, color ="black"),
           ncol = 1, nrow = 2)

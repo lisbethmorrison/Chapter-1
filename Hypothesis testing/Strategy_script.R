@@ -16,11 +16,9 @@ library(plotrix)
 options(scipen=999)
 
 ## read data
-pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", header=TRUE) # butterfly pair attribute data
-pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2_correct.csv", header=TRUE) # CBC pair attribute data
+pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE) # butterfly pair attribute data
+pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr.csv", header=TRUE) # CBC pair attribute data
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) # BBS pair attribute data
-## bird phylogeny info 
-species_traits <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", header=TRUE)
 
 ##############################################
 #### specialism model for ALL butterflies ####
@@ -60,11 +58,7 @@ strategy_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year 
 summary(strategy_model_cbc)
 anova(strategy_model_cbc) ## specialism is non-significant (p=0.09)
 results_table_average_spec <- data.frame(summary(strategy_model_cbc)$coefficients[,1:5]) ## 26 species
-write.csv(results_table_average_spec, file = "../Results/Model_outputs/CBC/average_spec_cbc_correct.csv", row.names=TRUE) # 24 species
-
-## check fit
-sresid <- resid(strategy_model_cbc, type="pearson")
-hist(sresid)
+write.csv(results_table_average_spec, file = "../Results/Model_outputs/CBC/average_spec_cbc.csv", row.names=TRUE) # 24 species
 
 ## BBS ##
 str(pair_attr_BBS)
@@ -80,8 +74,8 @@ strategy_model_bbs <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.
 summary(strategy_model_bbs)
 anova(strategy_model_bbs)
 ## non-significant (p=0.82)
-## 24 species
-
+results_table_average_spec <- data.frame(summary(strategy_model_bbs)$coefficients[,1:5]) 
+write.csv(results_table_average_spec, file = "../Results/Model_outputs/BBS/average_spec_bbs.csv", row.names=TRUE) # 24 species
 
 #################################################################################################################
 #################################################################################################################
@@ -91,9 +85,9 @@ anova(strategy_model_bbs)
 ### Now test for change in synchony against specialism 
 
 ############################### interaction in model #################################
-pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", header=TRUE)
+pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE)
 pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE)
-pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS_1.csv", header=TRUE)
+pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE)
 
 #### subset only years 1985, 2000 and 2012
 pair_attr_1985 <- pair_attr[pair_attr$mid.year==1984.5,]
@@ -281,8 +275,8 @@ dev.off()
 
 install.packages("ggpubr")
 library(ggpubr)
-png("../Graphs/FINAL/Figure3_2.png", height = 200, width = 150, units = "mm", res = 300)
-ggarrange(butterfly_spec2, butterfly_abund, 
+png("../Graphs/FINAL/Figure4.png", height = 200, width = 150, units = "mm", res = 300)
+ggarrange(butterfly_spec, butterfly_abund, 
           labels = c("(a)", "(b)"), font.label = list(size = 10, color ="black"),
           ncol = 1, nrow = 2)
 dev.off()
@@ -331,7 +325,7 @@ summary(spec_model_cbc2) ## interaction is significant (p=0.000705)
 anova(spec_model_cbc2)
 ## save model output
 results_table_strategy_cbc <- data.frame(summary(spec_model_cbc2)$coefficients[,1:5]) ## 26 species
-write.csv(results_table_strategy_cbc, file = "../Results/Model_outputs/CBC/change_spec_cbc_correct.csv", row.names=TRUE)
+write.csv(results_table_strategy_cbc, file = "../Results/Model_outputs/CBC/change_spec_cbc.csv", row.names=TRUE)
 
 ## predict new data
 newdata_cbc <- expand.grid(mean_northing=mean(pair_attr_cbc$mean_northing), distance=mean(pair_attr_cbc$distance), hab_sim=sample(pair_attr_cbc$hab_sim,1),
@@ -435,142 +429,3 @@ summary(spec_model_bbs2)
 anova(spec_model_bbs2)
 results_table_strategy_bbs <- data.frame(summary(spec_model_bbs2)$coefficients[,1:5]) ## 24 species
 write.csv(results_table_strategy_bbs, file = "../Results/Model_outputs/BBS/change_spec_bbs.csv", row.names=TRUE)
-
-## save main (true) model results
-main_result_table <- data.frame(anova(spec_model_bbs2)[,5:6]) ## save anova table from main model
-main_result_table$i <- 0 ## make i column with zeros 
-main_result_table$parameter <- paste(row.names(main_result_table)) ## move row.names to parameter column
-rownames(main_result_table) <- 1:nrow(main_result_table) ## change row names to numbers
-## remove rows with mean northing, distance, hab sim and mid year F values (only interested in abundance F values)
-main_result_table <- main_result_table[ !(main_result_table$parameter %in% c("mean_northing", "distance", "renk_hab_sim", "mid.year", "specialism")), ]
-
-## run model 999 times
-perm_bbs_spec <- NULL
-start_time <- Sys.time()
-for (i in 1:999){
-  print(i)
-  pair_attr_bbs$spec_shuffle <- sample(pair_attr_bbs$specialism) ## randomly shuffle abundance change varaible
-  spec_model_bbs_shuffle <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*spec_shuffle + (1|pair.id) + (1|spp), data = pair_attr_bbs)
-  ## run model with shuffled variable
-  ## save results
-  results_table_temp <- data.frame(anova(spec_model_bbs_shuffle)[,5:6],i)
-  perm_bbs_spec<-rbind(perm_bbs_spec,results_table_temp)
-}
-end_time <- Sys.time()
-end_time - start_time ## 9.4 hours to do 999 runs
-
-perm_bbs_spec$parameter <- paste(row.names(perm_bbs_spec)) ## move row.names to parameter column
-rownames(perm_bbs_spec) <- 1:nrow(perm_bbs_spec) ## change row names to numbers
-## remove rows with mean northing, distance, hab sim and mid year F values (only interested in abundance F values)
-perm_bbs_spec <- perm_bbs_spec[-grep("mean_northing", perm_bbs_spec$parameter),]
-perm_bbs_spec <- perm_bbs_spec[-grep("distance", perm_bbs_spec$parameter),]
-perm_bbs_spec <- perm_bbs_spec[-grep("hab_sim", perm_bbs_spec$parameter),]
-perm_bbs_spec <- perm_bbs_spec[-grep("mid.year", perm_bbs_spec$parameter),]
-
-final_results_table <- rbind(main_result_table, perm_bbs_spec) ## bind the two data frames together
-
-F_value <- with(final_results_table, final_results_table$F.value[final_results_table$i==0]) ## true F value from main model
-hist(final_results_table$F.value) + abline(v=F_value, col="red") ## plot distribution of F values with vertical line (true F value)
-
-## save file
-write.csv(final_results_table, file = "../Results/Model_outputs/perm_change_spec_bbs.csv", row.names=TRUE)
-
-## Calculate p value
-number_of_permutations <- 1000
-final_results_table2 <- final_results_table[!final_results_table$i==0,] ## remove true value to calc. p value
-diff.observed <- main_result_table$F.value ## true F value
-
-# P-value is the fraction of how many times the permuted difference is equal or more extreme than the observed difference
-pvalue = sum(abs(final_results_table2$F.value) >= abs(diff.observed)) / number_of_permutations
-pvalue ## 0.047
-
-
-
-
-
-
-
-summary(spec_model_bbs2)
-## intercept is mid.year 1999 and generalists
-anova(spec_model_bbs2)
-## mid.year*strategy interaction is significant overall (just)
-## save model output
-results_table_strategy_bbs <- data.frame(summary(spec_model_bbs2)$coefficients[,1:5])
-write.csv(results_table_strategy_bbs, file = "../Results/Model_outputs/change_strategy_bbs.csv", row.names=TRUE)
-
-## predict new data
-newdata_bbs <- expand.grid(mean_northing=mean(pair_attr_bbs$mean_northing), distance=mean(pair_attr_bbs$distance), renk_hab_sim=mean(pair_attr_bbs$renk_hab_sim),
-                       mid.year=unique(pair_attr_bbs$mid.year), specialism=unique(pair_attr_bbs$specialism),
-                       pair.id=sample(pair_attr_bbs$pair.id,10), spp=sample(pair_attr_bbs$spp,10))
-newdata_bbs$lag0 <- predict(spec_model_bbs2, newdata=newdata_bbs, re.form=NA)
-
-mm3 <- model.matrix(terms(spec_model_bbs2), newdata_bbs)
-pvar3 <- diag(mm3 %*% tcrossprod(vcov(spec_model_bbs2),mm3))
-tvar3 <- pvar3+VarCorr(spec_model_bbs2)$spp[1]+VarCorr(spec_model_bbs2)$pair.id[1]
-cmult <- 2
-
-newdata_bbs <- data.frame(
-  newdata_bbs
-  , plo = newdata_bbs$lag0-1.96*sqrt(pvar3)
-  , phi = newdata_bbs$lag0+1.96*sqrt(pvar3)
-  , tlo = newdata_bbs$lag0-1.96*sqrt(tvar3)
-  , thi = newdata_bbs$lag0+1.96*sqrt(tvar3)
-)
-
-## run model without specialism or species random effect to obtain residuals
-spec_bbs <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_bbs)
-pair_attr_bbs$residuals <- resid(spec_bbs)
-
-## create dataframe which calculates mean, SD and SE of residuals for each species
-summary_bbs <- pair_attr_bbs %>% group_by(spp, specialism, mid.year) %>% 
-  summarise_at(vars(residuals), funs(mean,std.error,sd))
-
-## change values
-newdata_bbs$mid.year <- revalue(newdata_bbs$mid.year, c("1998.5"="1999"))
-newdata_bbs$mid.year <- revalue(newdata_bbs$mid.year, c("2011.5"="2012"))
-colnames(newdata_bbs)[5] <- "Specialism"
-newdata_bbs$Specialism <- revalue(newdata_bbs$Specialism, c("generalist"="Generalist"))
-newdata_bbs$Specialism <- revalue(newdata_bbs$Specialism, c("specialist"="Specialist"))
-## same as above for summary dataframe
-summary_bbs$mid.year <- revalue(summary_bbs$mid.year, c("1998.5"="1999"))
-summary_bbs$mid.year <- revalue(summary_bbs$mid.year, c("2011.5"="2012"))
-colnames(summary_bbs)[2] <- "Specialism"
-summary_bbs$Specialism <- revalue(summary_bbs$Specialism, c("generalist"="Generalist"))
-summary_bbs$Specialism <- revalue(summary_bbs$Specialism, c("specialist"="Specialist"))
-
-## plot graph with raw data residuals (+SE error bars) and fitted lines
-png("../Graphs/Specialism/Specialism_change_predicted_bbs.png", height = 80, width = 120, units = "mm", res = 300)
-pd <- position_dodge(0.2)
-ggplot(summary_bbs, aes(x = mid.year, y = mean, group=Specialism)) +
-  geom_point(aes(shape=Specialism), colour="grey", size = 2, position=myjit) +
-  scale_shape_manual(values=c(16,4)) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position=myjit) +
-  geom_line(data=newdata_bbs, aes(x=mid.year, y=lag0, linetype=Specialism), lwd=1) +
-  labs(x="Mid year of moving window", y="Population synchrony") +
-  theme_bw() +
-  theme(text = element_text(size = 10), panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-dev.off()
-
-
-############ jitter code #################
-myjit <- ggproto("fixJitter", PositionDodge,
-                 width = 0.5,
-                 dodge.width = 0.15,
-                 jit = NULL,
-                 compute_panel =  function (self, data, params, scales) 
-                 {
-                   
-                   #Generate Jitter if not yet
-                   if(is.null(self$jit) ) {
-                     self$jit <-jitter(rep(0, nrow(data)), amount=self$dodge.width)
-                   }
-                   
-                   data <- ggproto_parent(PositionDodge, self)$compute_panel(data, params, scales)
-                   
-                   data$x <- data$x + self$jit
-                   #For proper error extensions
-                   if("xmin" %in% colnames(data)) data$xmin <- data$xmin + self$jit
-                   if("xmax" %in% colnames(data)) data$xmax <- data$xmax + self$jit
-                   data
-                 } )

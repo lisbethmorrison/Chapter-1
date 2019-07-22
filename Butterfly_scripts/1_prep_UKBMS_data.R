@@ -21,7 +21,7 @@ b_data <- b_data[b_data$SPECIES%in%species_codes$SPECIES,]
 # remove negative SINDEX values
 b_data <- b_data[b_data$SINDEX>=0,]
 
-# drop records based on BROOD = 0, take total annual counts
+# keep records based on BROOD = 0, take total annual counts
 b_data <- b_data[b_data$BROOD == 0,]
 
 # remove pilot years (>1975)

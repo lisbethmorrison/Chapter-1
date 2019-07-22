@@ -18,116 +18,115 @@ library(MuMIn)
 options(scipen=999)
 
 ## read in synchrony data
-pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", header=TRUE) 
-pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2_correct.csv", header=TRUE) 
+pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE) 
+pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE) 
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) 
 wingspan <- read.csv("../Data/UKBMS_data/butterflywingspans.csv", header=TRUE)
 bird_dispersal <- read.csv("../Data/Woodland_bird_dispersal_Paradis1998.csv", header=TRUE)
-## bird phylogeny info 
-species_traits <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", header=TRUE)
 
 ################################### AVERAGE SYNCRHONY ################################### 
 
-## merge pair attr and wingspan data
-pair_attr_1 <- merge(pair_attr, wingspan, by.x="spp", by.y="BMScode")
-
-pair_attr_1$mid.year <- as.factor(pair_attr_1$mid.year)
-pair_attr_1$pair.id <- as.character(pair_attr_1$pair.id)
-pair_attr_1$spp <- as.factor(pair_attr_1$spp)
-
-## change wingspan into 3 groups (small, med, large)
-pair_attr_1$Wingspan <- as.numeric(pair_attr_1$Wingspan)
-pair_attr_1$Wingspan_group <- cut(pair_attr_1$Wingspan, 3, labels=FALSE)
-pair_attr_1$Wingspan_group <- as.factor(pair_attr_1$Wingspan_group)
-
-wing_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan + (1|spp) + (1|pair.id), data=pair_attr_1)
-summary(wing_model)
-anova(wing_model)
-## wingspan is non-significant (p=0.33)
-
-wing_model2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan + Family + (1|spp) + (1|pair.id), data=pair_attr_1)
-summary(wing_model2)
-anova(wing_model2)
-## neither family nor wingspan are significant 
-
-wing_model3 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan + Sub.family + (1|spp) + (1|pair.id), data=pair_attr_1)
-summary(wing_model3)
-anova(wing_model3)
-## neither sub-family nor wingspan are significant
-
-wing_model4 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (Wingspan|Sub.family) + (1|spp) + (1|pair.id), data=pair_attr_1)
-anova(wing_model4)
-## doesn't work ==> model failed to converge
-
-wing_model5 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan + (1|Sub.family) + (1|spp) + (1|pair.id), data=pair_attr_1)
-anova(wing_model5)
-## wingspan still not significant 
-
-wing_model6 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan*Sub.family + (1|spp) + (1|pair.id), data=pair_attr_1)
-anova(wing_model6)
-## interaction is significant
-## but warning: fixed-effect model matrix is rank deficient so dropping 3 columns / coefficients
-## this is because 3 sub-families only have one wingspan, so can't model this
-## Coliadinae, Limenitidinae, and Lycaeninae
-## remove these sub-families and run model again
-pair_attr_1 <- pair_attr_1[!pair_attr_1$Sub.family=="Coliadinae",]
-pair_attr_1 <- pair_attr_1[!pair_attr_1$Sub.family=="Limenitidinae",]
-pair_attr_1 <- pair_attr_1[!pair_attr_1$Sub.family=="Lycaeninae",]
-## run model again
-wing_model7 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan*Sub.family + (1|spp) + (1|pair.id), data=pair_attr_1)
-anova(wing_model7)
-summary(wing_model7)
-
-## plot result
-newdata_wing <- expand.grid(mean_northing=mean(pair_attr_1$mean_northing), distance=mean(pair_attr_1$distance), 
-                             renk_hab_sim=mean(pair_attr_1$renk_hab_sim), pair.id=sample(pair_attr_1$pair.id,100),
-                             spp=unique(pair_attr_1$spp), mid.year=unique(pair_attr_1$mid.year), 
-                             Wingspan=unique(pair_attr_1$Wingspan), Sub.family=unique(pair_attr_1$Sub.family))
-
-newdata_wing$lag0 <- predict(wing_model7, newdata=newdata_wing, re.form=NA)
-
-mm <- model.matrix(terms(wing_model7), newdata_wing)
-pvar <- diag(mm %*% tcrossprod(vcov(wing_model7),mm))
-tvar <- pvar+VarCorr(wing_model7)$spp[1]+VarCorr(wing_model7)$pair.id[1]
-cmult <- 2
-
-newdata_ukbms <- data.frame(
-  newdata_ukbms
-  , plo = newdata_ukbms$lag0-1.96*sqrt(pvar)
-  , phi = newdata_ukbms$lag0+1.96*sqrt(pvar)
-  , tlo = newdata_ukbms$lag0-1.96*sqrt(tvar)
-  , thi = newdata_ukbms$lag0+1.96*sqrt(tvar)
-)
-
-## run model without mobility or species random effect to obtain residuals
-wing_mod <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_1)
-pair_attr_1$residuals <- resid(wing_mod, type="pearson")
-## check mean synchrony of each group
-group_by(pair_attr_1, Wingspan) %>% summarize(m = mean(lag0)) ## WC mean = 0.265, HS mean = 0.195
-## put mean of each group into pair_attr dataframe
-pair_attr_1 <- ddply(pair_attr_1, "Wingspan", transform, wing_mean = mean(lag0))
-## add mean to each residual
-pair_attr_1$residuals2 <- pair_attr_1$residuals + pair_attr_1$wing_mean
-
-## create dataframe which calculates mean, SD and SE of residuals for each species
-summary_wing2 <- pair_attr_1 %>% group_by(spp, Wingspan, Sub.family) %>% 
-  summarise_at(vars(residuals2), funs(mean,std.error))
-
-summary_wing2 <- summary_wing2[!summary_wing2$Sub.family=="Coliadinae",]
-summary_wing2 <- summary_wing2[!summary_wing2$Sub.family=="Limenitidinae",]
-summary_wing2 <- summary_wing2[!summary_wing2$Sub.family=="Lycaeninae",]
-
-ggplot(summary_wing2, aes(x = Wingspan, y = mean, colour=Sub.family)) +
-  geom_point(aes(colour=Sub.family), size = 2) +
-  #geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error, colour=Sub.family), width=0.2) +
-  geom_line(data=newdata_wing, aes(x=Wingspan, y=lag0, colour=Sub.family), lwd=1) +
-  theme_bw() +
-  theme(text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-
-## AIC of all models - which wingspan/sub-family model performs best?
-AIC(wing_model3, wing_model4, wing_model5, wing_model6)
-## for now wing_model5 has the lowest AIC
+##############################testing wingspand and synchrony first##############################
+# ## merge pair attr and wingspan data
+# pair_attr_1 <- merge(pair_attr, wingspan, by.x="spp", by.y="BMScode")
+# 
+# pair_attr_1$mid.year <- as.factor(pair_attr_1$mid.year)
+# pair_attr_1$pair.id <- as.character(pair_attr_1$pair.id)
+# pair_attr_1$spp <- as.factor(pair_attr_1$spp)
+# 
+# ## change wingspan into 3 groups (small, med, large)
+# pair_attr_1$Wingspan <- as.numeric(pair_attr_1$Wingspan)
+# pair_attr_1$Wingspan_group <- cut(pair_attr_1$Wingspan, 3, labels=FALSE)
+# pair_attr_1$Wingspan_group <- as.factor(pair_attr_1$Wingspan_group)
+# 
+# wing_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan + (1|spp) + (1|pair.id), data=pair_attr_1)
+# summary(wing_model)
+# anova(wing_model)
+# ## wingspan is non-significant (p=0.33)
+# 
+# wing_model2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan + Family + (1|spp) + (1|pair.id), data=pair_attr_1)
+# summary(wing_model2)
+# anova(wing_model2)
+# ## neither family nor wingspan are significant 
+# 
+# wing_model3 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan + Sub.family + (1|spp) + (1|pair.id), data=pair_attr_1)
+# summary(wing_model3)
+# anova(wing_model3)
+# ## neither sub-family nor wingspan are significant
+# 
+# wing_model4 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (Wingspan|Sub.family) + (1|spp) + (1|pair.id), data=pair_attr_1)
+# anova(wing_model4)
+# ## doesn't work ==> model failed to converge
+# 
+# wing_model5 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan + (1|Sub.family) + (1|spp) + (1|pair.id), data=pair_attr_1)
+# anova(wing_model5)
+# ## wingspan still not significant 
+# 
+# wing_model6 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan*Sub.family + (1|spp) + (1|pair.id), data=pair_attr_1)
+# anova(wing_model6)
+# ## interaction is significant
+# ## but warning: fixed-effect model matrix is rank deficient so dropping 3 columns / coefficients
+# ## this is because 3 sub-families only have one wingspan, so can't model this
+# ## Coliadinae, Limenitidinae, and Lycaeninae
+# ## remove these sub-families and run model again
+# pair_attr_1 <- pair_attr_1[!pair_attr_1$Sub.family=="Coliadinae",]
+# pair_attr_1 <- pair_attr_1[!pair_attr_1$Sub.family=="Limenitidinae",]
+# pair_attr_1 <- pair_attr_1[!pair_attr_1$Sub.family=="Lycaeninae",]
+# ## run model again
+# wing_model7 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + Wingspan*Sub.family + (1|spp) + (1|pair.id), data=pair_attr_1)
+# anova(wing_model7)
+# summary(wing_model7)
+# 
+# ## plot result
+# newdata_wing <- expand.grid(mean_northing=mean(pair_attr_1$mean_northing), distance=mean(pair_attr_1$distance), 
+#                              renk_hab_sim=mean(pair_attr_1$renk_hab_sim), pair.id=sample(pair_attr_1$pair.id,100),
+#                              spp=unique(pair_attr_1$spp), mid.year=unique(pair_attr_1$mid.year), 
+#                              Wingspan=unique(pair_attr_1$Wingspan), Sub.family=unique(pair_attr_1$Sub.family))
+# 
+# newdata_wing$lag0 <- predict(wing_model7, newdata=newdata_wing, re.form=NA)
+# 
+# mm <- model.matrix(terms(wing_model7), newdata_wing)
+# pvar <- diag(mm %*% tcrossprod(vcov(wing_model7),mm))
+# tvar <- pvar+VarCorr(wing_model7)$spp[1]+VarCorr(wing_model7)$pair.id[1]
+# cmult <- 2
+# 
+# newdata_ukbms <- data.frame(
+#   newdata_ukbms
+#   , plo = newdata_ukbms$lag0-1.96*sqrt(pvar)
+#   , phi = newdata_ukbms$lag0+1.96*sqrt(pvar)
+#   , tlo = newdata_ukbms$lag0-1.96*sqrt(tvar)
+#   , thi = newdata_ukbms$lag0+1.96*sqrt(tvar)
+# )
+# 
+# ## run model without mobility or species random effect to obtain residuals
+# wing_mod <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_1)
+# pair_attr_1$residuals <- resid(wing_mod, type="pearson")
+# ## check mean synchrony of each group
+# group_by(pair_attr_1, Wingspan) %>% summarize(m = mean(lag0)) ## WC mean = 0.265, HS mean = 0.195
+# ## put mean of each group into pair_attr dataframe
+# pair_attr_1 <- ddply(pair_attr_1, "Wingspan", transform, wing_mean = mean(lag0))
+# ## add mean to each residual
+# pair_attr_1$residuals2 <- pair_attr_1$residuals + pair_attr_1$wing_mean
+# 
+# ## create dataframe which calculates mean, SD and SE of residuals for each species
+# summary_wing2 <- pair_attr_1 %>% group_by(spp, Wingspan, Sub.family) %>% 
+#   summarise_at(vars(residuals2), funs(mean,std.error))
+# 
+# summary_wing2 <- summary_wing2[!summary_wing2$Sub.family=="Coliadinae",]
+# summary_wing2 <- summary_wing2[!summary_wing2$Sub.family=="Limenitidinae",]
+# summary_wing2 <- summary_wing2[!summary_wing2$Sub.family=="Lycaeninae",]
+# 
+# ggplot(summary_wing2, aes(x = Wingspan, y = mean, colour=Sub.family)) +
+#   geom_point(aes(colour=Sub.family), size = 2) +
+#   #geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error, colour=Sub.family), width=0.2) +
+#   geom_line(data=newdata_wing, aes(x=Wingspan, y=lag0, colour=Sub.family), lwd=1) +
+#   theme_bw() +
+#   theme(text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+# 
+# ## AIC of all models - which wingspan/sub-family model performs best?
+# AIC(wing_model3, wing_model4, wing_model5, wing_model6)
+# ## for now wing_model5 has the lowest AIC
 
 ##################################
 #### Mobility model for UKBMS ####
@@ -180,21 +179,11 @@ r.squaredGLMM(mobility_model4)
 results_table_mob_ukbms <- data.frame(summary(mobility_model4)$coefficients[,1:5]) ## 31 species
 write.csv(results_table_mob_ukbms, file = "../Results/Model_outputs/UKBMS/average_mob_ukbms.csv", row.names=TRUE)
 
-
-## don't plot graph because mobility and change in synchrony is also significant
-
-
 ##################################
 #### Mobility model for CBC ####
 ##################################
 
-## merge in phylogeny info 
-species_traits <- species_traits[,c(2,3,4)]
-pair_attr_CBC <- merge(pair_attr_CBC, species_traits, by.x="spp", by.y="species_code", all=FALSE)
-pair_attr_CBC <- droplevels(pair_attr_CBC)
-length(unique(pair_attr_CBC$spp)) # 29 species
-
-## read in bird dispersal data
+## merge with bird dispersal data
 length(unique(bird_dispersal$Species_code)) ## only 23 species have dispersal data
 
 ## merge pair_attr with bird dispersal data
@@ -230,7 +219,7 @@ dispersal_model_cbc4 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.yea
 summary(dispersal_model_cbc4)
 anova(dispersal_model_cbc4) ## dispersal score is non-significant (p=0.63)
 results_table_mob_cbc <- data.frame(summary(dispersal_model_cbc4)$coefficients[,1:5]) ## 20 species
-write.csv(results_table_mob_cbc, file = "../Results/Model_outputs/CBC/average_mob_cbc_correct.csv", row.names=TRUE)
+write.csv(results_table_mob_cbc, file = "../Results/Model_outputs/CBC/average_mob_cbc.csv", row.names=TRUE)
 
 ################################
 #### Mobility model for BBS ####
@@ -275,10 +264,8 @@ dispersal_model_bbs4 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mi
 summary(dispersal_model_bbs4)
 anova(dispersal_model_bbs4)
 ## still not significant
-
-## compare models
-AIC(dispersal_model_bbs3, dispersal_model_bbs4)
-## model 4 slightly lower AIC => therefore performs better as two groups (low and high dispersal)
+results_table_mob_bbs <- data.frame(summary(dispersal_model_bbs4)$coefficients[,1:5]) ## 17 species
+write.csv(results_table_mob_bbs, file = "../Results/Model_outputs/BBS/average_mob_bbs.csv", row.names=TRUE)
 
 
 ############################################################################################################################################
@@ -305,7 +292,7 @@ pair_attr_late <- na.omit(pair_attr_late)
 length(unique(pair_attr_early$spp)) # 31 species
 length(unique(pair_attr_late$spp)) # 31 species
 
-# ## merge wingspan data
+# ##### test with wingspan data ######
 # pair_attr_ukbms1 <- merge(pair_attr_ukbms, wingspan, by.x="spp", by.y="BMScode")
 # 
 # pair_attr_ukbms1$mid.year <- as.factor(pair_attr_ukbms1$mid.year)
@@ -317,7 +304,7 @@ length(unique(pair_attr_late$spp)) # 31 species
 # anova(wing_model4)
 # ## same result as with mobility data ==> butterflies with larger wingspan
 # ## increase in syncrhony between 00-12, but not 85-00
-
+#####
 pair_attr_early$mid.year <- as.factor(pair_attr_early$mid.year)
 pair_attr_early$pair.id <- as.character(pair_attr_early$pair.id)
 pair_attr_early$spp <- as.factor(pair_attr_early$spp)
@@ -599,150 +586,7 @@ summary(dispersal_model_cbc4)
 anova(dispersal_model_cbc3) ## interaction is non-significant (p=0.116)
 ## save model output
 results_table_dispersal_cbc <- data.frame(summary(dispersal_model_cbc3)$coefficients[,1:5]) ## 20 species
-write.csv(results_table_dispersal_cbc, file = "../Results/Model_outputs/CBC/change_mob_cbc_correct.csv", row.names=TRUE)
-
-## save main (true) model results
-main_result_table <- data.frame(anova(dispersal_model_cbc3)[5]) ## save anova table from main model
-main_result_table$i <- 0 ## make i column with zeros 
-main_result_table$parameter <- paste(row.names(main_result_table)) ## move row.names to parameter column
-rownames(main_result_table) <- 1:nrow(main_result_table) ## change row names to numbers
-## remove rows with mean northing, distance, hab sim and mid year F values (only interested in abundance F values)
-main_result_table <- main_result_table[ !(main_result_table$parameter %in% c("mean_northing", "distance", "hab_sim", "mid.year", "Breeding_AM_score2")), ]
-
-library(foreach)
-library(doParallel)
-cores=detectCores()
-cl <- makeCluster(cores[1]-1) #not to overload your computer
-registerDoParallel(cl)
-
-### parallel ###
-## run model 999 times
-n_sims <- 999
-para_start_time = Sys.time()
-cbc_mob_para <- foreach (i=1:n_sims,  .combine=rbind, .packages='lme4') %dopar% {
-  print(i)
-  pair_attr_cbc$mob_shuffle <- sample(pair_attr_cbc$Breeding_AM_score2) ## randomly shuffle abundance change varaible
-  model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*mob_shuffle + (1|pair.id) + (1|spp), data = pair_attr_cbc)
-  ## run model with shuffled variable
-  ## save results
-  anoresult<-anova(model)
-  data.frame(anoresult, i=i)
-  }
-stopCluster(cl)
-para_end_time = Sys.time()
-para_run_time = para_end_time - para_start_time
-print(paste0("TOTAL RUN TIME: ", para_run_time)) ## 9.618 minutes for 999 runs!
-
-# ### non-parallel ###
-# seq_start_time = Sys.time()
-# seq <- foreach (i=1:n_sims,  .combine=rbind, .packages='lme4') %do% {
-#   print(i)
-#   pair_attr_cbc$mob_shuffle <- my_sample(pair_attr_cbc$Breeding_AM_score2) ## randomly shuffle abundance change varaible
-#   model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*mob_shuffle + (1|pair.id) + (1|spp), data = pair_attr_cbc)
-#   ## run model with shuffled variable
-#   ## save results
-#   anoresult<-anova(model)
-#   data.frame(x=anoresult, i=i)
-#   #anoresult<-anova(parallel)
-#   #perm_cbc_mob <- rbind(perm_cbc_mob, parallel)
-# }
-# stopCluster(cl)
-# seq_end_time = Sys.time()
-# seq_run_time = seq_end_time - seq_start_time
-# print(paste0("TOTAL RUN TIME: ", seq_run_time)) ## 35.395 seconds for 9 runs
-
-cbc_mob_para$parameter <- paste(row.names(cbc_mob_para)) ## move row.names to parameter column
-rownames(cbc_mob_para) <- 1:nrow(cbc_mob_para) ## change row names to numbers
-cbc_mob_para <- cbc_mob_para[,-c(1:3)] ## remove unnecessary columns
-## remove rows with mean northing, distance, hab sim and mid year F values (only interested in abundance F values)
-cbc_mob_para <- cbc_mob_para[-grep("mean_northing", cbc_mob_para$parameter),]
-cbc_mob_para <- cbc_mob_para[-grep("distance", cbc_mob_para$parameter),]
-cbc_mob_para <- cbc_mob_para[-grep("hab_sim", cbc_mob_para$parameter),]
-cbc_mob_para <- cbc_mob_para[-grep("mid.year", cbc_mob_para$parameter),]
-
-final_results_table <- rbind(main_result_table, cbc_mob_para) ## bind the two data frames together
-
-F_value <- with(final_results_table, final_results_table$F.value[final_results_table$i==0]) ## true F value from main model
-hist(final_results_table$F.value) + abline(v=F_value, col="red") ## plot distribution of F values with vertical line (true F value)
-
-## save file
-write.csv(final_results_table, file = "../Results/Model_outputs/perm_change_mob_cbc.csv", row.names=TRUE)
-
-## Calculate p value
-number_of_permutations <- 1000
-final_results_table2 <- final_results_table[!final_results_table$i==0,] ## remove true value to calc. p value
-diff.observed <- main_result_table$F.value ## true F value
-
-# P-value is the fraction of how many times the permuted difference is equal or more extreme than the observed difference
-pvalue = sum(abs(final_results_table2$F.value) >= abs(diff.observed)) / number_of_permutations
-pvalue ## 0.031 significant
-
-
-### predict new data
-newdata_cbc <- expand.grid(mean_northing=mean(pair_attr_cbc$mean_northing), distance=mean(pair_attr_cbc$distance), 
-                      hab_sim=sample(pair_attr_cbc$hab_sim,1), mid.year=unique(pair_attr_cbc$mid.year), 
-                      pair.id=sample(pair_attr_cbc$pair.id,10), spp=sample(pair_attr_cbc$spp,10),
-                      Breeding_AM_score2=unique(pair_attr_cbc$Breeding_AM_score2))
-newdata_cbc$lag0 <- predict(dispersal_model_cbc3, newdata=newdata_cbc, re.form=NA)
-
-mm2 <- model.matrix(terms(dispersal_model_cbc3), newdata_cbc)
-pvar2 <- diag(mm2 %*% tcrossprod(vcov(dispersal_model_cbc3),mm2))
-tvar2 <- pvar2+VarCorr(dispersal_model_cbc3)$spp[1]+VarCorr(dispersal_model_cbc3)$pair.id[1]
-cmult <- 2
-
-newdata_cbc <- data.frame(
-  newdata_cbc
-  , plo = newdata_cbc$lag0-1.96*sqrt(pvar2)
-  , phi = newdata_cbc$lag0+1.96*sqrt(pvar2)
-  , tlo = newdata_cbc$lag0-1.96*sqrt(tvar2)
-  , thi = newdata_cbc$lag0+1.96*sqrt(tvar2)
-)
-
-## run model without dispersal and species random effect to obtain residuals
-dispersal_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id), data=pair_attr_cbc)
-pair_attr_cbc$residuals <- resid(dispersal_cbc)
-
-## create new dataframe to calculate mean, SD and SE of residuals for each species
-summary_cbc <- pair_attr_cbc %>% group_by(spp, Breeding_AM_score2, mid.year) %>% 
-  summarise_at(vars(residuals), funs(mean,std.error))
-
-## change values
-newdata_cbc$mid.year <- revalue(newdata_cbc$mid.year, c("1984.5"="1985"))
-newdata_cbc$mid.year <- revalue(newdata_cbc$mid.year, c("1995.5"="1996"))
-colnames(newdata_cbc)[7] <- "Dispersal"
-newdata_cbc$Dispersal <- revalue(newdata_cbc$Dispersal, c("1"="Low"))
-newdata_cbc$Dispersal <- revalue(newdata_cbc$Dispersal, c("2"="High"))
-## same for summary dataframe
-summary_cbc$mid.year <- revalue(summary_cbc$mid.year, c("1984.5"="1985"))
-summary_cbc$mid.year <- revalue(summary_cbc$mid.year, c("1995.5"="1996"))
-colnames(summary_cbc)[2] <- "Dispersal"
-summary_cbc$Dispersal <- revalue(summary_cbc$Dispersal, c("1"="Low"))
-summary_cbc$Dispersal <- revalue(summary_cbc$Dispersal, c("2"="High"))
-
-png("../Graphs/Mobility/Mobility_change_predicted_cbc.png", height = 80, width = 120, units = "mm", res = 300)
-pd <- position_dodge(0.1)
-ggplot(summary_cbc, aes(x = mid.year, y = mean, group=Dispersal)) +
-  geom_point(aes(shape=Dispersal), colour="grey", size = 2, position=pd) +
-  scale_shape_manual(values=c(16,4)) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey", width=0.1, position=pd) +
-  geom_line(data=newdata_cbc, aes(x=mid.year, y=lag0, linetype=Dispersal), lwd=1) +
-  labs(x="Mid year of moving window", y="Population synchrony") +
-  theme_bw() +
-  theme(text = element_text(size = 10), panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-dev.off()
-
-png("../Graphs/Mobility/Mobility_change_predicted_cbc2.png", height = 100, width = 120, units = "mm", res = 300)
-pd <- position_dodge(0.1)
-ggplot(newdata_cbc, aes(x=mid.year, y=lag0, group=Dispersal)) +
-  geom_point(position=pd) +
-  geom_line(aes(linetype=Dispersal), size=1, position=pd) +
-  labs(x="Year", y="Population synchrony") +
-  geom_linerange(aes(ymin=plo, ymax=phi), position=pd) +
-  theme_bw() +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-dev.off()
+write.csv(results_table_dispersal_cbc, file = "../Results/Model_outputs/CBC/change_mob_cbc.csv", row.names=TRUE)
 
 ###################################################################
 ####################### BBS birds #################################
@@ -794,63 +638,6 @@ anova(dispersal_model_bbs3)
 ## save model output
 results_table_dispersal_bbs <- data.frame(summary(dispersal_model_bbs3)$coefficients[,1:5])
 write.csv(results_table_dispersal_bbs, file = "../Results/Model_outputs/BBS/change_mob_bbs.csv", row.names=TRUE)
-#results_table_dispersal_bbs <- read.csv("../Results/Model_outputs/BBS/change_mob_bbs.csv", header=TRUE)
-
-## save main (true) model results
-main_result_table <- data.frame(anova(dispersal_model_bbs3)[,5:6]) ## save anova table from main model
-main_result_table$i <- 0 ## make i column with zeros 
-main_result_table$parameter <- paste(row.names(main_result_table)) ## move row.names to parameter column
-rownames(main_result_table) <- 1:nrow(main_result_table) ## change row names to numbers
-## remove rows with mean northing, distance, hab sim and mid year F values (only interested in abundance F values)
-main_result_table <- main_result_table[ !(main_result_table$parameter %in% c("mean_northing", "distance", "renk_hab_sim", "mid.year", "Breeding_AM_score2")), ]
-
-## run model 999 times
-perm_bbs_mob <- NULL
-start_time <- Sys.time()
-for (i in 1:999){
-  print(i)
-  pair_attr_bbs$mob_shuffle <- sample(pair_attr_bbs$Breeding_AM_score2) ## randomly shuffle abundance change varaible
-  abund_model_bbs_shuffle <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*mob_shuffle + (1|pair.id) + (1|spp), data = pair_attr_bbs)
-  ## run model with shuffled variable
-  ## save results
-  results_table_temp <- data.frame(anova(abund_model_bbs_shuffle)[,5:6],i)
-  perm_bbs_mob<-rbind(perm_bbs_mob,results_table_temp)
-}
-end_time <- Sys.time()
-end_time - start_time ## 8.81 hours to do 999 runs
-
-perm_bbs_mob$parameter <- paste(row.names(perm_bbs_mob)) ## move row.names to parameter column
-rownames(perm_bbs_mob) <- 1:nrow(perm_bbs_mob) ## change row names to numbers
-## remove rows with mean northing, distance, hab sim and mid year F values (only interested in abundance F values)
-perm_bbs_mob <- perm_bbs_mob[-grep("mean_northing", perm_bbs_mob$parameter),]
-perm_bbs_mob <- perm_bbs_mob[-grep("distance", perm_bbs_mob$parameter),]
-perm_bbs_mob <- perm_bbs_mob[-grep("hab_sim", perm_bbs_mob$parameter),]
-perm_bbs_mob <- perm_bbs_mob[-grep("mid.year", perm_bbs_mob$parameter),]
-
-final_results_table <- rbind(main_result_table, perm_bbs_mob) ## bind the two data frames together
-
-F_value <- with(final_results_table, final_results_table$F.value[final_results_table$i==0]) ## true F value from main model
-hist(final_results_table$F.value) + abline(v=F_value, col="red") ## plot distribution of F values with vertical line (true F value)
-
-## save file
-write.csv(final_results_table, file = "../Results/Model_outputs/perm_change_mob_bbs.csv", row.names=TRUE)
-
-## Calculate p value
-number_of_permutations <- 1000
-final_results_table2 <- final_results_table[!final_results_table$i==0,] ## remove true value to calc. p value
-diff.observed <- main_result_table$F.value ## true F value
-
-# P-value is the fraction of how many times the permuted difference is equal or more extreme than the observed difference
-pvalue = sum(abs(final_results_table2$F.value) >= abs(diff.observed)) / number_of_permutations
-pvalue ## 0 (exactly) significant
-
-
-#### compare models with 3 groups and 2 groups
-AIC(dispersal_model_bbs2, dispersal_model_bbs3)
-## AIC values are:
-## mobility_model6 - 770224.6
-## mobility_model7 - 770223.5
-## group of 2 is better :) 
 
 ### predict new data
 newdata_bbs <- expand.grid(mean_northing=mean(pair_attr_bbs$mean_northing), distance=mean(pair_attr_bbs$distance), 
@@ -948,16 +735,4 @@ myjit <- ggproto("fixJitter", PositionDodge,
                    if("xmax" %in% colnames(data)) data$xmax <- data$xmax + self$jit
                    data
                  } )
-
-## plot graph with fitted line and confidence interval error bars
-png("../Graphs/Mobility/Mobility_change_predicted_bbs2.png", height = 100, width = 120, units = "mm", res = 300)
-ggplot(newdata_bbs, aes(x=mid.year, y=lag0, group=Dispersal)) +
-  geom_point(position=pd) +
-  geom_line(aes(linetype=Dispersal), size=1, position=pd) +
-  labs(x="Year", y="Population synchrony") +
-  geom_linerange(aes(ymin=plo, ymax=phi), position=pd) +
-  theme_bw() +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-dev.off()
 

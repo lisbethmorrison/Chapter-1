@@ -18,7 +18,7 @@ library(lmerTest)
 ################################
 ## add data ##
 final_pair_data <- read.csv("../Data/Bird_sync_data/final_pair_data_all_spp_BBS_1.csv", header = TRUE) # final pair data 1 (can choose any file as all v similar)
-site_data <- read.csv("../Data/BTO_data/pair_attr_mean_north_dist_sim_BBS.csv", header = TRUE) # pair attr site data
+site_data <- read.csv("../Data/BTO_data/pair_attr_mean_north_dist_hab_sim_BBS.csv", header = TRUE) # pair attr site data
 ## family/genus data
 species_traits <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", header=TRUE)
 
@@ -63,7 +63,7 @@ pair_attr$spp <- as.factor(pair_attr$spp)
 pair_attr$end.year <- as.factor(pair_attr$end.year)
 pair_attr$mid.year <- as.factor(pair_attr$mid.year)
 
-## merge in specialism and dispersal distance data
+## merge in specialism, family and genus info
 specialism <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", header=TRUE)
 pair_attr <- merge(pair_attr, specialism, by.x="spp", by.y="species_code")
 length(unique(pair_attr$spp)) ## 24 species
@@ -71,11 +71,129 @@ length(unique(pair_attr$spp)) ## 24 species
 ### save final pair_attr file with standardised variables
 write.csv(pair_attr, file = "../Data/Bird_sync_data/pair_attr_BBS.csv", row.names = FALSE) # save pair_attr file 
 
+####################################################################################################
+################################## RUN SYNCHRONY MODELS ############################################
+####################################################################################################
+
+pair_attr <- read.csv(file = "../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) # read in pair_attr file 
+
+## make sure correct variables are factors ## 
+str(pair_attr)
+pair_attr$spp <- as.factor(pair_attr$spp)
+pair_attr$start.year <- as.factor(pair_attr$start.year)
+pair_attr$end.year <- as.factor(pair_attr$end.year)
+pair_attr$mid.year <- as.factor(pair_attr$mid.year)
+pair_attr$pair.id <- as.character(pair_attr$pair.id)
+
 ################################################
 ##  model to produce one line for all species ##
 ################################################
 
-pair_attr <- read.csv(file = "../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) # read in pair_attr file 
+### run model with family to test for a relationship with synchrony
+all_spp_model_family <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + family + (1|pair.id) + (1|spp), data = pair_attr)
+summary(all_spp_model_family) 
+anova(all_spp_model_family) ## non-significant (p=0.459)
+
+### run model with genus to test for a relationship with synchrony
+all_spp_model_genus <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + genus + (1|pair.id) + (1|spp), data = pair_attr)
+summary(all_spp_model_genus) 
+anova(all_spp_model_genus) ## non-significant (p=0.689)
+
+## run model with intercept to get fixed effect results
+all_spp_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
+### save results for northing, distance and hab sim
+fixed_results <- data.frame(summary(all_spp_model)$coefficients[,1:5])
+fixed_results$parameter <- paste(row.names(fixed_results))
+rownames(fixed_results) <- 1:nrow(fixed_results)
+## remove mid.year rows and intercept
+fixed_results <- fixed_results[-c(1,5:15),]
+## save results
+write.csv(fixed_results, file = "../Results/Model_outputs/BBS/fixed_effect_results_bbs.csv", row.names=FALSE)
+
+##  model to produce aggregate synchrony values for all 32 species - no intercept
+all_spp_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp)-1, data = pair_attr)
+summary(all_spp_model) 
+anova(all_spp_model)
+
+## save results ## 
+results_table_all_spp <- data.frame(summary(all_spp_model)$coefficients[,1:3])
+
+## change names and add in parameter column ##
+names(results_table_all_spp) <- c("FCI", "SD", "t")
+results_table_all_spp$parameter <- paste(row.names(results_table_all_spp))
+rownames(results_table_all_spp) <- 1:nrow(results_table_all_spp)
+## take out 3 columns for each species: mean northing, distance and renk_hab_sim
+results_table_all_spp <- results_table_all_spp[grep("mid.year", results_table_all_spp$parameter),]
+## change parameter names to year
+results_table_all_spp$parameter <- rep(1999:2012)
+### rescale estimate, SD and CI ### 
+results_table_all_spp$rescaled_FCI <- results_table_all_spp$FCI*(100/results_table_all_spp$FCI[1])
+results_table_all_spp$rescaled_sd <- results_table_all_spp$SD*(100/results_table_all_spp$FCI[1])
+results_table_all_spp$rescaled_ci <- results_table_all_spp$rescaled_sd*1.96
+
+## save final results table ##
+write.csv(results_table_all_spp, file = "../Results/Bird_results/results_final_all_spp_BBS.csv", row.names=FALSE)
+
+##################################################
+##### model to produce one line per species #####
+#################################################
+
+results_table_sp<-NULL
+for (i in unique(pair_attr$spp)){
+  print(i)
+  
+  species_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id)-1, data = pair_attr[pair_attr$spp==i,])
+  summary(species_model)
+  anova(species_model)
+  
+  ### save and plot the results ###
+  results_table_temp <- data.frame(summary(species_model)$coefficients[,1:3],i)
+  results_table_sp<-rbind(results_table_sp,results_table_temp)
+}
+
+## change names and add in parameter column ##
+names(results_table_sp) <- c("FCI", "SD", "t","sp")
+results_table_sp$parameter <- paste(row.names(results_table_sp))
+rownames(results_table_sp) <- 1:nrow(results_table_sp)
+
+## take out 3 columns for each species: mean northing, distance and renk_hab_sim
+results_table4 <- NULL
+results_table1 <- results_table_sp[grep("mean_northing", results_table_sp$parameter),]
+results_table2 <- results_table_sp[grep("distance", results_table_sp$parameter),]
+results_table3 <- results_table_sp[grep("hab_sim", results_table_sp$parameter),]
+results_table4 <- rbind(results_table4, results_table1, results_table2, results_table3)
+results_table_sp <- results_table_sp[!results_table_sp$parameter%in%results_table4$parameter,]
+
+## change parameter names to year
+results_table_sp$parameter <- rep(1999:2012)
+
+results_final_sp <- NULL
+for (i in unique(results_table_sp$sp)){
+  
+  results_temp_sp <- results_table_sp[results_table_sp$sp==i,]  
+  
+  results_temp_sp$rescaled_FCI <- results_temp_sp$FCI*(100/results_temp_sp$FCI[1])
+  results_temp_sp$rescaled_sd <- results_temp_sp$SD*(100/results_temp_sp$FCI[1])
+  results_temp_sp$rescaled_ci <- results_temp_sp$rescaled_sd*1.96
+  
+  results_final_sp <- rbind(results_final_sp, results_temp_sp)
+  
+}
+
+### merge with species common name info ###
+species_names <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", header=TRUE)
+results_final_sp <- merge(results_final_sp, species_names, by.x="sp", by.y="species_code")
+
+## save species final results table ##
+write.csv(results_final_sp, file = "../Results/Bird_results/results_final_sp_BBS.csv", row.names=FALSE)
+
+
+
+
+#######################################################################################################################
+########################################### CLIMATE AND SYNCHRONY ANALYSIS ############################################ 
+#######################################################################################################################
+
 ## climate data
 final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp_BBS.csv", header=TRUE)  
 final_pair_data_rain <- read.csv("../Data/MetOffice_data/final_pair_data_mean_rainfall_BBS.csv", header=TRUE)
@@ -249,122 +367,3 @@ FCI_plot_BBS_rain <- ggplot(pop_rain_model, aes(x = parameter, y = rescaled_FCI)
         axis.text.x = element_text(color="black"), axis.text.y = element_text(color="black"))
 FCI_plot_BBS_rain
 ggsave("../Graphs/Connectivity_plots/FCI_plot_rain_BBS.png", plot = FCI_plot_BBS_rain, width=7, height=5)
-
-############################## merge in species data (family) ###############################
-## subset family and genus info
-species_traits <- species_traits[,c(2,3,4)]
-pair_attr <- merge(pair_attr, species_traits, by.x="spp", by.y="species_code", all=FALSE)
-pair_attr <- droplevels(pair_attr)
-length(unique(pair_attr$spp)) # 24 species
-summary(pair_attr)
-
-### run model with family to test for a relationship with synchrony
-all_spp_model_family <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + family + (1|pair.id) + (1|spp), data = pair_attr)
-summary(all_spp_model_family) 
-anova(all_spp_model_family) ## non-significant (p=0.459)
-
-### run model with genus to test for a relationship with synchrony
-all_spp_model_genus <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + genus + (1|pair.id) + (1|spp), data = pair_attr)
-summary(all_spp_model_genus) 
-anova(all_spp_model_genus) ## non-significant (p=0.689)
-
-## model without intercept
-all_spp_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
-### save results for northing, distance and hab sim
-fixed_results <- data.frame(summary(all_spp_model)$coefficients[,1:5])
-fixed_results$parameter <- paste(row.names(fixed_results))
-rownames(fixed_results) <- 1:nrow(fixed_results)
-## remove mid.year rows and intercept
-fixed_results <- fixed_results[-c(1,5:15),]
-## save results
-write.csv(fixed_results, file = "../Results/Model_outputs/BBS/fixed_effect_results_bbs.csv", row.names=FALSE)
-
-
-all_spp_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp)-1, data = pair_attr)
-summary(all_spp_model) 
-anova(all_spp_model)
-
-### check model fit ###
-plot(all_spp_model)
-qqnorm(resid(all_spp_model))
-qqline(resid(all_spp_model)) # not too bad
-
-## save results ## 
-results_table_all_spp <- data.frame(summary(all_spp_model)$coefficients[,1:3])
-
-## change names and add in parameter column ##
-names(results_table_all_spp) <- c("FCI", "SD", "t")
-results_table_all_spp$parameter <- paste(row.names(results_table_all_spp))
-rownames(results_table_all_spp) <- 1:nrow(results_table_all_spp)
-
-## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-results_tab4 <- NULL
-results_tab1 <- results_table_all_spp[grep("mean_northing", results_table_all_spp$parameter),]
-results_tab2 <- results_table_all_spp[grep("distance", results_table_all_spp$parameter),]
-results_tab3 <- results_table_all_spp[grep("hab_sim", results_table_all_spp$parameter),]
-results_tab4 <- rbind(results_tab4, results_tab1, results_tab2, results_tab3)
-results_table_all_spp <- results_table_all_spp[!results_table_all_spp$parameter%in%results_tab4$parameter,]
-
-## change parameter names to year
-results_table_all_spp$parameter <- rep(1999:2012)
-
-### rescale estimate, SD and CI ### 
-results_table_all_spp$rescaled_FCI <- results_table_all_spp$FCI*(100/results_table_all_spp$FCI[1])
-results_table_all_spp$rescaled_sd <- results_table_all_spp$SD*(100/results_table_all_spp$FCI[1])
-results_table_all_spp$rescaled_ci <- results_table_all_spp$rescaled_sd*1.96
-
-## save final results table ##
-write.csv(results_table_all_spp, file = "../Results/Bird_results/results_final_all_spp_BBS_final.csv", row.names=FALSE)
-
-##################################################
-##### model to produce one line per species #####
-#################################################
-
-results_table_sp<-NULL
-for (i in unique(pair_attr$spp)){
-  print(i)
-  
-  species_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id)-1, data = pair_attr[pair_attr$spp==i,])
-  summary(species_model)
-  anova(species_model)
-  
-  ### save and plot the results ###
-  results_table_temp <- data.frame(summary(species_model)$coefficients[,1:3],i)
-  results_table_sp<-rbind(results_table_sp,results_table_temp)
-}
-
-## change names and add in parameter column ##
-names(results_table_sp) <- c("FCI", "SD", "t","sp")
-results_table_sp$parameter <- paste(row.names(results_table_sp))
-rownames(results_table_sp) <- 1:nrow(results_table_sp)
-
-## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-results_table4 <- NULL
-results_table1 <- results_table_sp[grep("mean_northing", results_table_sp$parameter),]
-results_table2 <- results_table_sp[grep("distance", results_table_sp$parameter),]
-results_table3 <- results_table_sp[grep("hab_sim", results_table_sp$parameter),]
-results_table4 <- rbind(results_table4, results_table1, results_table2, results_table3)
-results_table_sp <- results_table_sp[!results_table_sp$parameter%in%results_table4$parameter,]
-
-## change parameter names to year
-results_table_sp$parameter <- rep(1999:2012)
-
-results_final_sp <- NULL
-for (i in unique(results_table_sp$sp)){
-  
-  results_temp_sp <- results_table_sp[results_table_sp$sp==i,]  
-  
-  results_temp_sp$rescaled_FCI <- results_temp_sp$FCI*(100/results_temp_sp$FCI[1])
-  results_temp_sp$rescaled_sd <- results_temp_sp$SD*(100/results_temp_sp$FCI[1])
-  results_temp_sp$rescaled_ci <- results_temp_sp$rescaled_sd*1.96
-  
-  results_final_sp <- rbind(results_final_sp, results_temp_sp)
-  
-}
-
-### merge with species common name info ###
-species_names <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", header=TRUE)
-results_final_sp <- merge(results_final_sp, species_names, by.x="sp", by.y="species_code")
-
-## save species final results table ##
-write.csv(results_final_sp, file = "../Results/Bird_results/results_final_spp_BBS.csv", row.names=FALSE)

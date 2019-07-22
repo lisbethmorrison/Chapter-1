@@ -19,8 +19,6 @@ woodland_spp <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", 
 ## add habitat code data 
 hab_codes <- read.csv("../Data/BTO_data/CBC_woodland_codes.csv", header=TRUE)
 
-##### check whether lesser redpoll == common redpoll ######
-
 #### merge data together by species code, so only left with woodland species ####
 woodland_cbc <- merge(woodland_spp, cbc_data, by.x="species_code", by.y="bou")
 
@@ -79,7 +77,7 @@ for (i in spp_list){ # loop through each species
 } # end i in spp_list
 
 #### save spp_data = the number of years of data for each site and each species ####
-write.csv(spp_data, file="../Data/Bird_sync_data/site_year_species.csv", row.names=FALSE)
+write.csv(spp_data, file="../Data/Bird_sync_data/site_year_species_CBC.csv", row.names=FALSE)
 
 #### loop through species to estimate number of sites per year ####
 spp_data2 <- NULL
@@ -101,4 +99,4 @@ for (i in spp_list){ # loop through each species
 } # end i in spp_list
 
 #### save spp_data2 = the number of sites for each year and each species ####
-write.csv(spp_data2, file="../Data/Bird_sync_data/year_site_species.csv", row.names=FALSE)
+write.csv(spp_data2, file="../Data/Bird_sync_data/year_site_species_CBC.csv", row.names=FALSE)

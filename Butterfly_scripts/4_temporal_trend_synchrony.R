@@ -19,7 +19,7 @@ library(MuMIn)
 ################################
 
 ## add data ##
-final_pair_data <- read.csv("../Data/Butterfly_sync_data/final_pair_data_all_spp_no_zeros2.csv", header = TRUE) # pair attr synchrony data 37 species
+final_pair_data <- read.csv("../Data/Butterfly_sync_data/final_pair_data_all_spp.csv", header = TRUE) # pair attr synchrony data 35 species
 site_data <- read.csv("../Data/UKBMS_data/pair_attr_mean_northing_dist_sim.csv", header = TRUE) # pair attr site data
 trait_data <- read.csv("../Data/UKBMS_data/species.traits.full.table.csv", header = TRUE) # mobility trait data for each species
 
@@ -31,9 +31,9 @@ pair_attr_2 <- merge(final_pair_data, site_data_reverse, by.x=c("site1", "site2"
 pair_attr <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
 length(unique(pair_attr$spp))## 35 species
 
+## remove migrant amd duplicated species
 pair_attr$spp <- as.factor(pair_attr$spp)
 pair_attr <- pair_attr[!pair_attr$spp==121,] # DROPPED AS ITS A DUPLICATE OF SMALL SKIPPER
-pair_attr <- pair_attr[!pair_attr$spp==34,] # MIGRANT (CLOUDED YELLOW) # already removed in script 3
 pair_attr <- pair_attr[!pair_attr$spp==122,] # MIGRANT (RED ADMIRAL)
 pair_attr <- pair_attr[!pair_attr$spp==123,] # MIGRANT (PAINTED LADY)
 
@@ -46,11 +46,9 @@ pair_attr$distance <- (pair_attr$distance - mean(na.omit(pair_attr$distance)))/s
 pair_attr$mean_northing <- (pair_attr$mean_northing - mean(na.omit(pair_attr$mean_northing)))/sd(na.omit(pair_attr$mean_northing))
 pair_attr$renk_hab_sim <- (pair_attr$renk_hab_sim - mean(na.omit(pair_attr$renk_hab_sim)))/sd(na.omit(pair_attr$renk_hab_sim))
 
-var(pair_attr$distance) # =1
+## double check SD is 1
 sd(pair_attr$distance) # =1
-var(pair_attr$mean_northing) # =1
 sd(pair_attr$mean_northing) # =1
-var(pair_attr$renk_hab_sim) # =1
 sd(pair_attr$renk_hab_sim) # =1
 
 # check colinearity
@@ -67,14 +65,10 @@ summary(pair_attr)
 length(unique(pair_attr$spp)) # 32 species
 pair_attr <- droplevels(pair_attr)
 ## remove columns not needed
-pair_attr <- pair_attr[-c(9:10, 18, 20:48, 50:52, 54:56)]
+pair_attr <- pair_attr[-c(9:10, 18, 22:48, 50:52, 54:56)]
 summary(pair_attr)
 length(unique(pair_attr$spp)) # 32 species
 ## 32 species - NA's are there because spp 100 has no mobility data
-
-### merge in climate data
-## just autumn temperature for now
-final_pair_data_aut_temp <- final_pair_data_temp[final_p]
 
 ## create pair.id variable and make species and year variables factors ## 
 str(pair_attr)
@@ -85,131 +79,14 @@ pair_attr$start.year <- as.factor(pair_attr$start.year)
 pair_attr$pair.id <- as.character(pair_attr$pair.id)
 pair_attr$spp <- as.factor(pair_attr$spp)
 
-write.csv(pair_attr, file = "../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", row.names = FALSE) # save pair_attr file 
+write.csv(pair_attr, file = "../Data/Butterfly_sync_data/pair_attr.csv", row.names = FALSE) # save pair_attr file 
 
 ####################################################################################################
 ################################## RUN SYNCHRONY MODELS ############################################
 ####################################################################################################
 
-pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr_no_zeros2.csv", header=TRUE) # load up pair attribute data to save time
-### subset meadow brown for Matt
-pair_attr_meadow<-pair_attr[(pair_attr$common_name=="Meadow brown"),]
-## save file
-write.csv(pair_attr_meadow, file = "../Data/Butterfly_sync_data/pair_attr_meadow_brown.csv", row.names = FALSE) # save pair_attr file 
-
-## climate data
-#final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp.csv", header=TRUE)  
-final_pair_data_rain <- read.csv("../Data/MetOffice_data/final_pair_data_mean_rainfall3.csv", header=TRUE)
-final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp3.csv", header=TRUE)
-
-################################################################
-## merge in climate data
-# ## just autumn rainfall for now
-# final_pair_data_spring_rain <- final_pair_data_rain[final_pair_data_rain$season=="b",] ## spring rainfall significantly increased in synchrony between 85-00
-# names(final_pair_data_spring_rain)[3] <- "lag0_spring_rain"
-
-## summer, autumn and winter temperature and rainfall (these all decline then increase over time)
-final_pair_data_sum_temp <- final_pair_data_temp[final_pair_data_temp$season=="c",] ## summer
-final_pair_data_aut_temp <- final_pair_data_temp[final_pair_data_temp$season=="d",] ## autumn
-final_pair_data_win_temp <- final_pair_data_temp[final_pair_data_temp$season=="a",] ## winter
-
-names(final_pair_data_sum_temp)[3] <- "lag0_sum_temp"
-names(final_pair_data_aut_temp)[3] <- "lag0_aut_temp"
-names(final_pair_data_win_temp)[3] <- "lag0_win_temp"
-
-## remove some columns (season, start and end year)
-final_pair_data_sum_temp <- subset(final_pair_data_sum_temp, select = -c(5:7))
-final_pair_data_aut_temp <- subset(final_pair_data_aut_temp, select = -c(5:7))
-final_pair_data_win_temp <- subset(final_pair_data_win_temp, select = -c(5:7))
-
-### merge in summer temp
-pair_attr_temp <- pair_attr
-pair_attr_1 <- merge(pair_attr_temp, final_pair_data_sum_temp, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"), all=FALSE)  # merge the site comparisons in one direction - site a to a, b to b
-summer_reverse <- final_pair_data_sum_temp
-names(summer_reverse)[1:2] <- c("site2", "site1")
-pair_attr_2 <- merge(pair_attr_temp, summer_reverse, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"), all=FALSE)	# merge the site comparisons in the same direction using site_data_reverse
-pair_attr_temp <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
-pair_attr_temp <- unique(pair_attr_temp)
-length(unique(pair_attr_temp$spp))## 32 species
-length(unique(pair_attr_temp$site1)) # 454
-length(unique(pair_attr_temp$site2)) # 473 
-### merge in autumn temp
-pair_attr_1 <- merge(pair_attr_temp, final_pair_data_aut_temp, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))  # merge the site comparisons in one direction - site a to a, b to b
-autumn_reverse <- final_pair_data_aut_temp
-names(autumn_reverse)[1:2] <- c("site2", "site1")
-pair_attr_2 <- merge(pair_attr_temp, autumn_reverse, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))	# merge the site comparisons in the same direction using site_data_reverse
-pair_attr_temp <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
-length(unique(pair_attr_temp$spp))## 32 species
-length(unique(pair_attr_temp$site1)) # 2482
-length(unique(pair_attr_temp$site2)) # 2471 
-### merge in winter temp
-pair_attr_1 <- merge(pair_attr_temp, final_pair_data_win_temp, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))  # merge the site comparisons in one direction - site a to a, b to b
-winter_reverse <- final_pair_data_win_temp
-names(winter_reverse)[1:2] <- c("site2", "site1")
-pair_attr_2 <- merge(pair_attr_temp, winter_reverse, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))	# merge the site comparisons in the same direction using site_data_reverse
-pair_attr_temp <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
-length(unique(pair_attr_temp$spp))## 32 species
-length(unique(pair_attr_temp$site1)) # 2482
-length(unique(pair_attr_temp$site2)) # 2471 
-
-## make sure correct variables are factors ## 
-str(pair_attr_temp)
-pair_attr_temp$spp <- as.factor(pair_attr_temp$spp)
-pair_attr_temp$start.year <- as.factor(pair_attr_temp$start.year)
-pair_attr_temp$end.year <- as.factor(pair_attr_temp$end.year)
-pair_attr_temp$mid.year <- as.factor(pair_attr_temp$mid.year)
-pair_attr_temp$pair.id <- as.character(pair_attr_temp$pair.id)
-
-###############################################
-### run the synchrony model for all species ###
-###############################################
-length(unique(pair_attr$spp)) ## 32 species
-
-### run model with summer, autumn and winter temperature
-all_spp_model_temp <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + lag0_sum_temp + lag0_aut_temp + lag0_win_temp + (1|pair.id) + (1|spp), data = pair_attr_temp)
-summary(all_spp_model_temp) 
-anova(all_spp_model_temp) ## summer and autumn temperature are significant, winter is non-significant
-## summer is positive and autumn is negative
-
-## same model without intercept
-all_spp_model_temp2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + lag0_sum_temp + lag0_aut_temp + lag0_win_temp + (1|pair.id) + (1|spp)-1, data = pair_attr_temp)
-
-pop_temp_model <- data.frame(summary(all_spp_model_temp2)$coefficients[,1:3])
-names(pop_temp_model) <- c("FCI", "SD", "t")
-pop_temp_model$parameter <- paste(row.names(pop_temp_model))
-rownames(pop_temp_model) <- 1:nrow(pop_temp_model)
-
-pop_temp_model <- pop_temp_model[grep("mid.year", pop_temp_model$parameter),]
-
-## change parameter names to year
-pop_temp_model$parameter <- rep(1985:2012)
-
-### rescale estimate, SD and CI ### 
-pop_temp_model$rescaled_FCI <- pop_temp_model$FCI*(100/pop_temp_model$FCI[1])
-pop_temp_model$rescaled_sd <- pop_temp_model$SD*(100/pop_temp_model$FCI[1])
-pop_temp_model$rescaled_ci <- pop_temp_model$rescaled_sd*1.96
-
-## save final results table ##
-write.csv(pop_temp_model, file = "../Results/Butterfly_results/results_final_all_spp_temperature.csv", row.names=FALSE)
-
-## graph
-FCI_plot_temperature <- ggplot(pop_temp_model, aes(x = parameter, y = rescaled_FCI)) +
-  stat_smooth(colour="black", method=loess, se=FALSE) +
-  geom_errorbar(aes(ymin = rescaled_FCI - rescaled_sd, ymax = rescaled_FCI + rescaled_sd), width=0.2, size = 0.5) +
-  geom_point(size=2) + 
-  labs(x = "Mid-year of moving window", y = "Population synchrony") +
-  scale_y_continuous(breaks=seq(0,160,20)) +
-  scale_x_continuous(breaks=seq(1985,2012,3)) +
-  geom_hline(yintercept = 100, linetype = "dashed") +
-  theme_bw() +
-  theme(text = element_text(size = 16)) +
-  labs(size=3) +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
-        axis.text.x = element_text(color="black"), axis.text.y = element_text(color="black"))
-FCI_plot_temperature
-ggsave("../Graphs/Connectivity_plots/FCI_plot_temperature.png", plot = FCI_plot_temperature, width=7, height=5)
-
+## read in data
+pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE) # pair attribute synchrony data for 35 species
 
 ## make sure correct variables are factors ## 
 str(pair_attr)
@@ -219,23 +96,24 @@ pair_attr$end.year <- as.factor(pair_attr$end.year)
 pair_attr$mid.year <- as.factor(pair_attr$mid.year)
 pair_attr$pair.id <- as.character(pair_attr$pair.id)
 
-############################## merge in species data (family) ###############################
-species_traits <- read.csv("../Data/UKBMS_data/species.traits.full.table.csv", header=TRUE)
-## subset family and genus info
-species_traits <- species_traits[,c(3,4,39)]
-pair_attr <- merge(pair_attr, species_traits, by.x="spp", by.y="species", all=FALSE)
-pair_attr <- droplevels(pair_attr)
+###############################################
+### run the synchrony model for all species ###
+###############################################
 
+length(unique(pair_attr$spp)) ## 32 species
+
+## first check whether family and genus is significant in main model (phylogenetic checks)
 ### run model with family to test for a relationship with synchrony
 all_spp_model_family <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + family + (1|pair.id) + (1|spp), data = pair_attr)
 summary(all_spp_model_family) 
-anova(all_spp_model_family) ## overall non-significant
+anova(all_spp_model_family) ## family non-significant
 
 ### run model with genus to test for a relationship with synchrony
 all_spp_model_genus <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + genus + (1|pair.id) + (1|spp), data = pair_attr)
 summary(all_spp_model_genus) 
-anova(all_spp_model_genus) ## overall non-significant
+anova(all_spp_model_genus) ## genus non-significant
 
+## run model with intercept to get fixed effect results
 ## model with intercept
 all_spp_model_int <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
 
@@ -248,55 +126,30 @@ r.squaredGLMM(all_spp_model_int)
 ## remove mid.year rows
 fixed_results <- fixed_results[-c(1,5:31),]
 ## save results
-write.csv(fixed_results, file = "../Results/Model_outputs/fixed_effect_results_ukbms_no_zeros2.csv", row.names=FALSE)
+write.csv(fixed_results, file = "../Results/Model_outputs/UKBMS/fixed_effect_results_ukbms.csv", row.names=FALSE)
 
-##  model to produce aggregate FCI model for all 28 species - no intercept and no migrants ##
+##  model to produce aggregate synchrony values for all 32 species - no intercept
 all_spp_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp)-1, data = pair_attr)
 summary(all_spp_model) 
 anova(all_spp_model)
 
-# save and plot results ## 
+# save results ## 
 results_table_all_spp <- data.frame(summary(all_spp_model)$coefficients[,1:3])
-
 ## change names and add in parameter column ##
 names(results_table_all_spp) <- c("FCI", "SD", "t")
 results_table_all_spp$parameter <- paste(row.names(results_table_all_spp))
 rownames(results_table_all_spp) <- 1:nrow(results_table_all_spp)
-
 ## take out 3 columns for each species: mean northing, distance and renk_hab_sim
 results_table_all_spp <- results_table_all_spp[grep("mid.year", results_table_all_spp$parameter),]
-
 ## change parameter names to year
 results_table_all_spp$parameter <- rep(1985:2012)
-
 ### rescale estimate, SD and CI ### 
 results_table_all_spp$rescaled_FCI <- results_table_all_spp$FCI*(100/results_table_all_spp$FCI[1])
 results_table_all_spp$rescaled_sd <- results_table_all_spp$SD*(100/results_table_all_spp$FCI[1])
 results_table_all_spp$rescaled_ci <- results_table_all_spp$rescaled_sd*1.96
 
 ## save final results table ##
-write.csv(results_table_all_spp, file = "../Results/Butterfly_results/results_final_all_spp_no_zeros2.csv", row.names=FALSE)
-
-## obtain bootstrap confidence intervals
-start_time = Sys.time()
-confint(all_spp_model, method="boot", boot.type="basic", nsim=10)
-end_time = Sys.time()
-run_time = end_time - start_time
-print(paste0("TOTAL RUN TIME: ", run_time)) ## takes about 5min per simulation
-## but lots of warnings:  extreme order statistics used as endpoints
-
-##############################################
-## model for all species without covariates ##
-##############################################
-all_spp_model2 <- lmer(lag0 ~ mid.year + (1|pair.id) + (1|spp), data = pair_attr)
-summary(all_spp_model2) 
-anova(all_spp_model2)
-
-## AIC of full model against minimal model
-AIC(all_spp_model, all_spp_model2)
-## all_spp_model = 2037132
-## all_spp_model2 = 2037505
-## more complicated model has lower AIC (by 373)
+write.csv(results_table_all_spp, file = "../Results/Butterfly_results/results_final_all_spp.csv", row.names=FALSE)
 
 ################################################
 ### run the synchrony model for each species ###
@@ -309,40 +162,32 @@ for (i in unique(pair_attr$spp)){
   species_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id)-1, data = pair_attr[pair_attr$spp==i,])
   summary(species_model)
   anova(species_model)
-
-### save and plot the results ###
-results_table_temp <- data.frame(summary(species_model)$coefficients[,1:3],i)
-results_table_sp<-rbind(results_table_sp,results_table_temp)
+  
+  ### save and plot the results ###
+  results_table_temp <- data.frame(summary(species_model)$coefficients[,1:3],i)
+  results_table_sp<-rbind(results_table_sp,results_table_temp)
 }
 
 ## change names and add in parameter column ##
 names(results_table_sp) <- c("FCI", "SD", "t","sp")
 results_table_sp$parameter <- paste(row.names(results_table_sp))
 rownames(results_table_sp) <- 1:nrow(results_table_sp)
-
 ## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-results_table4 <- NULL
-results_table1 <- results_table_sp[grep("mean_northing", results_table_sp$parameter),]
-results_table2 <- results_table_sp[grep("distance", results_table_sp$parameter),]
-results_table3 <- results_table_sp[grep("renk_hab_sim", results_table_sp$parameter),]
-results_table4 <- rbind(results_table4, results_table1, results_table2, results_table3)
-results_table_sp <- results_table_sp[!results_table_sp$parameter%in%results_table4$parameter,]
-
+results_table_sp <- results_table_sp[grep("mid.year", results_table_sp$parameter),]
 ## change parameter names to year
 results_table_sp$parameter <- rep(1985:2012)
-
 ### rescale estimate, SD and CI for each species 
 results_final_sp <- NULL
 for (i in unique(results_table_sp$sp)){
-
-results_temp_sp <- results_table_sp[results_table_sp$sp==i,]  
   
-results_temp_sp$rescaled_FCI <- results_temp_sp$FCI*(100/results_temp_sp$FCI[1])
-results_temp_sp$rescaled_sd <- results_temp_sp$SD*(100/results_temp_sp$FCI[1])
-results_temp_sp$rescaled_ci <- results_temp_sp$rescaled_sd*1.96
-
-results_final_sp <- rbind(results_final_sp, results_temp_sp)
-
+  results_temp_sp <- results_table_sp[results_table_sp$sp==i,]  
+  
+  results_temp_sp$rescaled_FCI <- results_temp_sp$FCI*(100/results_temp_sp$FCI[1])
+  results_temp_sp$rescaled_sd <- results_temp_sp$SD*(100/results_temp_sp$FCI[1])
+  results_temp_sp$rescaled_ci <- results_temp_sp$rescaled_sd*1.96
+  
+  results_final_sp <- rbind(results_final_sp, results_temp_sp)
+  
 }
 
 ## Add in common names of species to final results table ##
@@ -351,7 +196,7 @@ species_info <- unique(species_info)
 results_final_sp <- merge(results_final_sp, species_info, by.x="sp", by.y="spp")
 
 ## save final results table ##
-write.csv(results_final_sp, file="../Results/Butterfly_results/results_final_sp_no_zeros2.csv", row.names=FALSE)
+write.csv(results_final_sp, file="../Results/Butterfly_results/results_final_sp.csv", row.names=FALSE)
 
 
 #########################################################################
@@ -401,161 +246,89 @@ for (g in unique(results_table_spec$specialism)){
 }
 
 ## save final results table	##
-write.csv(results_final_spec, file = "../Results/Butterfly_results/results_final_spec_no_zeros2.csv", row.names = FALSE) 
+write.csv(results_final_spec, file = "../Results/Butterfly_results/results_final_spec.csv", row.names = FALSE) 
 
-# ##############################################################################
-# ##################### WOODLAND SPECIES ANALYSIS ##############################
-# ##############################################################################
-# 
-# ### subset pair_attr to woodland species only
-# pair_attr_woodland <- subset(pair_attr[pair_attr$HABITAT=="Woodland",])
-# 
-# ##  model to produce aggregate FCI model for all 9 woodland species - no intercept ##
-# all_spp_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp)-1, data = pair_attr_woodland)
-# summary(all_spp_model) 
-# anova(all_spp_model)
-# 
-# ## save and plot results ## 
-# results_table_all_spp <- data.frame(summary(all_spp_model)$coefficients[,1:3])
-# 
-# ## change names and add in parameter column ##
-# names(results_table_all_spp) <- c("FCI", "SD", "t")
-# results_table_all_spp$parameter <- paste(row.names(results_table_all_spp))
-# rownames(results_table_all_spp) <- 1:nrow(results_table_all_spp)
-# 
-# ## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-# results_tab4 <- NULL
-# results_tab1 <- results_table_all_spp[grep("mean_northing", results_table_all_spp$parameter),]
-# results_tab2 <- results_table_all_spp[grep("distance", results_table_all_spp$parameter),]
-# results_tab3 <- results_table_all_spp[grep("renk_hab_sim", results_table_all_spp$parameter),]
-# results_tab4 <- rbind(results_tab4, results_tab1, results_tab2, results_tab3)
-# results_table_all_spp <- results_table_all_spp[!results_table_all_spp$parameter%in%results_tab4$parameter,]
-# 
-# ## change parameter names to year
-# results_table_all_spp$parameter <- rep(1985:2012)
-# 
-# ### rescale estimate, SD and CI ### 
-# results_table_all_spp$rescaled_FCI <- results_table_all_spp$FCI*(100/results_table_all_spp$FCI[1])
-# results_table_all_spp$rescaled_sd <- results_table_all_spp$SD*(100/results_table_all_spp$FCI[1])
-# results_table_all_spp$rescaled_ci <- results_table_all_spp$rescaled_sd*1.96
-# 
-# ## save final results table ##
-# write.csv(results_table_all_spp, file = "../Results/Butterfly_results/results_final_all_spp_woodland.csv", row.names=FALSE)
-# 
-# ### STRATEGY MODEL ##
-# 
-# results_table_strat<-NULL
-# for (g in unique(pair_attr_woodland$STRATEGY)){
-#   
-#   strategy_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp)-1, data = pair_attr_woodland[pair_attr_woodland$STRATEGY==g,])
-#   summary(strategy_model)
-#   anova(strategy_model)
-#   
-#   ### save and plot the results ###
-#   results_table_strat_temp <- data.frame(summary(strategy_model)$coefficients[,1:3],g)
-#   results_table_strat<-rbind(results_table_strat,results_table_strat_temp)
-# }
-# 
-# ## change names and add in parameter column ##
-# names(results_table_strat) <- c("FCI", "SD", "t","strategy")
-# results_table_strat$parameter <- paste(row.names(results_table_strat))
-# rownames(results_table_strat) <- 1:nrow(results_table_strat)
-# 
-# ## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-# results_table_strat4 <- NULL
-# results_table_strat1 <- results_table_strat[grep("mean_northing", results_table_strat$parameter),]
-# results_table_strat2 <- results_table_strat[grep("distance", results_table_strat$parameter),]
-# results_table_strat3 <- results_table_strat[grep("renk_hab_sim", results_table_strat$parameter),]
-# results_table_strat4 <- rbind(results_table_strat4, results_table_strat1, results_table_strat2, results_table_strat3)
-# results_table_strat <- results_table_strat[!results_table_strat$parameter%in%results_table_strat4$parameter,]
-# 
-# ## change parameter names to year
-# results_table_strat$parameter <- rep(1985:2012)
-# 
-# ### rescale estimate, SD and CI for each species 
-# results_final_strat <- NULL
-# for (g in unique(results_table_strat$strategy)){
-#   
-#   results_temp_strat <- results_table_strat[results_table_strat$strategy==g,]  
-#   
-#   results_temp_strat$rescaled_FCI <- results_temp_strat$FCI*(100/results_temp_strat$FCI[1])
-#   results_temp_strat$rescaled_sd <- results_temp_strat$SD*(100/results_temp_strat$FCI[1])
-#   results_temp_strat$rescaled_ci <- results_temp_strat$rescaled_sd*1.96
-#   
-#   results_final_strat <- rbind(results_final_strat, results_temp_strat)
-#   
-# }
-# 
-# results_final_strat$strategy <- as.character(results_final_strat$strategy)
-# results_final_strat$strategy <- replace(results_final_strat$strategy, results_final_strat$strategy=="Wider countryside sp", "Wider countryside")
-# 
-# ## save final results table	##
-# write.csv(results_final_strat, file = "../Results/Butterfly_results/results_final_strat_woodland.csv", row.names = FALSE) 
-# 
-# #######################################################
-# ### run the synchrony model for each mobility score ###
-# #######################################################
-# 
-# ## split species into 3 groups based on mobility aility ## 
-# pair_attr$mobility.wil <- as.numeric(pair_attr$mobility.wil)
-# pair_attr$mobility.score <- cut(pair_attr$mobility.wil, 3, labels=FALSE)
-# pair_attr$mobility.score <- as.factor(pair_attr$mobility.score)
-# 
-# ## run synchrony model for each mobility score ##
-# results_table_mobility<-NULL
-# for (k in unique(pair_attr$mobility.score)){
-#   
-#   mobility_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr[pair_attr$mobility.score==k,])
-#   summary(mobility_model)
-#   anova(mobility_model)
-#   
-#   ### save and plot the results ###
-#   results_table_mobility_temp <- data.frame(summary(mobility_model)$coefficients[,1:3],k)
-#   results_table_mobility<-rbind(results_table_mobility,results_table_mobility_temp)
-# }
-# 
-# names(results_table_mobility) <- c("Estimate", "SD", "t","mobility.score")
-# results_table_mobility$parameter <- paste(row.names(results_table_mobility))
-# rownames(results_table_mobility) <- 1:nrow(results_table_mobility)
-# 
-# ## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-# results_table_mob4 <- NULL
-# results_table_mob1 <- results_table_mobility[grep("mean_northing", results_table_mobility$parameter),]
-# results_table_mob2 <- results_table_mobility[grep("distance", results_table_mobility$parameter),]
-# results_table_mob3 <- results_table_mobility[grep("renk_hab_sim", results_table_mobility$parameter),]
-# results_table_mob4 <- rbind(results_table_mob4, results_table_mob1, results_table_mob2, results_table_mob3)
-# results_table_mobility <- results_table_mobility[!results_table_mobility$parameter%in%results_table_mob4$parameter,]
-# 
-# ## change parameter names to year
-# results_table_mobility$parameter <- rep(1985:2012)
-# 
-# #### calculate FCI for each year relative to intercept (=1985)
-# library(dplyr)
-# results_table_mobility <- results_table_mobility %>% group_by(mobility.score) %>% mutate(FCI = Estimate + Estimate[parameter==1985]) # this doubles the intercept (1985) value
-# results_table_mobility$FCI[results_table_mobility$parameter==1985] <- results_table_mobility$Estimate[results_table_mobility$parameter==1985] # change the first value back to the intercept (1985) estimate value
-# 
-# ### rescale estimate, SD and CI for each species 
-# results_final_mobility <- NULL
-# for (k in unique(results_table_mobility$mobility.score)){
-#   
-#   results_temp_mob <- results_table_mobility[results_table_mobility$mobility.score==k,]  
-#   
-#   results_temp_mob$rescaled_FCI <- results_temp_mob$FCI*(100/results_temp_mob$FCI[1])
-#   results_temp_mob$rescaled_sd <- results_temp_mob$SD*(100/results_temp_mob$FCI[1])
-#   results_temp_mob$rescaled_ci <- results_temp_mob$rescaled_sd*1.96
-#   
-#   results_final_mobility <- rbind(results_final_mobility, results_temp_mob)
-#   
-# }
-# 
-# ## change mobility score from numbers to low, medium and high ## 
-# results_final_mobility$mobility.score <- as.character(results_final_mobility$mobility.score)
-# results_final_mobility$mobility.score[results_final_mobility$mobility.score==1]<-"low"
-# results_final_mobility$mobility.score[results_final_mobility$mobility.score==2]<-"medium"
-# results_final_mobility$mobility.score[results_final_mobility$mobility.score==3]<-"high"
-# 
-# write.csv(results_final_mobility, file = "../Results/Butterfly_results/results_final_mobility.csv", row.names = FALSE) # save table	
-# 
-# ## save pair_attr data with mobility score ##
-# write.csv(pair_attr, file = "../Data/Butterfly_sync_data/pair_attr.csv", row.names = FALSE) # save pair_attr file 
-# 
+
+#######################################################################################################################
+########################################### CLIMATE AND SYNCHRONY ANALYSIS ############################################ 
+#######################################################################################################################
+
+## read in climate data
+final_pair_data_rain <- read.csv("../Data/MetOffice_data/final_pair_data_mean_rainfall.csv", header=TRUE)
+final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp.csv", header=TRUE)
+
+## summer, autumn and winter temperature and rainfall (these all decline then increase over time)
+final_pair_data_sum_temp <- final_pair_data_temp[final_pair_data_temp$season=="c",] ## summer
+final_pair_data_aut_temp <- final_pair_data_temp[final_pair_data_temp$season=="d",] ## autumn
+final_pair_data_win_temp <- final_pair_data_temp[final_pair_data_temp$season=="a",] ## winter
+
+names(final_pair_data_sum_temp)[3] <- "lag0_sum_temp"
+names(final_pair_data_aut_temp)[3] <- "lag0_aut_temp"
+names(final_pair_data_win_temp)[3] <- "lag0_win_temp"
+
+## remove some columns (season, start and end year)
+final_pair_data_sum_temp <- subset(final_pair_data_sum_temp, select = -c(5:7))
+final_pair_data_aut_temp <- subset(final_pair_data_aut_temp, select = -c(5:7))
+final_pair_data_win_temp <- subset(final_pair_data_win_temp, select = -c(5:7))
+
+### merge in summer temp
+pair_attr_temp <- pair_attr
+pair_attr_1 <- merge(pair_attr_temp, final_pair_data_sum_temp, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"), all=FALSE)  # merge the site comparisons in one direction - site a to a, b to b
+summer_reverse <- final_pair_data_sum_temp
+names(summer_reverse)[1:2] <- c("site2", "site1")
+pair_attr_2 <- merge(pair_attr_temp, summer_reverse, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"), all=FALSE)	# merge the site comparisons in the same direction using site_data_reverse
+pair_attr_temp <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
+pair_attr_temp <- unique(pair_attr_temp)
+length(unique(pair_attr_temp$spp))## 32 species
+length(unique(pair_attr_temp$site1)) # 454
+length(unique(pair_attr_temp$site2)) # 473 
+### merge in autumn temp
+pair_attr_1 <- merge(pair_attr_temp, final_pair_data_aut_temp, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))  # merge the site comparisons in one direction - site a to a, b to b
+autumn_reverse <- final_pair_data_aut_temp
+names(autumn_reverse)[1:2] <- c("site2", "site1")
+pair_attr_2 <- merge(pair_attr_temp, autumn_reverse, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))	# merge the site comparisons in the same direction using site_data_reverse
+pair_attr_temp <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
+length(unique(pair_attr_temp$spp))## 32 species
+length(unique(pair_attr_temp$site1)) # 2482
+length(unique(pair_attr_temp$site2)) # 2471 
+### merge in winter temp
+pair_attr_1 <- merge(pair_attr_temp, final_pair_data_win_temp, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))  # merge the site comparisons in one direction - site a to a, b to b
+winter_reverse <- final_pair_data_win_temp
+names(winter_reverse)[1:2] <- c("site2", "site1")
+pair_attr_2 <- merge(pair_attr_temp, winter_reverse, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))	# merge the site comparisons in the same direction using site_data_reverse
+pair_attr_temp <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
+length(unique(pair_attr_temp$spp))## 32 species
+length(unique(pair_attr_temp$site1)) # 2482
+length(unique(pair_attr_temp$site2)) # 2471 
+
+
+### run model with summer, autumn and winter temperature
+all_spp_model_temp <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + lag0_sum_temp + lag0_aut_temp + lag0_win_temp + (1|pair.id) + (1|spp), data = pair_attr_temp)
+summary(all_spp_model_temp) 
+anova(all_spp_model_temp) ## summer and autumn temperature are significant, winter is non-significant
+## summer is positive and autumn is negative
+
+## same model without intercept
+all_spp_model_temp2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + lag0_sum_temp + lag0_aut_temp + lag0_win_temp + (1|pair.id) + (1|spp)-1, data = pair_attr_temp)
+
+pop_temp_model <- data.frame(summary(all_spp_model_temp2)$coefficients[,1:3])
+names(pop_temp_model) <- c("FCI", "SD", "t")
+pop_temp_model$parameter <- paste(row.names(pop_temp_model))
+rownames(pop_temp_model) <- 1:nrow(pop_temp_model)
+
+pop_temp_model <- pop_temp_model[grep("mid.year", pop_temp_model$parameter),]
+
+## change parameter names to year
+pop_temp_model$parameter <- rep(1985:2012)
+
+### rescale estimate, SD and CI ### 
+pop_temp_model$rescaled_FCI <- pop_temp_model$FCI*(100/pop_temp_model$FCI[1])
+pop_temp_model$rescaled_sd <- pop_temp_model$SD*(100/pop_temp_model$FCI[1])
+pop_temp_model$rescaled_ci <- pop_temp_model$rescaled_sd*1.96
+
+## save final results table ##
+# write.csv(pop_temp_model, file = "../Results/Butterfly_results/results_final_all_spp_temperature.csv", row.names=FALSE)
+
+
+
+

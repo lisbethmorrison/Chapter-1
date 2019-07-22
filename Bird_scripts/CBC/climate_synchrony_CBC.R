@@ -14,7 +14,7 @@ options(scipen=999)
 ## read in data
 mean_temp <- read.csv("../Data/MetOffice_data/Mean_temp_1980_2016_final.csv", header=TRUE)
 rainfall <- read.csv("../Data/MetOffice_data/Mean_rainfall_1980_2016_final.csv", header=TRUE)
-pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2_correct.csv", header=TRUE)
+pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE)
 
 ##### CALCULATE SEASONAL MEAN TEMPERATURE SYNCHRONY
 
@@ -39,14 +39,14 @@ for (i in 1:length(site_list$north)){
 
 site_list<-site_list[,c(1,4,5)] ## 106 sites
 ## remove duplicates where two sites have the same 5km easting and northing
-site_list2 <- site_list[!duplicated(t(apply(site_list[2:3], 1, sort))),] ## 96 sites
+site_list <- site_list[!duplicated(t(apply(site_list[2:3], 1, sort))),] ## 96 sites
 
 ## merge pair_attr site data with mean_temp (left with only CBC sites)
-mean_temp <- merge(mean_temp, site_list2, by.x=c("easting", "northing"), by.y=c("east.5k", "north.5k"))
+mean_temp <- merge(mean_temp, site_list, by.x=c("easting", "northing"), by.y=c("east.5k", "north.5k"))
 length(unique(mean_temp$site)) # all 96 sites which match with climate and CBC data
 
 ## merge pair_attr site data with rainfall (left with only UKBMS sites)
-rainfall <- merge(rainfall, site_list2, by.x=c("easting", "northing"), by.y=c("east.5k", "north.5k"))
+rainfall <- merge(rainfall, site_list, by.x=c("easting", "northing"), by.y=c("east.5k", "north.5k"))
 length(unique(rainfall$site)) # 96 sites
 
 ##########################################################################################################
@@ -175,7 +175,7 @@ site_list <- unique(site_list) ## 109 sites!!
 head(final_pair_data)
 unique(final_pair_data$mid.year)
 ## save data
-write.csv(final_pair_data, file="../Data/MetOffice_data/final_pair_data_mean_temp_CBC3_correct.csv", row.names=FALSE)
+write.csv(final_pair_data, file="../Data/MetOffice_data/final_pair_data_mean_temp_CBC.csv", row.names=FALSE)
 
 ################## RAINFALL ###################
 
@@ -293,7 +293,7 @@ for (g in season){ # loop through each season
 head(final_pair_data)
 
 ## save file
-write.csv(final_pair_data, file="../Data/MetOffice_data/final_pair_data_mean_rainfall_CBC3_correct.csv", row.names=FALSE)
+write.csv(final_pair_data, file="../Data/MetOffice_data/final_pair_data_mean_rainfall_CBC.csv", row.names=FALSE)
 
 
 #############################################################################################################################
@@ -303,8 +303,8 @@ write.csv(final_pair_data, file="../Data/MetOffice_data/final_pair_data_mean_rai
 rm(list=ls()) # clear R
 
 ## read in final pair data for temp and rainfall
-final_pair_data_rain <- read.csv("../Data/MetOffice_data/final_pair_data_mean_rainfall_CBC3_correct.csv", header=TRUE)
-final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp_CBC3_correct.csv", header=TRUE)  
+final_pair_data_rain <- read.csv("../Data/MetOffice_data/final_pair_data_mean_rainfall_CBC.csv", header=TRUE)
+final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp_CBC.csv", header=TRUE)  
 
 hist(final_pair_data_temp$lag0) ## very right-skewed
 hist(final_pair_data_rain$lag0) ## very right-skewed
@@ -366,7 +366,7 @@ results_table_winter_rain$rescaled_ci <- results_table_winter_rain$rescaled_sd*1
 ## remove new_sync column
 results_table_winter_rain <- subset(results_table_winter_rain, select = -c(new_sync))
 ## save final results table ##
-write.csv(results_table_winter_rain, file = "../Results/Climate_results/winter_rainfall_synchrony_CBC3.csv", row.names=FALSE)
+write.csv(results_table_winter_rain, file = "../Results/Climate_results/winter_rainfall_synchrony_CBC.csv", row.names=FALSE)
 
 ###### SPRING RAINFALL ######
 spring_rainfall_model <- lmer(lag0 ~ mid.year + (1|pair.id)-1, data=spring_rainfall)
@@ -390,7 +390,7 @@ results_table_spring_rain$rescaled_ci <- results_table_spring_rain$rescaled_sd*1
 ## remove new_sync column
 results_table_spring_rain <- subset(results_table_spring_rain, select = -c(new_sync))
 ## save final results table ##
-write.csv(results_table_spring_rain, file = "../Results/Climate_results/spring_rainfall_synchrony_CBC3.csv", row.names=FALSE)
+write.csv(results_table_spring_rain, file = "../Results/Climate_results/spring_rainfall_synchrony_CBC.csv", row.names=FALSE)
 
 ###### SUMMER RAINFALL ######
 summer_rainfall_model <- lmer(lag0 ~ mid.year + (1|pair.id)-1, data=summer_rainfall)
@@ -414,7 +414,7 @@ results_table_summer_rain$rescaled_ci <- results_table_summer_rain$rescaled_sd*1
 ## remove new_sync column
 results_table_summer_rain <- subset(results_table_summer_rain, select = -c(new_sync))
 ## save final results table ##
-write.csv(results_table_summer_rain, file = "../Results/Climate_results/summer_rainfall_synchrony_CBC3.csv", row.names=FALSE)
+write.csv(results_table_summer_rain, file = "../Results/Climate_results/summer_rainfall_synchrony_CBC.csv", row.names=FALSE)
 
 ###### AUTUMN RAINFALL ######
 autumn_rainfall_model <- lmer(lag0 ~ mid.year + (1|pair.id)-1, data=autumn_rainfall)
@@ -440,14 +440,14 @@ results_table_autumn_rain$rescaled_ci <- results_table_autumn_rain$rescaled_sd*1
 ## remove new_sync column
 results_table_autumn_rain <- subset(results_table_autumn_rain, select = -c(new_sync))
 ## save final results table ##
-write.csv(results_table_autumn_rain, file = "../Results/Climate_results/autumn_rainfall_synchrony_CBC3.csv", row.names=FALSE)
+write.csv(results_table_autumn_rain, file = "../Results/Climate_results/autumn_rainfall_synchrony_CBC.csv", row.names=FALSE)
 
 ##### plots ######
 ## load data
-winter_rain <- read.csv("../Results/Climate_results/winter_rainfall_synchrony_CBC3.csv", header=TRUE)
-spring_rain <- read.csv("../Results/Climate_results/spring_rainfall_synchrony_CBC3.csv", header=TRUE)
-summer_rain <- read.csv("../Results/Climate_results/summer_rainfall_synchrony_CBC3.csv", header=TRUE)
-autumn_rain <- read.csv("../Results/Climate_results/autumn_rainfall_synchrony_CBC3.csv", header=TRUE)
+winter_rain <- read.csv("../Results/Climate_results/winter_rainfall_synchrony_CBC.csv", header=TRUE)
+spring_rain <- read.csv("../Results/Climate_results/spring_rainfall_synchrony_CBC.csv", header=TRUE)
+summer_rain <- read.csv("../Results/Climate_results/summer_rainfall_synchrony_CBC.csv", header=TRUE)
+autumn_rain <- read.csv("../Results/Climate_results/autumn_rainfall_synchrony_CBC.csv", header=TRUE)
 
 winter_rain_plot <- ggplot(winter_rain, aes(x = parameter, y = rescaled_sync)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
@@ -514,7 +514,7 @@ library(ggpubr)
 rain_plots <- ggarrange(winter_rain_plot, spring_rain_plot, summer_rain_plot, autumn_rain_plot,
                         hjust = 0, ncol = 2, nrow = 2,labels = c("(a)", "(b)", "(c)", "(d)"))
 rain_plots
-ggsave("../Graphs/Climate/seasonal_rainfall_synchrony_CBC3.png", plot = rain_plots, width=12, height=10)
+ggsave("../Graphs/Climate/seasonal_rainfall_synchrony_CBC.png", plot = rain_plots, width=12, height=10)
 
 #########################
 ###### Temperature ######
@@ -562,7 +562,7 @@ results_table_winter_temp$rescaled_ci <- results_table_winter_temp$rescaled_sd*1
 ## remove new_sync column
 results_table_winter_temp <- subset(results_table_winter_temp, select = -c(new_sync))
 ## save final results table ##
-write.csv(results_table_winter_temp, file = "../Results/Climate_results/winter_temp_synchrony_CBC3.csv", row.names=FALSE)
+write.csv(results_table_winter_temp, file = "../Results/Climate_results/winter_temp_synchrony_CBC.csv", row.names=FALSE)
 
 ###### SPRING TEMPERATURE ######
 spring_temp_model <- lmer(lag0 ~ mid.year + (1|pair.id)-1, data=spring_temp)
@@ -586,7 +586,7 @@ results_table_spring_temp$rescaled_ci <- results_table_spring_temp$rescaled_sd*1
 ## remove new_sync column
 results_table_spring_temp <- subset(results_table_spring_temp, select = -c(new_sync))
 ## save final results table ##
-write.csv(results_table_spring_temp, file = "../Results/Climate_results/spring_temp_synchrony_CBC3.csv", row.names=FALSE)
+write.csv(results_table_spring_temp, file = "../Results/Climate_results/spring_temp_synchrony_CBC.csv", row.names=FALSE)
 
 ###### SUMMER TEMPERATURE ######
 summer_temp_model <- lmer(lag0 ~ mid.year + (1|pair.id)-1, data=summer_temp)
@@ -610,7 +610,7 @@ results_table_summer_temp$rescaled_ci <- results_table_summer_temp$rescaled_sd*1
 ## remove new_sync column
 results_table_summer_temp <- subset(results_table_summer_temp, select = -c(new_sync))
 ## save final results table ##
-write.csv(results_table_summer_temp, file = "../Results/Climate_results/summer_temp_synchrony_CBC3.csv", row.names=FALSE)
+write.csv(results_table_summer_temp, file = "../Results/Climate_results/summer_temp_synchrony_CBC.csv", row.names=FALSE)
 
 ###### AUTUMN TEMPERATURE ######
 autumn_temp_model <- lmer(lag0 ~ mid.year + (1|pair.id)-1, data=autumn_temp)
@@ -634,15 +634,15 @@ results_table_autumn_temp$rescaled_ci <- results_table_autumn_temp$rescaled_sd*1
 ## remove new_sync column
 results_table_autumn_temp <- subset(results_table_autumn_temp, select = -c(new_sync))
 ## save final results table ##
-write.csv(results_table_autumn_temp, file = "../Results/Climate_results/autumn_temp_synchrony_CBC3.csv", row.names=FALSE)
+write.csv(results_table_autumn_temp, file = "../Results/Climate_results/autumn_temp_synchrony_CBC.csv", row.names=FALSE)
 
 ##### plots ######
 ## load data
 
-winter_temp <- read.csv("../Results/Climate_results/winter_temp_synchrony_CBC3.csv", header=TRUE)
-spring_temp <- read.csv("../Results/Climate_results/spring_temp_synchrony_CBC3.csv", header=TRUE)
-summer_temp <- read.csv("../Results/Climate_results/summer_temp_synchrony_CBC3.csv", header=TRUE)
-autumn_temp <- read.csv("../Results/Climate_results/autumn_temp_synchrony_CBC3.csv", header=TRUE)
+winter_temp <- read.csv("../Results/Climate_results/winter_temp_synchrony_CBC.csv", header=TRUE)
+spring_temp <- read.csv("../Results/Climate_results/spring_temp_synchrony_CBC.csv", header=TRUE)
+summer_temp <- read.csv("../Results/Climate_results/summer_temp_synchrony_CBC.csv", header=TRUE)
+autumn_temp <- read.csv("../Results/Climate_results/autumn_temp_synchrony_CBC.csv", header=TRUE)
 
 winter_temp_plot <- ggplot(winter_temp, aes(x = parameter, y = rescaled_sync)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
@@ -709,7 +709,7 @@ library(ggpubr)
 temp_plots <- ggarrange(winter_temp_plot, spring_temp_plot, summer_temp_plot, autumn_temp_plot,
                         hjust = 0, ncol = 2, nrow = 2,labels = c("(a)", "(b)", "(c)", "(d)"))
 temp_plots
-ggsave("../Graphs/Climate/seasonal_temperature_synchrony_CBC3.png", plot = temp_plots, width=12, height=10)
+ggsave("../Graphs/Climate/seasonal_temperature_synchrony_CBC.png", plot = temp_plots, width=12, height=10)
 
 ##############################################################################################################
 ######################################## SIGNIFICANCE TESTING ################################################
@@ -720,8 +720,8 @@ library(lme4)
 library(lmerTest)
 
 ## read in data
-final_pair_data_rain <- read.csv("../Data/MetOffice_data/final_pair_data_mean_rainfall_CBC3.csv", header=TRUE)
-final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp_CBC3.csv", header=TRUE)  
+final_pair_data_rain <- read.csv("../Data/MetOffice_data/final_pair_data_mean_rainfall_CBC.csv", header=TRUE)
+final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp_CBC.csv", header=TRUE)  
 
 summ_data_temp <- final_pair_data_temp %>% 
   group_by(mid.year,season) %>% 
@@ -772,7 +772,7 @@ for (i in season){
 }
 ## spring (positive), autumn (positive) and winter (negative) significant 
 ## save table
-write.csv(results_table_cbc, file="../Results/Climate_results/model_comp_results_temp_CBC3.csv", row.names=FALSE)
+write.csv(results_table_cbc, file="../Results/Climate_results/temp_85_96_CBC.csv", row.names=FALSE)
 
 
 ######## RAINFALL SIGNIFICANCE TESTING
@@ -804,7 +804,7 @@ for (i in season){
 }
 ## all positive significant
 ## save table
-write.csv(results_table_cbc2, file="../Results/Climate_results/model_comp_results_rainfall_CBC3.csv", row.names=FALSE)
+write.csv(results_table_cbc2, file="../Results/Climate_results/rain_85_96_CBC.csv", row.names=FALSE)
 
 site1 <- unique(final_pair_data_temp[,1, drop=FALSE])
 site2 <- unique(final_pair_data_temp[,2, drop=FALSE])

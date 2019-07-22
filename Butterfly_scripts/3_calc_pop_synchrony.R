@@ -13,7 +13,7 @@ rm(list=ls()) # clear R
 library(plyr)
 
 ### add data
-final_data <- read.csv("../Data/Butterfly_sync_data/final_data_all_spp_no_zeros2.csv", header = TRUE) # add growth rate data
+final_data <- read.csv("../Data/Butterfly_sync_data/final_data_all_spp.csv", header = TRUE) # add growth rate data
 b_data <- read.csv("../Data/Butterfly_sync_data/b_data.csv", header = TRUE) # add butterfly count data
 site_data <- read.csv("../Data/UKBMS_data/pair_attr_mean_northing_dist_sim.csv", header = TRUE) # site data
 
@@ -98,7 +98,7 @@ for (i in year.list){ # loop through years
 
     # unique(pair.list$site1)[!unique(pair.list$site1)%in%unique(site_data$site_a)]   # how many sites are missing attribute data
 
-    ## remove site pair comparisons more than 100km apart
+    ## remove site pair comparisons more than 100km apart (distance is in meters for UKBMS)
     site_data_pair <- site_data_pair[site_data_pair$distance <= 100000,]
 
     pair.list<-merge(pair.list,site_data_pair,by.x=c("site1", "site2"),by.y=c("site1", "site2"))[,1:2]
@@ -192,52 +192,10 @@ final_summ_stats$spp <- as.factor(final_summ_stats$spp)
 final_pair_data_summ <- count(final_summ_stats, "spp") ## nrow of each species 
 ## only include species with complete time series (i.e. nrow=28)
 final_pair_data_summ <- final_pair_data_summ[final_pair_data_summ$freq>=28,] ## 35 species (2 species (34 and 14) removed)
-## merge back into final_pair_data (not really needed as all 37 species have complete time series)
+## merge back into final_pair_data (not really needed as all 35 species have complete time series)
 final_pair_data <- merge(final_pair_data, final_pair_data_summ, by="spp", all=FALSE)
 length(unique(final_pair_data$spp)) ## 35 species
 ## 3 more species get removed in script 4
 
-write.csv(final_pair_data, file="../Data/Butterfly_sync_data/final_pair_data_all_spp_no_zeros2.csv", row.names=FALSE) ## save final pair data for all 37 species
-
-final_pair <- read.csv("../Data/Butterfly_sync_data/final_pair_data_all_spp_no_zeros2.csv", header=TRUE) 
-final_pair_meadow<-final_pair[(final_pair$spp==75),]
-write.csv(final_pair_meadow, file="../Data/Butterfly_sync_data/final_pair_data_meadow.csv", row.names=FALSE) 
-
-
-write.csv(final_summ_stats, file="../Data/Butterfly_sync_data/final_summ_stats_all_spp_no_zeros2.csv", row.names=FALSE) ## save final summ stats for all 37 species
-
-# ###########################
-# ## abundance calculation ##
-# ###########################
-# 
-# abundance.results <- NULL
-# 
-# for (g in good.species.list){ # loop for each species #
-#   
-#   species.tab<-b_data[b_data$SPECIES==g,] 
-#   head(species.tab)
-#   print(paste("species",g))
-#   
-#   # create a table to assess how much data in each year for that species
-#   # then select only years that fulfill a minumum data criteria
-#   # allocate those years to 'year.list'     
-#   
-#   year.list <-1980:2007   # temp until above steps are complete
-#   
-#   for (i in year.list){
-#     
-#     start.year<-i
-#     mid.year<-i+4.5
-#     print(paste("mid.year=",mid.year))
-#     end.year<-i+9
-#     species.10.yr.data<-species.tab[species.tab$YEAR>=start.year&species.tab$YEAR<=end.year,]
-#     
-#     species<-g
-#     abundance.index <- mean(species.10.yr.data$SINDEX)
-#     results.temp<-data.frame(start.year,mid.year,end.year,abundance.index,species)
-#     abundance.results<-rbind(abundance.results,results.temp)
-#     
-#   }
-# }
-# 
-# write.csv(abundance.results, file = "../../Data/Butterfly_sync_data/abundance_data.csv", row.names = FALSE)
+write.csv(final_pair_data, file="../Data/Butterfly_sync_data/final_pair_data_all_spp.csv", row.names=FALSE) ## save final pair data for all 35 species
+write.csv(final_summ_stats, file="../Data/Butterfly_sync_data/final_summ_stats_all_spp.csv", row.names=FALSE) ## save final summ stats for all 35 species

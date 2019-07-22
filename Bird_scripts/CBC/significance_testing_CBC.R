@@ -18,7 +18,7 @@ options(scipen=999)
 
 
 ## load data
-pair_attr <- read.csv("../Data/Bird_sync_data/pair_attr_CBC_no_zeros2_correct.csv", header=TRUE)
+pair_attr <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE)
 
 ### just want to compare 1985 with 1996 
 ## to see if there has been an increase/decrease/no change in connectivity
@@ -45,36 +45,6 @@ pair_attr_comp$mid.year <- as.factor(pair_attr_comp$mid.year)
 pair_attr_comp$pair.id <- as.character(pair_attr_comp$pair.id)
 pair_attr_comp$spp <- as.factor(pair_attr_comp$spp)
 pair_attr_comp$hab_sim <- as.factor(pair_attr_comp$hab_sim)
-
-##############################
-######## run models ##########
-############################## 
-
-# ## likelihood ratio test to test if year has a significant OVERALL effect ##
-# 
-# overall_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_comp)
-# overall_model_null <- lmer(lag0 ~ mean_northing + distance + hab_sim + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_comp)
-# ## model comparison
-# model_comp <- anova(overall_model_null, overall_model, test="Chisq")
-# ## year has a significant effect on year (p=0.01)
-# results_overall_all_spp <- data.frame(summary(overall_model)$coefficients[,1:5]) ## not working
-# names(results_overall_all_spp) <- c("Estimate", "SD", "df", "t","p_value")
-# results_overall_all_spp$parameter <- paste(row.names(results_overall_all_spp))
-# rownames(results_overall_all_spp) <- 1:nrow(results_overall_all_spp)
-# 
-# ## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-# results_table5 <- NULL
-# results_table1 <- results_overall_all_spp[grep("mean_northing", results_overall_all_spp$parameter),]
-# results_table2 <- results_overall_all_spp[grep("distance", results_overall_all_spp$parameter),]
-# results_table3 <- results_overall_all_spp[grep("hab_sim", results_overall_all_spp$parameter),]
-# results_table4 <- results_overall_all_spp[grep("(Intercept)", results_overall_all_spp$parameter),]
-# results_table5 <- rbind(results_table5, results_table4, results_table1, results_table2, results_table3)
-# results_overall_all_spp <- results_overall_all_spp[!results_overall_all_spp$parameter%in%results_table5$parameter,]
-# 
-# ## create year to the comparison (years 1985 and 1996)
-# results_overall_all_spp$year <- "1985/1996"
-# results_overall_all_spp$trend <- "no change"
-# #### connectivity has not changed between 1985 and 1996
 
 ############################################
 #### model comparison for each species ####
@@ -115,19 +85,17 @@ for (i in spp.list){
 ## this means that the pair.id random effect doesn't explain any variance
 ## so can fit lm model instead (without pair.id)
 ## but all results are the same with lmer or lm
+## continue with lmer models
 
 ## 3 species skipped (377, 431 and 467) 23 species total
 
 names(results_table) <- c("Estimate", "SD", "df", "t","p_value", "species")
 results_table$parameter <- paste(row.names(results_table))
 rownames(results_table) <- 1:nrow(results_table)
-
 ## take out 3 columns for each species: mean northing, distance and renk_hab_sim
 results_table <- results_table[grep("mid.year", results_table$parameter),]
-
 ## make final table
 results_final <- results_table[,c(1,6)] ## just need estimate and species code for now (change added in after permutation)
-
 ##### modify F result table
 colnames(F_result_final)[2] <- "j"
 F_result_final$i <- 0 ## make i column with zeros 
@@ -137,8 +105,8 @@ rownames(F_result_final) <- 1:nrow(F_result_final) ## change row names to number
 F_result_final <- F_result_final[grep("mid.year", F_result_final$parameter),]
 
 ## save true model results
-write.csv(F_result_final, file = "../Results/Model_outputs/CBC/true_F_values_spp_correct.csv", row.names=FALSE)
-F_result_final <- read.csv("../Results/Model_outputs/CBC/true_F_values_spp_correct.csv", header=TRUE)
+write.csv(F_result_final, file = "../Results/Model_outputs/CBC/true_F_values_spp.csv", row.names=FALSE)
+F_result_final <- read.csv("../Results/Model_outputs/CBC/true_F_values_spp.csv", header=TRUE)
 
 ## permutation tests for each species
 
@@ -198,9 +166,9 @@ F_value <- with(final_results_table, final_results_table$F.value[final_results_t
 hist(final_results_table$F.value) + abline(v=F_value, col="red") ## plot distribution of F values with vertical line (true F value)
 
 ## save file
-write.csv(final_results_table, file = "../Results/Model_outputs/CBC/perm_F_values_spp_correct.csv", row.names=FALSE)
+write.csv(final_results_table, file = "../Results/Model_outputs/CBC/perm_F_values_spp.csv", row.names=FALSE)
 ## read in file
-perm_F_values_spp <- read.csv("../Results/Model_outputs/CBC/perm_F_values_spp_correct.csv", header=TRUE) 
+perm_F_values_spp <- read.csv("../Results/Model_outputs/CBC/perm_F_values_spp.csv", header=TRUE) 
 
 ## calculate p value for each species
 ## Calculate p value
@@ -221,8 +189,8 @@ for(j in spp_list){
   p_values_final <- rbind(p_values_final, p_values_temp)
 }
 ## save file
-write.csv(p_values_final, file = "../Results/Model_outputs/CBC/perm_p_values_spp_correct.csv", row.names=FALSE)
-p_values_final <- read.csv("../Results/Model_outputs/CBC/perm_p_values_spp_correct.csv", header=TRUE)
+write.csv(p_values_final, file = "../Results/Model_outputs/CBC/perm_p_values_spp.csv", row.names=FALSE)
+p_values_final <- read.csv("../Results/Model_outputs/CBC/perm_p_values_spp.csv", header=TRUE)
 
 ## merge permutation p values with main model output
 final_results_cbc <- merge(results_final, p_values_final, by="species")
@@ -234,10 +202,10 @@ nrow(final_results_cbc[final_results_cbc$change=="No change",]) ## 17 species un
 nrow(final_results_cbc[final_results_cbc$change=="Decrease",]) ## 2 species decreasing
 nrow(final_results_cbc[final_results_cbc$change=="Increase",]) ## 4 species increasing
 
-write.csv(final_results_cbc, file="../Results/Bird_results/cbc_spp_trends_correct.csv", row.names=FALSE)
+write.csv(final_results_cbc, file="../Results/Bird_results/cbc_spp_trends.csv", row.names=FALSE)
 
 final_results_cbc2 <- data.frame(change=unique(final_results_cbc$change), no_species=c(2,17,4), total_species=23)
 final_results_cbc2$percentage <- (final_results_cbc2$no_species / final_results_cbc2$total_species)*100
 
 ## save file
-write.csv(final_results_cbc2, file="../Results/Bird_results/cbc_overall_trends_correct.csv", row.names=FALSE)
+write.csv(final_results_cbc2, file="../Results/Bird_results/cbc_percentage_trends.csv", row.names=FALSE)

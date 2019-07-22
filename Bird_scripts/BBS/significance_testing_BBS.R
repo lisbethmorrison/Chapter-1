@@ -45,36 +45,6 @@ pair_attr_comp$mid.year <- as.factor(pair_attr_comp$mid.year)
 pair_attr_comp$pair.id <- as.character(pair_attr_comp$pair.id)
 pair_attr_comp$spp <- as.factor(pair_attr_comp$spp)
 
-##############################
-######## run models ##########
-############################## 
-
-## likelihood ratio test to test if year has a significant OVERALL effect ##
-
-overall_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_comp)
-overall_model_null <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + (1|pair.id) + (1|spp), REML=FALSE, data = pair_attr_comp)
-## model comparison
-model_comp <- anova(overall_model_null, overall_model, test="Chisq")
-## year has a significant effect on year (p<0.01)
-results_overall_all_spp <- data.frame(summary(overall_model)$coefficients[,1:5])
-names(results_overall_all_spp) <- c("Estimate", "SD", "df", "t","p_value")
-results_overall_all_spp$parameter <- paste(row.names(results_overall_all_spp))
-rownames(results_overall_all_spp) <- 1:nrow(results_overall_all_spp)
-
-## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-results_table5 <- NULL
-results_table1 <- results_overall_all_spp[grep("mean_northing", results_overall_all_spp$parameter),]
-results_table2 <- results_overall_all_spp[grep("distance", results_overall_all_spp$parameter),]
-results_table3 <- results_overall_all_spp[grep("hab_sim", results_overall_all_spp$parameter),]
-results_table4 <- results_overall_all_spp[grep("(Intercept)", results_overall_all_spp$parameter),]
-results_table5 <- rbind(results_table5, results_table4, results_table1, results_table2, results_table3)
-results_overall_all_spp <- results_overall_all_spp[!results_overall_all_spp$parameter%in%results_table5$parameter,]
-
-## create year to the comparison (years 1985 and 1996)
-results_overall_all_spp$year <- "1999/2012"
-results_overall_all_spp$trend <- "significant decrease"
-#### connectivity is significantly declining between 1999 and 2012 ==> but only a small decline
-
 ############################################
 #### model comparison for each species ####
 ############################################
@@ -109,16 +79,14 @@ for (i in spp.list){
   } ## species 472 does work ==> 23 species in total now 
 }
 
+## save results
 names(results_table) <- c("Estimate", "SD", "df", "t","p_value", "species")
 results_table$parameter <- paste(row.names(results_table))
 rownames(results_table) <- 1:nrow(results_table)
-
 ## take out 3 columns for each species: mean northing, distance and renk_hab_sim
 results_table <- results_table[grep("mid.year", results_table$parameter),]
-
 ## change parameter names to year of interest 
 results_table$parameter <- 1999/2012
-
 ## make final table
 results_final <- results_table[,c(1,6)]
 
@@ -135,7 +103,6 @@ write.csv(F_result_final, file = "../Results/Model_outputs/BBS/true_F_values_spp
 F_result_final <- read.csv("../Results/Model_outputs/BBS/true_F_values_spp.csv", header=TRUE)
 
 ## permutation tests for each species
-
 ## run 999 permutation tests
 n_sims <- 999
 
@@ -234,58 +201,4 @@ final_results_bbs2 <- data.frame(change=unique(final_results_bbs$change), no_spe
 final_results_bbs2$percentage <- (final_results_bbs2$no_species / final_results_bbs2$total_species)*100
 
 ## save file
-write.csv(final_results_bbs2, file="../Results/Bird_results/bbs_overall_trends.csv", row.names=FALSE)
-
-
-######## input the CBC and UKBMS model comparison percentages to create barchart (Figure 2 for paper)
-
-model_comp_UKBMS <- read.csv("../Results/Butterfly_results/model_comp_percentages_no_zeros2.csv", header=TRUE)
-model_comp_CBC <- read.csv("../Results/Bird_results/model_comp_percentages_CBC_no_zeros2.csv", header=TRUE)
-model_comp_BBS <- read.csv("../Results/Bird_results/model_comp_percentages_BBS.csv", header=TRUE)
-
-## add in scheme column
-model_comp_CBC$comparison <- "1985-1996"
-model_comp_BBS$comparison <- "1999-2012"
-## remove overall comparison for UKBMS
-model_comp_UKBMS <- model_comp_UKBMS[!model_comp_UKBMS$comparison == "1985-2012", ]
-
-model_comp_birds <- rbind(model_comp_BBS, model_comp_CBC)
-model_comp_birds$comparison <- factor(model_comp_birds$comparison, levels=c("1985-1996", "1999-2012"))
-model_comp_birds$change <- factor(model_comp_birds$change, levels=c("Increase", "No change", "Decrease"))
-model_comp_UKBMS$change <- factor(model_comp_UKBMS$change, levels=c("Increase", "No change", "Decrease"))
-
-## birds graph
-png("../Graphs/Model_comps/Model_comp_results_CBC_BBS.png", height = 100, width = 120, units = "mm", res = 300)
-birds <- ggplot(data=model_comp_birds, aes(x=comparison, y=percentage, fill=change)) +
-  geom_bar(stat="identity", width=0.7) +
-  labs(y="Percentage of species", x="", fill="") +
-  scale_fill_manual(values = c("#339900", "#999999", "#990000")) +
-  theme_bw() +
-  theme(axis.text.x=element_text(colour = "black")) +
-  theme(axis.text.y=element_text(colour = "black")) +
-  scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
-  theme(text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
-birds
-dev.off()
-
-## butterfly graph
-butterfly <- ggplot(data=model_comp_UKBMS, aes(x=comparison, y=percentage, fill=change)) +
-  geom_bar(stat="identity", width=0.7) +
-  labs(y="Percentage of species", x="", fill="") +
-  scale_fill_manual(values = c("#339900", "#999999", "#990000")) +
-  theme_bw() +
-  theme(axis.text.x=element_text(colour = "black")) +
-  theme(axis.text.y=element_text(colour = "black")) +
-  scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
-  theme(text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
-butterfly
-
-### put both graphs together and save
-library(ggpubr)
-png("../Graphs/FINAL/Figure2.png", height = 100, width = 110, units = "mm", res = 300)
-ggarrange(butterfly, birds, 
-          labels = c("(a)", "(b)"), common.legend = TRUE, legend = "right",
-          font.label = list(size = 10, color ="black"), ncol = 2, nrow = 1)
-dev.off()
+write.csv(final_results_bbs2, file="../Results/Bird_results/bbs_percentage_trends.csv", row.names=FALSE)
