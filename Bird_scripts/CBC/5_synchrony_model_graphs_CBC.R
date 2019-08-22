@@ -18,9 +18,10 @@ library(gridExtra)
 results_final_all_spp <- read.csv("../Results/Bird_results/results_final_all_spp_CBC.csv", header=TRUE)
 # results_final_sp <- read.csv("../Results/Bird_results/results_final_sp_CBC.csv", header=TRUE)
 # results_final_spec <- read.csv("../Results/Bird_results/results_final_spec_CBC.csv", header=TRUE) 
+results_final_all_spp_climate <- read.csv("../Results/Bird_results/results_final_all_spp_climate_CBC.csv", header=TRUE)
 
 ## FCI plot with error bars and sacled to 100
-FCI_plot_scaled_error <- ggplot(results_final_all_spp, aes(x = parameter, y = rescaled_FCI)) +
+FCI_plot_scaled_error <- ggplot(results_final_all_spp_climate, aes(x = parameter, y = rescaled_FCI)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
   geom_errorbar(aes(ymin = rescaled_FCI - rescaled_sd, ymax = rescaled_FCI + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
@@ -36,7 +37,7 @@ FCI_plot_scaled_error <- ggplot(results_final_all_spp, aes(x = parameter, y = re
         axis.text.x = element_text(color="black"), axis.text.y = element_text(color="black"))
 FCI_plot_scaled_error
 
-ggsave("../Graphs/Connectivity_plots/FCI_all_spp_CBC_scaled_error.png", plot = FCI_plot_scaled_error, width=5, height=5)
+ggsave("../Graphs/Connectivity_plots/FCI_all_spp_CBC_scaled_error_climate.png", plot = FCI_plot_scaled_error, width=5, height=5)
 
 ##### method to obtain smoothed values with 95% confidence intervals for indicator
 loess_model <- loess(rescaled_FCI~parameter, data=results_final_all_spp)

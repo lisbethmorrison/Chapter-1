@@ -64,11 +64,136 @@ length(unique(pair_attr$spp)) ## 26 species
 
 write.csv(pair_attr, file = "../Data/Bird_sync_data/pair_attr_CBC.csv", row.names = FALSE) # save pair_attr file (31 spp)
 
+##################################################
+## CREATE PAIR ATTRIBUTE DATA WITH CLIMATE DATA ##
+##################################################
+
+rm(list=ls()) # clear R
+library(lme4)
+library(lmerTest)
+library(data.table)
+
+## read in data
+final_pair_data_rain <- read.csv("../Data/MetOffice_data/final_pair_data_mean_rainfall_CBC.csv", header=TRUE)
+final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp_CBC.csv", header=TRUE)  
+
+## change dataframe to wide format
+rain_wide <- reshape(final_pair_data_rain, idvar=c("site1", "site2", "mid.year"), timevar="season", v.names="lag0", direction="wide", sep="_")
+rain_wide <- rain_wide[,-c(4:5)] ## remove start and end year columns
+names(rain_wide)[4:7] <- c("winter_rain","autumn_rain", "spring_rain", "summer_rain") ## rename sync columns (a, d, b, c)
+
+temp_wide <- reshape(final_pair_data_temp, idvar=c("site1", "site2", "mid.year"), timevar="season", v.names="lag0", direction="wide", sep="_")
+temp_wide <- temp_wide[,-c(4:5)] ## remove start and end year columns
+names(temp_wide)[4:7] <- c("spring_temp","autumn_temp", "winter_temp", "summer_temp") ## rename sync columns (b,d,a,c)
+
+## put into one dataframe
+climate_wide <- merge(rain_wide, temp_wide, by=c("site1", "site2", "mid.year"))
+## check correlation between climate synchrony values
+climate_cor <- cor(climate_wide[c(4:11)])
+climate_cor ## highest correlation is 0.6 - keep all variables
+
+
+## save climate_wide 
+write.csv(climate_wide, file = "../Data/MetOffice_data/climate_synchrony_final_CBC.csv", row.names=FALSE)
+
+###################################################################################
+### run model with pop sync and all 8 climate varaibles to pick important ones ###
+###################################################################################
+
+climate_wide <- read.csv("../Data/MetOffice_data/climate_synchrony_final_CBC.csv", header=TRUE) ## climate synchrony data
+pair_attr <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE) ## read in pop sync data for butterflies
+site_data <- read.csv("../Data/MetOffice_data/site_list_5km_CBC.csv", header=TRUE) ## read in site list with 1km and 5km easting and northing
+## 106 CBC sites
+## 96 5km squares with climate data
+
+pair_attr$site1 <- as.factor(pair_attr$site1)
+pair_attr$site2 <- as.factor(pair_attr$site2)
+climate_wide$site1 <- as.factor(climate_wide$site1)
+climate_wide$site2 <- as.factor(climate_wide$site2)
+
+## merge climate wide and pair_attr then add in 5k info later
+pair_attr1 <- merge(pair_attr, climate_wide, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"), all=TRUE)
+climate_wide_rev <- climate_wide
+names(climate_wide_rev)[1:2] <- c("site_b", "site_a")
+pair_attr2 <- merge(pair_attr, climate_wide_rev, by.x=c("site1", "site2", "mid.year"), by.y=c("site_a", "site_b", "mid.year"), all=TRUE)
+
+pair_attr1$site1 <- as.factor(pair_attr1$site1)
+pair_attr1$site2 <- as.factor(pair_attr1$site2)
+pair_attr2$site1 <- as.factor(pair_attr2$site1)
+pair_attr2$site2 <- as.factor(pair_attr2$site2)
+
+## remove NAs from climate data (sites which don't have climate info - 15 sites)
+pair_attr1 <- pair_attr1 %>% 
+  filter_at(vars(winter_rain, autumn_rain, spring_rain, summer_rain, winter_temp, autumn_temp, spring_temp, summer_temp), any_vars(!is.na(.)))
+pair_attr2 <- pair_attr2 %>% 
+  filter_at(vars(winter_rain, autumn_rain, spring_rain, summer_rain, winter_temp, autumn_temp, spring_temp, summer_temp), any_vars(!is.na(.)))
+
+## bind the two dataframes together and remove NAs from lag0
+pair_attr_climate <- rbind(pair_attr1, pair_attr2)
+pair_attr_climate <- pair_attr_climate[!is.na(pair_attr_climate$lag0),]
+
+## check that unique sites == 106
+site1 <- unique(pair_attr_climate[,1, drop=FALSE])
+site2 <- unique(pair_attr_climate[,2, drop=FALSE])
+colnames(site1)[1] <- "site"
+colnames(site2)[1] <- "site"
+site_list2 <- rbind(site1, site2)
+site_list2 <- unique(site_list2) ## 106 sites
+
+## create unique site_5k number using 5k easting and northing
+DT = data.table(site_data)
+site_data <- DT[, site_5k := as.numeric(factor(paste(east.5k, north.5k), levels = unique(paste(east.5k, north.5k))))]
+site_data <- as.data.frame(site_data)
+## remove original site number
+site_data2 <- site_data[,-1]
+
+## add in 5km easting and northing data
+pair_attr_test1 <- merge(site_data2, pair_attr_climate, by.x=c("east", "north"), by.y=c("site_a_EAST", "site_a_NORTH"))
+## rename columns
+names(pair_attr_test1)[1:4] <- c("site_a_EAST", "site_a_NORTH", "site_5k_a_EAST", "site_5k_a_NORTH")
+names(pair_attr_test1)[5] <- "site_5k_a"
+pair_attr_test1 <- merge(site_data2, pair_attr_test1, by.x=c("east", "north"), by.y=c("site_b_EAST", "site_b_NORTH"))
+names(pair_attr_test1)[1:5] <- c("site_b_EAST", "site_b_NORTH", "site_5k_b_EAST", "site_5k_b_NORTH", "site_5k_b")
+## remove duplicated rows (now the same length as pair_attr_climate)
+pair_attr_test2 <- unique(pair_attr_test1)
+## reorder columns
+pair_attr_climate <- pair_attr_test2[,c(11,12,6,7,1,2,10,5,8,9,3,4,13:37)]
+## create new 5km pairID column
+pair_attr_climate$pair.id_5k <- paste("ID", pair_attr_climate$site_5k_a, pair_attr_climate$site_5k_b, sep = "_")
+length(unique(pair_attr_climate$pair.id_5k)) ## 1599
+length(unique(pair_attr_climate$pair.id)) ## 1923
+
+## save pop + climate sync file
+write.csv(pair_attr_climate, file = "../Data/Bird_sync_data/pop_climate_synchrony_CBC.csv", row.names=FALSE)
+
+###### run model with pop sync as response and climate variables as explanatory
+pair_attr_climate$spp <- as.factor(pair_attr_climate$spp)
+pair_attr_climate$mid.year <- as.factor(pair_attr_climate$mid.year)
+pair_attr_climate$pair.id <- as.character(pair_attr_climate$pair.id)
+pair_attr_climate$pair.id_5k <- as.character(pair_attr_climate$pair.id_5k)
+
+pop_climate <- lmer(lag0 ~ mid.year + winter_rain + autumn_rain + spring_rain + summer_rain + winter_temp + autumn_temp + 
+                      spring_temp + summer_temp + (1|spp) + (1|pair.id) + (1|pair.id_5k), data=pair_attr_climate)
+summary(pop_climate)
+anova(pop_climate)
+## summer temp is significant (positive) (p=0.023) 
+## save results
+pop_climate_results <- data.frame(summary(pop_climate)$coefficients[,1:5])
+pop_climate_results$parameter <- paste(row.names(pop_climate_results))
+rownames(pop_climate_results) <- 1:nrow(pop_climate_results)
+## remove mid.year rows
+pop_climate_results <- pop_climate_results[-c(1:12),]
+## save results
+write.csv(pop_climate_results, file = "../Results/Model_outputs/CBC/pop_climate_results_CBC.csv", row.names=FALSE)
+## only summer temperature needs to be added to future analyses
+
 ####################################################################################################
 ################################## RUN SYNCHRONY MODELS ############################################
 ####################################################################################################
 
 pair_attr <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE) ## read in data
+## and read in pop and climate synchrony
+pair_attr_climate <- read.csv("../Data/Bird_sync_data/pop_climate_synchrony_CBC.csv", header=TRUE) 
 
 ## check all variables are correct format
 pair_attr$pair.id <- as.character(pair_attr$pair.id)
@@ -76,6 +201,13 @@ pair_attr$spp <- as.factor(pair_attr$spp)
 pair_attr$end.year <- as.factor(pair_attr$end.year)
 pair_attr$mid.year <- as.factor(pair_attr$mid.year)
 str(pair_attr)
+
+pair_attr_climate$spp <- as.factor(pair_attr_climate$spp)
+pair_attr_climate$start.year <- as.factor(pair_attr_climate$start.year)
+pair_attr_climate$end.year <- as.factor(pair_attr_climate$end.year)
+pair_attr_climate$mid.year <- as.factor(pair_attr_climate$mid.year)
+pair_attr_climate$pair.id <- as.character(pair_attr_climate$pair.id)
+pair_attr_climate$pair.id_5k <- as.character(pair_attr_climate$pair.id_5k)
 
 ###############################################
 ### run the synchrony model for all species ###
@@ -109,13 +241,13 @@ fixed_results <- fixed_results[-c(1,5:15),]
 ## save results
 write.csv(fixed_results, file = "../Results/Model_outputs/fixed_effect_results_cbc.csv", row.names=FALSE)
 
-##  model to produce aggregate synchrony values for all 26 species - no intercept
-all_spp_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp)-1, data = pair_attr)
+##  model to produce aggregate synchrony values for all 26 species - no intercept (with climate data - summer temp is significant)
+all_spp_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + summer_temp + (1|pair.id) + (1|pair.id_5k) + (1|spp)-1, data = pair_attr_climate)
 summary(all_spp_model) 
 anova(all_spp_model)
 
 ### check model fit ###
-plot(all_spp_model)
+hist(residuals(all_spp_model))
 qqnorm(resid(all_spp_model))
 qqline(resid(all_spp_model)) # not too bad
 
@@ -139,7 +271,7 @@ results_table_all_spp$rescaled_sd <- results_table_all_spp$SD*(100/results_table
 results_table_all_spp$rescaled_ci <- results_table_all_spp$rescaled_sd*1.96
 
 ## save final results table ##
-write.csv(results_table_all_spp, file = "../Results/Bird_results/results_final_all_spp_CBC.csv", row.names=FALSE)
+write.csv(results_table_all_spp, file = "../Results/Bird_results/results_final_all_spp_climate_CBC.csv", row.names=FALSE)
 
 
 ##################################################
@@ -147,9 +279,9 @@ write.csv(results_table_all_spp, file = "../Results/Bird_results/results_final_a
 #################################################
 
 results_table_sp<-NULL
-for (i in unique(pair_attr$spp)){
+for (i in unique(pair_attr_climate$spp)){
   
-  species_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id)-1, data = pair_attr[pair_attr$spp==i,])
+  species_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + summer_temp + mid.year + (1|pair.id)-1, data = pair_attr_climate[pair_attr_climate$spp==i,])
   print(i)
   summary(species_model)
   anova(species_model)
@@ -159,6 +291,7 @@ for (i in unique(pair_attr$spp)){
   results_table_sp<-rbind(results_table_sp,results_table_temp)
 }
 
+## lots of errors when use pair.id_5k random effect - so this is taken out (permutation tests run on this anyway so shouldn't be a problem)
 ## change names and add in parameter column ##
 names(results_table_sp) <- c("FCI", "SD", "t","sp")
 results_table_sp$parameter <- paste(row.names(results_table_sp))
@@ -186,125 +319,54 @@ species_names <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv",
 results_final_sp <- merge(results_final_sp, species_names, by.x="sp", by.y="species_code")
 length(unique(results_final_sp$sp)) # 26 species
 ## save species final results table ##
-write.csv(results_final_sp, file = "../Results/Bird_results/results_final_sp_CBC.csv", row.names=FALSE)
+write.csv(results_final_sp, file = "../Results/Bird_results/results_final_sp_climate_CBC.csv", row.names=FALSE)
 
-#########################################################
-### run the synchrony model for generalist/specialist ###
-#########################################################
-
-## merge with generalist/specialist data ##
-str(pair_attr)
-pair_attr$specialism <- as.factor(pair_attr$specialism)
-
-results_table_spec<-NULL
-for (j in unique(pair_attr$specialism)){
-  
-  specialist_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp)-1, data = pair_attr[pair_attr$specialism==j,])
-  summary(specialist_model)
-  anova(specialist_model)
-  
-  ### save and plot the results ###
-  results_table_spec_temp <- data.frame(summary(specialist_model)$coefficients[,1:3],j)
-  results_table_spec<-rbind(results_table_spec,results_table_spec_temp)
-}
-
-## change names and add in parameter column ##
-names(results_table_spec) <- c("FCI", "SD", "t","Strategy")
-results_table_spec$parameter <- paste(row.names(results_table_spec))
-rownames(results_table_spec) <- 1:nrow(results_table_spec)
-
-## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-results_table_spec <- results_table_spec[grep("mid.year", results_table_spec$parameter),]
-
-## change parameter names to year
-results_table_spec$parameter <- rep(1985:1996)
-
-## rescale FCI, SD and CI
-results_final_spec <- NULL
-for (k in unique(results_table_spec$Strategy)){
-  
-  results_temp_spec <- results_table_spec[results_table_spec$Strategy==k,]  
-  
-  results_temp_spec$rescaled_FCI <- results_temp_spec$FCI*(100/results_temp_spec$FCI[1])
-  results_temp_spec$rescaled_sd <- results_temp_spec$SD*(100/results_temp_spec$FCI[1])
-  results_temp_spec$rescaled_ci <- results_temp_spec$rescaled_sd*1.96
-  
-  results_final_spec <- rbind(results_final_spec, results_temp_spec)
-  
-}
-
-## save species specialism final results
-write.csv(results_final_spec, file = "../Results/Bird_results/results_final_spec_CBC.csv", row.names=FALSE)
-
-
-#######################################################################################################################
-########################################### CLIMATE AND SYNCHRONY ANALYSIS ############################################ 
-#######################################################################################################################
-
-
-########## READ IN PAIR ATTRIBUTE FILE ################
-pair_attr <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE)
-## climate data
-final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp_CBC.csv", header=TRUE)  
-
-## merge in climate data
-## just summer and autumn temperature (this is the only significant change in climate data)
-final_pair_data_sum_temp <- final_pair_data_temp[final_pair_data_temp$season=="c",] ## summer
-final_pair_data_aut_temp <- final_pair_data_temp[final_pair_data_temp$season=="d",] ## autumn
-names(final_pair_data_sum_temp)[3] <- "lag0_summer"
-names(final_pair_data_aut_temp)[3] <- "lag0_autumn"
-
-## remove some columns (season, start and end year)
-final_pair_data_sum_temp <- subset(final_pair_data_sum_temp, select = -c(5:7))
-final_pair_data_aut_temp <- subset(final_pair_data_aut_temp, select = -c(5:7))
-
-### merge in summer temp
-pair_attr_1 <- merge(pair_attr, final_pair_data_sum_temp, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))  # merge the site comparisons in one direction - site a to a, b to b
-summer_reverse <- final_pair_data_sum_temp
-names(summer_reverse)[1:2] <- c("site2", "site1")
-pair_attr_2 <- merge(pair_attr, summer_reverse, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))	# merge the site comparisons in the same direction using site_data_reverse
-pair_attr <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
-length(unique(pair_attr$spp))## 29 species
-length(unique(pair_attr$site1)) # 109
-length(unique(pair_attr$site2)) # 109 
-## merge in autumn temp
-pair_attr_1 <- merge(pair_attr, final_pair_data_aut_temp, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))  # merge the site comparisons in one direction - site a to a, b to b
-autumn_reverse <- final_pair_data_aut_temp
-names(autumn_reverse)[1:2] <- c("site2", "site1")
-pair_attr_2 <- merge(pair_attr, autumn_reverse, by.x=c("site1", "site2", "mid.year"), by.y=c("site1", "site2", "mid.year"))	# merge the site comparisons in the same direction using site_data_reverse
-pair_attr <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
-length(unique(pair_attr$spp))## 29 species
-length(unique(pair_attr$site1)) # 109
-length(unique(pair_attr$site2)) # 109 
-
-### run model with spring rainfall 
-all_spp_model_temp <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + lag0_summer + lag0_autumn + (1|pair.id) + (1|spp)-1, data = pair_attr)
-summary(all_spp_model_temp) 
-anova(all_spp_model_temp) ## summer and autumn temp are non-significant
-
-pop_temp_model <- data.frame(summary(all_spp_model_temp)$coefficients[,1:3])
-names(pop_temp_model) <- c("FCI", "SD", "t")
-pop_temp_model$parameter <- paste(row.names(pop_temp_model))
-rownames(pop_temp_model) <- 1:nrow(pop_temp_model)
-
-results_tab5 <- NULL
-results_tab1 <- pop_temp_model[grep("mean_northing", pop_temp_model$parameter),]
-results_tab2 <- pop_temp_model[grep("distance", pop_temp_model$parameter),]
-results_tab3 <- pop_temp_model[grep("hab_sim", pop_temp_model$parameter),]
-results_tab4 <- pop_temp_model[grep("lag0_summer", pop_temp_model$parameter),]
-results_tab5 <- pop_temp_model[grep("lag0_autumn", pop_temp_model$parameter),]
-results_tab6 <- rbind(results_tab4, results_tab1, results_tab2, results_tab3, results_tab4, results_tab5)
-pop_temp_model <- pop_temp_model[!pop_temp_model$parameter%in%results_tab6$parameter,]
-
-## change parameter names to year
-pop_temp_model$parameter <- rep(1985:1996)
-
-### rescale estimate, SD and CI ### 
-pop_temp_model$rescaled_FCI <- pop_temp_model$FCI*(100/pop_temp_model$FCI[1])
-pop_temp_model$rescaled_sd <- pop_temp_model$SD*(100/pop_temp_model$FCI[1])
-pop_temp_model$rescaled_ci <- pop_temp_model$rescaled_sd*1.96
-
-## save final results table ##
-# write.csv(pop_temp_model, file = "../Results/Bird_results/results_final_all_spp_temp_CBC.csv", row.names=FALSE)
+# #########################################################
+# ### run the synchrony model for generalist/specialist ###
+# #########################################################
+# 
+# ## merge with generalist/specialist data ##
+# str(pair_attr)
+# pair_attr$specialism <- as.factor(pair_attr$specialism)
+# 
+# results_table_spec<-NULL
+# for (j in unique(pair_attr$specialism)){
+#   
+#   specialist_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp)-1, data = pair_attr[pair_attr$specialism==j,])
+#   summary(specialist_model)
+#   anova(specialist_model)
+#   
+#   ### save and plot the results ###
+#   results_table_spec_temp <- data.frame(summary(specialist_model)$coefficients[,1:3],j)
+#   results_table_spec<-rbind(results_table_spec,results_table_spec_temp)
+# }
+# 
+# ## change names and add in parameter column ##
+# names(results_table_spec) <- c("FCI", "SD", "t","Strategy")
+# results_table_spec$parameter <- paste(row.names(results_table_spec))
+# rownames(results_table_spec) <- 1:nrow(results_table_spec)
+# 
+# ## take out 3 columns for each species: mean northing, distance and renk_hab_sim
+# results_table_spec <- results_table_spec[grep("mid.year", results_table_spec$parameter),]
+# 
+# ## change parameter names to year
+# results_table_spec$parameter <- rep(1985:1996)
+# 
+# ## rescale FCI, SD and CI
+# results_final_spec <- NULL
+# for (k in unique(results_table_spec$Strategy)){
+#   
+#   results_temp_spec <- results_table_spec[results_table_spec$Strategy==k,]  
+#   
+#   results_temp_spec$rescaled_FCI <- results_temp_spec$FCI*(100/results_temp_spec$FCI[1])
+#   results_temp_spec$rescaled_sd <- results_temp_spec$SD*(100/results_temp_spec$FCI[1])
+#   results_temp_spec$rescaled_ci <- results_temp_spec$rescaled_sd*1.96
+#   
+#   results_final_spec <- rbind(results_final_spec, results_temp_spec)
+#   
+# }
+# 
+# ## save species specialism final results
+# write.csv(results_final_spec, file = "../Results/Bird_results/results_final_spec_CBC.csv", row.names=FALSE)
 
 

@@ -20,6 +20,7 @@ library(gridExtra)
 results_final_all_spp <- read.csv("../Results/Butterfly_results/results_final_all_spp.csv", header=TRUE)
 results_final_sp <- read.csv("../Results/Butterfly_results/results_final_sp.csv", header=TRUE)
 results_final_spec <- read.csv("../Results/Butterfly_results/results_final_spec.csv", header=TRUE)
+results_final_climate <- read.csv("../Results/Butterfly_results/results_final_all_spp_climate.csv", header=TRUE)
 
 ## read in specialism data
 spp_data <- read.csv("../Data/UKBMS_data/UKBMS_UKspecieslist.csv", header=TRUE)
@@ -32,7 +33,7 @@ results_final_sp <- merge(results_final_sp, spp_data, by.x="sp", by.y="BMSCODE")
 
 
 ## FCI plot scaled to 100 with smoothed line and SE error bars ##
-FCI_plot_scaled <- ggplot(results_final_all_spp, aes(x = parameter, y = rescaled_FCI)) +
+FCI_plot_scaled <- ggplot(results_final_climate, aes(x = parameter, y = rescaled_FCI)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
   geom_errorbar(aes(ymin = rescaled_FCI - rescaled_sd, ymax = rescaled_FCI + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
@@ -47,7 +48,7 @@ FCI_plot_scaled <- ggplot(results_final_all_spp, aes(x = parameter, y = rescaled
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
         axis.text.x = element_text(color="black"), axis.text.y = element_text(color="black"))
 FCI_plot_scaled
-ggsave("../Graphs/Connectivity_plots/FCI_plot_all_spp_scaled.png", plot = FCI_plot_scaled, width=7, height=5)
+ggsave("../Graphs/Connectivity_plots/FCI_plot_all_spp_scaled_climate.png", plot = FCI_plot_scaled, width=7, height=5)
 
 ############### plot with all 3 temporal synchrony graphs for ms #########################
 results_final_all_spp_BBS <- read.csv("../Results/Bird_results/results_final_all_spp_BBS.csv", header=TRUE)
@@ -178,44 +179,44 @@ FCI_indicator_plot <- FCI_indicator_plot[c(4,5,1,3,2)]
 write.csv(FCI_indicator_plot, file="../Connectivity fiche/Data files/UKBMS/C2i data.csv", row.names=FALSE)
  
 
-#######################################
-## PLOT SOME GRAPHS FOR PRESENTATION ##
-#######################################
-
-#### individual FCI plot for presentation
-FCI_plot_93 <- ggplot(results_final_sp, aes(x = parameter, y = rescaled_FCI)) +
-  stat_smooth(data=subset(results_final_sp, sp=="93"), colour="black", method=loess, se=FALSE) +
-  geom_errorbar(data=subset(results_final_sp, sp=="93"), aes(ymin = rescaled_FCI - rescaled_ci, ymax = rescaled_FCI + rescaled_ci), width=0.2, size = 0.5) +
-  geom_point(data=subset(results_final_sp, sp=="93"), size=2) + 
-  labs(x = "Mid-year of moving window", y = "Functional connectivity index") +
-  scale_y_continuous(breaks=seq(40,250,20)) +
-  scale_x_continuous(breaks=seq(1985,2012,3)) +
-  geom_hline(yintercept = 100, linetype = "dashed") +
-  theme_bw() +
-  theme(text = element_text(size = 12)) +
-  labs(size=3) +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-FCI_plot_93
-## species 23 = speckled wood (wider countryside woodland species)
-
-ggsave("../Graphs/Presentation/Spp93_FCI_plot.png", plot = FCI_plot_93, width=7, height=5)
-
-FCI_plot_98 <- ggplot(results_final_sp, aes(x = parameter, y = rescaled_FCI)) +
-  stat_smooth(data=subset(results_final_sp, sp=="98"), colour="black", method=loess, se=FALSE) +
-  geom_errorbar(data=subset(results_final_sp, sp=="98"), aes(ymin = rescaled_FCI - rescaled_ci, ymax = rescaled_FCI + rescaled_ci), width=0.2, size = 0.5) +
-  geom_point(data=subset(results_final_sp, sp=="98"), size=2) + 
-  labs(x = "Mid-year of moving window", y = "Functional connectivity index") +
-  scale_y_continuous(breaks=seq(40,200,20)) +
-  scale_x_continuous(breaks=seq(1985,2012,3)) +
-  geom_hline(yintercept = 100, linetype = "dashed") +
-  theme_bw() +
-  theme(text = element_text(size = 12)) +
-  labs(size=3) +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-FCI_plot_98
-## species 98 = large white (wider countryside garden and hedgerow species)
-
-ggsave("../Graphs/Presentation/Spp98_FCI_plot.png", plot = FCI_plot_98, width=7, height=5)
+# #######################################
+# ## PLOT SOME GRAPHS FOR PRESENTATION ##
+# #######################################
+# 
+# #### individual FCI plot for presentation
+# FCI_plot_93 <- ggplot(results_final_sp, aes(x = parameter, y = rescaled_FCI)) +
+#   stat_smooth(data=subset(results_final_sp, sp=="93"), colour="black", method=loess, se=FALSE) +
+#   geom_errorbar(data=subset(results_final_sp, sp=="93"), aes(ymin = rescaled_FCI - rescaled_ci, ymax = rescaled_FCI + rescaled_ci), width=0.2, size = 0.5) +
+#   geom_point(data=subset(results_final_sp, sp=="93"), size=2) + 
+#   labs(x = "Mid-year of moving window", y = "Functional connectivity index") +
+#   scale_y_continuous(breaks=seq(40,250,20)) +
+#   scale_x_continuous(breaks=seq(1985,2012,3)) +
+#   geom_hline(yintercept = 100, linetype = "dashed") +
+#   theme_bw() +
+#   theme(text = element_text(size = 12)) +
+#   labs(size=3) +
+#   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+# FCI_plot_93
+# ## species 23 = speckled wood (wider countryside woodland species)
+# 
+# ggsave("../Graphs/Presentation/Spp93_FCI_plot.png", plot = FCI_plot_93, width=7, height=5)
+# 
+# FCI_plot_98 <- ggplot(results_final_sp, aes(x = parameter, y = rescaled_FCI)) +
+#   stat_smooth(data=subset(results_final_sp, sp=="98"), colour="black", method=loess, se=FALSE) +
+#   geom_errorbar(data=subset(results_final_sp, sp=="98"), aes(ymin = rescaled_FCI - rescaled_ci, ymax = rescaled_FCI + rescaled_ci), width=0.2, size = 0.5) +
+#   geom_point(data=subset(results_final_sp, sp=="98"), size=2) + 
+#   labs(x = "Mid-year of moving window", y = "Functional connectivity index") +
+#   scale_y_continuous(breaks=seq(40,200,20)) +
+#   scale_x_continuous(breaks=seq(1985,2012,3)) +
+#   geom_hline(yintercept = 100, linetype = "dashed") +
+#   theme_bw() +
+#   theme(text = element_text(size = 12)) +
+#   labs(size=3) +
+#   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+# FCI_plot_98
+# ## species 98 = large white (wider countryside garden and hedgerow species)
+# 
+# ggsave("../Graphs/Presentation/Spp98_FCI_plot.png", plot = FCI_plot_98, width=7, height=5)
 

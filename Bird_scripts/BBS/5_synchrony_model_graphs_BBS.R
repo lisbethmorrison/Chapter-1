@@ -21,14 +21,15 @@ library(dplyr)
 # results_final_all_spp_BBS_4 <- read.csv("../Results/Bird_results/results_final_all_spp_BBS_4.csv", header=TRUE)
 # results_final_all_spp_BBS_5 <- read.csv("../Results/Bird_results/results_final_all_spp_BBS_5.csv", header=TRUE)
 results_final_all_spp_BBS <- read.csv("../Results/Bird_results/results_final_all_spp_BBS.csv", header=TRUE)
+results_final_all_spp_climate_BBS <- read.csv("../Results/Bird_results/results_final_all_spp_climate_BBS.csv", header=TRUE)
 
 ## FCI plot with error bars and sacled to 100
-FCI_plot_scaled_error <- ggplot(results_final_all_spp_BBS, aes(x = parameter, y = rescaled_FCI)) +
+FCI_plot_scaled_error <- ggplot(results_final_all_spp_climate_BBS, aes(x = parameter, y = rescaled_FCI)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
   geom_errorbar(aes(ymin = rescaled_FCI - rescaled_sd, ymax = rescaled_FCI + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
   labs(x = "Mid-year of moving window", y = "Population synchrony") +
-  scale_y_continuous(breaks=seq(-20,180,20)) +
+  scale_y_continuous(breaks=seq(-100,250,50)) +
   scale_x_continuous(breaks=seq(1999,2012,3)) +
   theme_bw() +
   theme(text = element_text(size = 16)) +
@@ -39,7 +40,7 @@ FCI_plot_scaled_error <- ggplot(results_final_all_spp_BBS, aes(x = parameter, y 
         axis.text.x = element_text(color="black"), axis.text.y = element_text(color="black"))
 FCI_plot_scaled_error
 
-ggsave("../Graphs/Connectivity_plots/FCI_all_spp_BBS_scaled_error.png", plot = FCI_plot_scaled_error, width=5, height=5)
+ggsave("../Graphs/Connectivity_plots/FCI_all_spp_BBS_scaled_error_climate.png", plot = FCI_plot_scaled_error, width=5, height=5)
 
 ##### method to obtain smoothed values with 95% confidence intervals for indicator
 loess_model <- loess(rescaled_FCI~parameter, data=results_final_all_spp_BBS)

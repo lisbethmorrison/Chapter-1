@@ -22,9 +22,9 @@ options(scipen=999)
 ###################################
 
 ## read data
-pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE)
-pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE)
-pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE)
+pair_attr <- read.csv("../Data/Butterfly_sync_data/pop_climate_synchrony.csv", header=TRUE) # butterfly pair attribute data
+pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pop_climate_synchrony_CBC.csv", header=TRUE) # CBC pair attribute data
+pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pop_climate_synchrony_BBS.csv", header=TRUE) # BBS pair attribute data
 bird_common <- read.csv("../Data/BTO_data/pop_estimates_birds.csv", header=TRUE)
 WCBS_data <- read.csv("../Data/UKBMS_data/WCBS_data.csv", header=TRUE)
 ## bird phylogeny info 
@@ -44,14 +44,15 @@ length(unique(pair_attr$spp)) # 31 species (Grizzled Skipper doesn't have abunda
 summary(pair_attr)
 
 ## rescale pop estimate
-ppair_attr$pop_est_stand <- (pair_attr$average_abundance - mean(na.omit(pair_attr$average_abundance)))/sd(na.omit(pair_attr$average_abundance))
+pair_attr$pop_est_stand <- (pair_attr$average_abundance - mean(na.omit(pair_attr$average_abundance)))/sd(na.omit(pair_attr$average_abundance))
 
 pair_attr$mid.year <- as.factor(pair_attr$mid.year)
 pair_attr$pair.id <- as.character(pair_attr$pair.id)
 pair_attr$spp <- as.factor(pair_attr$spp)
 
 ### full model with average_abundance as a measure of commonness
-common_model_ukbms2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + pop_est_stand + (1|pair.id) + (1|spp), data = pair_attr)
+common_model_ukbms2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + pop_est_stand + winter_rain + autumn_rain + spring_rain + summer_rain +
+                              winter_temp + autumn_temp + spring_temp + summer_temp + (1|pair.id) + (1|spp), data = pair_attr)
 
 qqnorm(residuals(common_model_ukbms2))
 qqline(residuals(common_model_ukbms2))
@@ -74,12 +75,12 @@ pair_attr_CBC <- merge(pair_attr_CBC, bird_common, by.x="spp", by.y="species_cod
 pair_attr_CBC$pop_estimate_stand <- (pair_attr_CBC$pop_estimate - mean(na.omit(pair_attr_CBC$pop_estimate)))/sd(na.omit(pair_attr_CBC$pop_estimate))
 
 ### main model with pop_estimate as a measure of commonness
-common_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + pop_estimate_stand + (1|family) + (1|spp) + (1|pair.id), data = pair_attr_CBC)
+common_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + summer_temp + pop_estimate_stand + (1|family) + (1|spp) + (1|pair.id), data = pair_attr_CBC)
 ## this model fails to converge
 ## run model without family random effect and check if coefficients are still similar
-common_model_cbc2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + pop_estimate_stand + (1|spp) + (1|pair.id), data = pair_attr_CBC)
+common_model_cbc2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + summer_temp + pop_estimate_stand + (1|spp) + (1|pair.id), data = pair_attr_CBC)
 
-summary(common_model_cbc) ## pop estimate is significant (p=0.0125)
+summary(common_model_cbc) ## pop estimate is significant (p=0.0128)
 summary(common_model_cbc2) ## pop estimate is significant (p=0.0105)
 ## both models are very similar
 ## save results from one with family
@@ -98,7 +99,8 @@ pair_attr_BBS <- merge(pair_attr_BBS, bird_common, by.x="spp", by.y="species_cod
 pair_attr_BBS$pop_estimate_stand <- (pair_attr_BBS$pop_estimate - mean(na.omit(pair_attr_BBS$pop_estimate)))/sd(na.omit(pair_attr_BBS$pop_estimate))
 
 ### full model with pop_estimate as a measure of commonness
-common_model_bbs <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + pop_estimate_stand + (1|pair.id) + (1|spp), data = pair_attr_BBS)
+common_model_bbs <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + winter_rain + autumn_rain + spring_rain + 
+                           pop_estimate_stand + (1|pair.id) + (1|spp), data = pair_attr_BBS)
 anova(common_model_bbs)
 summary(common_model_bbs)
 ## non-significant
@@ -120,7 +122,7 @@ write.csv(results_table_abund_cbc, file = "../Results/Model_outputs/CBC/average_
 ### add abundance data
 abundance_data <- read.csv("../Data/UKBMS_data/Collated_Indices_2016.csv", header=TRUE)
 ## add synchrony data
-results_final_sp <- read.csv("../Results/Butterfly_results/results_final.csv", header=TRUE)
+results_final_sp <- read.csv("../Results/Butterfly_results/results_final_sp.csv", header=TRUE)
 
 ## removed columns not needed (leaving species and habitat info)
 results_final_sp2 <- results_final_sp[-c(2:8)]
@@ -165,7 +167,7 @@ abundance_results <- read.csv("../Results/Butterfly_results/abundance_results_85
 
 ################ Interaction between mid-year and abundance change ####################
 ## UKBMS butterflies
-pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE) ## MUST READ IN DATA AGAIN
+pair_attr <- read.csv("../Data/Butterfly_sync_data/pop_climate_synchrony.csv", header=TRUE) ## MUST READ IN DATA AGAIN
 ## subset to only look at mid years 1985 and 2000
 pair_attr_1985 <- pair_attr[pair_attr$mid.year==1984.5,]
 pair_attr_2000 <- pair_attr[pair_attr$mid.year==1999.5,]
@@ -184,7 +186,8 @@ pair_attr_ukbms$renk_hab_sim <- (pair_attr_ukbms$renk_hab_sim - mean(na.omit(pai
 pair_attr_ukbms <- merge(pair_attr_ukbms, abundance_results, by.x="spp", by.y="Species.code", all=FALSE)
 
 ## full model with interaction between mid year and mobility
-abund_model1 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*ab_change_85_00 + (1|spp) + (1|pair.id), data=pair_attr_ukbms)
+abund_model1 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + winter_rain + autumn_rain + spring_rain + summer_rain + 
+                       winter_temp + autumn_temp + spring_temp + summer_temp + mid.year*ab_change_85_00 + (1|spp) + (1|pair.id), data=pair_attr_ukbms)
 summary(abund_model1)
 anova(abund_model1)
 ## not significant (p=0.13)
@@ -239,11 +242,8 @@ pair_attr_ukbms$renk_hab_sim <- (pair_attr_ukbms$renk_hab_sim - mean(na.omit(pai
 pair_attr_ukbms <- merge(pair_attr_ukbms, abundance_results, by.x="spp", by.y="Species.code", all=FALSE)
 
 ## full model with interaction between mid year and mobility
-start_time <- Sys.time()
-abund_model2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*ab_change_00_12 + (1|spp) + (1|pair.id), data=pair_attr_ukbms)
-end_time <- Sys.time()
-end_time - start_time ## 22.23 seconds
-
+abund_model2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + winter_rain + autumn_rain + spring_rain + summer_rain + 
+                       winter_temp + autumn_temp + spring_temp + summer_temp + mid.year*ab_change_00_12 + (1|spp) + (1|pair.id), data=pair_attr_ukbms)
 summary(abund_model2)
 anova(abund_model2)
 ## very significant interaction (p<0.00001)
@@ -403,12 +403,12 @@ length(unique(pair_attr_cbc$spp)) # 22 species
 #pair_attr_cbc <- pair_attr_cbc[-c(21:25)]
 
 ###### run model with strategy and year interaction
-abund_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*ab_change_85_96 + (1|family) + (1|pair.id) + (1|spp), data = pair_attr_cbc)
-summary(abund_model_cbc) ## interaction is non-significant (p=0.0679)
+abund_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + summer_temp + mid.year*ab_change_85_96 + (1|family) + (1|pair.id) + (1|spp), data = pair_attr_cbc)
+summary(abund_model_cbc) ## interaction is non-significant (p=0.0601)
 ## singular fit warning (species random effect has zero variance)
 ## check if similar to model without species random effect
-abund_model_cbc2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*ab_change_85_96 + (1|family) + (1|pair.id), data = pair_attr_cbc)
-summary(abund_model_cbc2)
+# abund_model_cbc2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*ab_change_85_96 + (1|family) + (1|pair.id), data = pair_attr_cbc)
+# summary(abund_model_cbc2)
 ## results are very similar even when species random effect removed
 ## save results from model with family
 
@@ -432,7 +432,8 @@ bird_abundance_bbs<-bird_abundance_bbs[!(bird_abundance_bbs$year=="2001"),]
 
 ## now do t test on difference in abundance between early and late time periods
 ## calculates t test between early and late, produces p value, and produces mean of early and mean of late years
-abundance_results_bbs = grouped_df(bird_abundance_bbs, vars="species_code") %>% summarise(p=t.test(sm[which(time=="Early")], sm[which(time=="Late")])$p.value, mean_x=mean(sm[which(time=="Early")]), mean_y=mean(sm[which(time=="Late")]))
+bird_abundance_bbs$species_code <- as.factor(bird_abundance_bbs$species_code)
+abundance_results_bbs <- grouped_df(bird_abundance_bbs, vars="species_code") %>% summarise(p=t.test(sm[which(time=="Early")], sm[which(time=="Late")])$p.value, mean_x=mean(sm[which(time=="Early")]), mean_y=mean(sm[which(time=="Late")]))
 
 ## add in column to say whether species t test is significant or not
 abundance_results_bbs$significance <- ifelse(abundance_results_bbs$p<0.05, "yes", "no")
@@ -441,6 +442,9 @@ abundance_results_bbs$significance <- ifelse(abundance_results_bbs$p<0.05, "yes"
 ## therefore negative difference == species has decrease in abundance between early and late years
 abundance_results_bbs$mean_abund_change <- abundance_results_bbs$mean_y - abundance_results_bbs$mean_x
 abundance_results_bbs$ab_change_99_12 <- ifelse(abundance_results_bbs$mean_abund_change>0, "increase", "decrease")                                                               
+## save abundance results
+write.csv(abundance_results_bbs, file="../Results/Bird_results/abundance_results_99_12.csv", row.names=FALSE)
+abundance_results_bbs <- read.csv("../Results/Bird_results/abundance_results_99_12.csv", header=TRUE)
 
 #### BBS birds
 pair_attr_bbs_1999 <- pair_attr_BBS[pair_attr_BBS$mid.year==1998.5,]
@@ -453,13 +457,13 @@ pair_attr_bbs$spp <- as.factor(pair_attr_bbs$spp)
 
 ## merge with abundance data
 pair_attr_bbs <- merge(pair_attr_bbs, abundance_results_bbs, by.x="spp", by.y="species_code", all=FALSE)
-pair_attr_bbs <- pair_attr_bbs[-c(19:23)]
 
 ###### run model with abund and year interaction
-abund_model_bbs <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*ab_change_99_12 + (1|pair.id) + (1|spp), data = pair_attr_bbs)
+abund_model_bbs <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + winter_rain + autumn_rain + spring_rain + 
+                          mid.year*ab_change_99_12 + (1|pair.id) + (1|spp), data = pair_attr_bbs)
 summary(abund_model_bbs)
 ## intercept is mid.year 1999
 anova(abund_model_bbs)
-## mid.year*mean_abund_change interaction is non-significant 
+## mid.year*mean_abund_change interaction is non-significant (0.26)
 results_table_abund_bbs <- data.frame(summary(abund_model_bbs)$coefficients[,1:5]) ## 22 species
 write.csv(results_table_abund_bbs, file = "../Results/Model_outputs/BBS/change_abund_bbs.csv", row.names=TRUE)

@@ -16,44 +16,39 @@ library(plotrix)
 options(scipen=999)
 
 ## read data
-pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE) # butterfly pair attribute data
-pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr.csv", header=TRUE) # CBC pair attribute data
-pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE) # BBS pair attribute data
+pair_attr <- read.csv("../Data/Butterfly_sync_data/pop_climate_synchrony.csv", header=TRUE) # butterfly pair attribute data
+pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pop_climate_synchrony_CBC.csv", header=TRUE) # CBC pair attribute data
+pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pop_climate_synchrony_BBS.csv", header=TRUE) # BBS pair attribute data
 
 ##############################################
 #### specialism model for ALL butterflies ####
 ##############################################
 
-pair_attr$mid.year <- as.character(pair_attr$mid.year)
+pair_attr$mid.year <- as.factor(pair_attr$mid.year)
 pair_attr$pair.id <- as.character(pair_attr$pair.id)
 pair_attr$spp <- as.factor(pair_attr$spp)
 pair_attr$specialism <- as.factor(pair_attr$specialism)
 
-spec_model_ukbms1 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + specialism + (1|pair.id) + (1|spp), data = pair_attr)
+spec_model_ukbms1 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + winter_rain + autumn_rain + spring_rain + summer_rain + winter_temp +
+                            autumn_temp + spring_temp + summer_temp + mid.year + specialism + (1|pair.id) + (1|spp), data = pair_attr)
 summary(spec_model_ukbms1)
 anova(spec_model_ukbms1)
 ## non-significant
 results_table_average_spec <- data.frame(summary(spec_model_ukbms1)$coefficients[,1:5]) ## 32 species
-write.csv(results_table_average_spec, file = "../Results/Model_outputs/UKBMS/average_spec_ukbms.csv", row.names=TRUE) # 24 species
+write.csv(results_table_average_spec, file = "../Results/Model_outputs/UKBMS/average_spec_ukbms.csv", row.names=TRUE) # 32 species
 
 ###############################################
 ########### Same for woodland birds ###########
 ###############################################
 
 ## CBC ##
-## merge in phylogeny info 
-species_traits <- species_traits[,c(2,3,4)]
-pair_attr_CBC <- merge(pair_attr_CBC, species_traits, by.x="spp", by.y="species_code", all=FALSE)
-pair_attr_CBC <- droplevels(pair_attr_CBC)
-length(unique(pair_attr_CBC$spp)) # 26 species
-
 str(pair_attr_CBC)
-pair_attr_CBC$mid.year <- as.character(pair_attr_CBC$mid.year)
+pair_attr_CBC$mid.year <- as.factor(pair_attr_CBC$mid.year)
 pair_attr_CBC$pair.id <- as.character(pair_attr_CBC$pair.id)
 pair_attr_CBC$spp <- as.factor(pair_attr_CBC$spp)
 
 ## run model with specialism as fixed categorical variable
-strategy_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + specialism + (1|family) + (1|pair.id) + (1|spp), data = pair_attr_CBC)
+strategy_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + summer_temp + specialism + (1|family) + (1|pair.id) + (1|spp), data = pair_attr_CBC)
 ## no errors
 summary(strategy_model_cbc)
 anova(strategy_model_cbc) ## specialism is non-significant (p=0.09)
@@ -62,18 +57,16 @@ write.csv(results_table_average_spec, file = "../Results/Model_outputs/CBC/avera
 
 ## BBS ##
 str(pair_attr_BBS)
-
-pair_attr_BBS$end.year <- as.factor(pair_attr_BBS$end.year)
 pair_attr_BBS$mid.year <- as.factor(pair_attr_BBS$mid.year)
-pair_attr_BBS$start.year <- as.factor(pair_attr_BBS$start.year)
 pair_attr_BBS$pair.id <- as.character(pair_attr_BBS$pair.id)
 pair_attr_BBS$spp <- as.factor(pair_attr_BBS$spp)
 
 ## run model with strategy as fixed categorical variable
-strategy_model_bbs <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + specialism + (1|pair.id) + (1|spp), data = pair_attr_BBS)
+strategy_model_bbs <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + winter_rain + autumn_rain + spring_rain + 
+                             specialism + (1|pair.id) + (1|spp), data = pair_attr_BBS)
 summary(strategy_model_bbs)
 anova(strategy_model_bbs)
-## non-significant (p=0.82)
+## non-significant (p=0.83)
 results_table_average_spec <- data.frame(summary(strategy_model_bbs)$coefficients[,1:5]) 
 write.csv(results_table_average_spec, file = "../Results/Model_outputs/BBS/average_spec_bbs.csv", row.names=TRUE) # 24 species
 
@@ -85,9 +78,9 @@ write.csv(results_table_average_spec, file = "../Results/Model_outputs/BBS/avera
 ### Now test for change in synchony against specialism 
 
 ############################### interaction in model #################################
-pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE)
-pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE)
-pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE)
+pair_attr <- read.csv("../Data/Butterfly_sync_data/pop_climate_synchrony.csv", header=TRUE)
+pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pop_climate_synchrony_CBC.csv", header=TRUE)
+pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pop_climate_synchrony_BBS.csv", header=TRUE)
 
 #### subset only years 1985, 2000 and 2012
 pair_attr_1985 <- pair_attr[pair_attr$mid.year==1984.5,]
@@ -109,7 +102,8 @@ pair_attr_late$spp <- as.factor(pair_attr_late$spp)
 pair_attr_late$specialism <- as.factor(pair_attr_late$specialism)
 
 ###### run model with strategy and year interaction [EARLY]
-spec_model_ukbms2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*specialism + (1|pair.id) + (1|spp), data = pair_attr_early)
+spec_model_ukbms2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*specialism + winter_rain + autumn_rain + spring_rain + summer_rain + 
+                            winter_temp + autumn_temp + spring_temp + summer_temp + (1|pair.id) + (1|spp), data = pair_attr_early)
 summary(spec_model_ukbms2) ## interaction is significant
 anova(spec_model_ukbms2)
 ## mid.year*strategy interaction is significant overall
@@ -117,9 +111,9 @@ anova(spec_model_ukbms2)
 results_table_spec_ukbms <- data.frame(summary(spec_model_ukbms2)$coefficients[,1:5]) ## 32 species
 write.csv(results_table_spec_ukbms, file = "../Results/Model_outputs/UKBMS/change_spec_ukbms_85_00.csv", row.names=TRUE)
 
-
 ###### run model with strategy and year interaction [LATE]
-spec_model_ukbms3 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*specialism + (1|pair.id) + (1|spp), data = pair_attr_late)
+spec_model_ukbms3 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*specialism + winter_rain + autumn_rain + spring_rain + summer_rain + 
+                            winter_temp + autumn_temp + spring_temp + summer_temp + (1|pair.id) + (1|spp), data = pair_attr_late)
 summary(spec_model_ukbms3) ## interaction is significant
 anova(spec_model_ukbms3)
 ## mid.year*strategy interaction is significant overall
@@ -319,9 +313,9 @@ pair_attr_cbc$specialism <- as.factor(pair_attr_cbc$specialism)
 pair_attr_cbc$hab_sim <- as.factor(pair_attr_cbc$hab_sim)
 
 ###### run model with strategy and year interaction
-spec_model_cbc2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year*specialism + (1|family) + (1|pair.id) + (1|spp), data = pair_attr_cbc)
+spec_model_cbc2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + summer_temp + mid.year*specialism + (1|family) + (1|pair.id) + (1|spp), data = pair_attr_cbc)
 ## no errors
-summary(spec_model_cbc2) ## interaction is significant (p=0.000705)
+summary(spec_model_cbc2) ## interaction is significant (p=0.00057)
 anova(spec_model_cbc2)
 ## save model output
 results_table_strategy_cbc <- data.frame(summary(spec_model_cbc2)$coefficients[,1:5]) ## 26 species
@@ -424,8 +418,8 @@ pair_attr_bbs$spp <- as.factor(pair_attr_bbs$spp)
 pair_attr_bbs$specialism <- as.factor(pair_attr_bbs$specialism)
 
 ###### run model with strategy and year interaction
-spec_model_bbs2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*specialism + (1|pair.id) + (1|spp), data = pair_attr_bbs)
+spec_model_bbs2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + winter_rain + autumn_rain + spring_rain + mid.year*specialism + (1|pair.id) + (1|spp), data = pair_attr_bbs)
 summary(spec_model_bbs2)
-anova(spec_model_bbs2)
+anova(spec_model_bbs2) ## just significant! (p=0.045)
 results_table_strategy_bbs <- data.frame(summary(spec_model_bbs2)$coefficients[,1:5]) ## 24 species
 write.csv(results_table_strategy_bbs, file = "../Results/Model_outputs/BBS/change_spec_bbs.csv", row.names=TRUE)

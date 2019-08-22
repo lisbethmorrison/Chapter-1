@@ -130,23 +130,31 @@ for (i in 1:length(site_list$north)){
   ifelse(site_list$north[i]%%10000<5000,y<-2500,y<-7500)
   site_list$north.5k[i]<-(site_list$north[i]%/%10000)*10000+y
 }
-site_list<-site_list[,c(1,4,5)] ## 701 sites
+
+site_list2<-site_list[,c(1,4,5)] ## 701 sites
 ## remove duplicates where two sites have the same 5km easting and northing
-site_list <- site_list[!duplicated(t(apply(site_list[2:3], 1, sort))),] ## 499 sites
+#site_list <- site_list[!duplicated(t(apply(site_list[2:3], 1, sort))),] ## 499 sites
 
 ## merge pair_attr site data with mean_temp (left with only UKBMS sites)
-mean_temp <- merge(mean_temp, site_list, by.x=c("easting", "northing"), by.y=c("east.5k", "north.5k"))
-length(unique(mean_temp$site)) # 488 sites which match with climate and UKBMS data
+mean_temp <- merge(mean_temp, site_list2, by.x=c("easting", "northing"), by.y=c("east.5k", "north.5k"), all.y=FALSE)
+length(unique(mean_temp$site)) # 686 sites which match with climate and UKBMS data (15 5k sites don't have climate data)
 ## merge pair_attr site data with rainfall (left with only UKBMS sites)
-rainfall <- merge(rainfall, site_list, by.x=c("easting", "northing"), by.y=c("east.5k", "north.5k"))
-length(unique(rainfall$site)) # 486 sites which match with climate and UKBMS data
+rainfall <- merge(rainfall, site_list2, by.x=c("easting", "northing"), by.y=c("east.5k", "north.5k"), all.y=FALSE)
+length(unique(rainfall$site)) # 686 sites which match with climate and UKBMS data (15 5k sites don't have climate data)
+
+## save site info for the 686 5k sites
+sites <- data.frame(unique(mean_temp$site))
+names(sites) <- "site"
+site_list <- merge(site_list, sites, by="site", all=FALSE)
+## save this file
+write.csv(site_list, file="../Data/MetOffice_data/site_list_5km.csv", row.names=FALSE)
 
 ##### CALCULATE SEASONAL MEAN TEMPERATURE SYNCHRONY
 
 final_pair_data <- NULL
 season <- unique(mean_temp$ag)
 ### split based on season ###
-for (g in season[3]){ # loop through each season
+for (g in season){ # loop through each season
   season_data <- mean_temp[mean_temp$ag==g,]
   total_comp <- NULL
   print(paste("season",g))    
@@ -382,635 +390,648 @@ head(final_pair_data2)
 ## save file
 write.csv(final_pair_data2, file="../Data/MetOffice_data/final_pair_data_mean_rainfall.csv", row.names=FALSE)
 
-#############################################################################################################################
-#############################################################################################################################
-#############################################################################################################################
-
-rm(list=ls()) # clear R
-
-## read in final pair data for temp and rainfall
-final_pair_data_rain <- read.csv("../Data/MetOffice_data/final_pair_data_mean_rainfall.csv", header=TRUE)
-final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp.csv", header=TRUE)  
-
-## change values that are >0 to just above 0
-## otherwise logit transformation doesn't work 
-final_pair_data_rain$lag0[final_pair_data_rain$lag0<0 ] <- 0.000001
-
-summ_data_temp <- final_pair_data_temp %>% 
-  group_by(mid.year,season) %>% 
-  summarise(freq = dplyr::n())
-
-summ_data_rain <- final_pair_data_rain %>% 
-  group_by(mid.year,season) %>% 
-  summarise(freq = n()) 
-
-######################
-###### Rainfall ######
-######################
-
-## create PairID column
-final_pair_data_rain$pair.id <- paste("ID", final_pair_data_rain$site1, final_pair_data_rain$site2, sep = "_")
-
-final_pair_data_rain$mid.year <- as.factor(final_pair_data_rain$mid.year)
-final_pair_data_rain$pair.id <- as.character(final_pair_data_rain$pair.id)
-final_pair_data_rain$season <- as.factor(final_pair_data_rain$season)
-
-## split into 4 dataframes (one for each season)
-winter_rainfall <- final_pair_data_rain[final_pair_data_rain$season=="a",]
-winter_rainfall <- droplevels(winter_rainfall)
-spring_rainfall <- final_pair_data_rain[final_pair_data_rain$season=="b",]
-spring_rainfall <- droplevels(spring_rainfall)
-summer_rainfall <- final_pair_data_rain[final_pair_data_rain$season=="c",]
-summer_rainfall <- droplevels(summer_rainfall)
-autumn_rainfall <- final_pair_data_rain[final_pair_data_rain$season=="d",]
-autumn_rainfall <- droplevels(autumn_rainfall)
-
-## run mixed effects model to extract coefficients for each dataframe
-library(lme4)
-
-###### WINTER RAINFALL ######
-
-logitTransform <- function(p) { log(p/(1-p)) }
-winter_rainfall$lag0_logit <- logitTransform(winter_rainfall$lag0)
-
-winter_rainfall_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=winter_rainfall)
-summary(winter_rainfall_model)
-## save results
-results_table_winter_rain <- data.frame(summary(winter_rainfall_model)$coefficients[,1:3])
-## change names and add in parameter column ##
-names(results_table_winter_rain) <- c("synchrony", "SD", "t")
-results_table_winter_rain$parameter <- paste(row.names(results_table_winter_rain))
-rownames(results_table_winter_rain) <- 1:nrow(results_table_winter_rain)
-## change parameter names to year
-results_table_winter_rain$parameter <- rep(1985:2012)
-
-### rescale estimate, SD and CI ### 
-## add 10 to each value so scale remains the same, but values are all positive
-results_table_winter_rain$new_sync <- results_table_winter_rain$synchrony + 10 
-## scale using new_sync
-results_table_winter_rain$rescaled_sync <- results_table_winter_rain$new_sync*(100/results_table_winter_rain$new_sync[1]) ## rescale to 100
-results_table_winter_rain$rescaled_sd <- results_table_winter_rain$SD*(100/results_table_winter_rain$new_sync[1])
-results_table_winter_rain$rescaled_ci <- results_table_winter_rain$rescaled_sd*1.96
-## remove new_sync column
-results_table_winter_rain <- subset(results_table_winter_rain, select = -c(new_sync))
-## save final results table ##
-write.csv(results_table_winter_rain, file = "../Results/Climate_results/winter_rainfall_synchrony.csv", row.names=FALSE)
-
-###### SPRING RAINFALL ######
-spring_rainfall_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=spring_rainfall)
-summary(spring_rainfall_model)
-## save results
-results_table_spring_rain <- data.frame(summary(spring_rainfall_model)$coefficients[,1:3])
-## change names and add in parameter column ##
-names(results_table_spring_rain) <- c("synchrony", "SD", "t")
-results_table_spring_rain$parameter <- paste(row.names(results_table_spring_rain))
-rownames(results_table_spring_rain) <- 1:nrow(results_table_spring_rain)
-## change parameter names to year
-results_table_spring_rain$parameter <- rep(1985:2012)
-
-### rescale estimate, SD and CI ### 
-## add 10 to each value so scale remains the same, but values are all positive
-results_table_spring_rain$new_sync <- results_table_spring_rain$synchrony + 10 
-## scale using new_sync
-results_table_spring_rain$rescaled_sync <- results_table_spring_rain$new_sync*(100/results_table_spring_rain$new_sync[1]) ## rescale to 100
-results_table_spring_rain$rescaled_sd <- results_table_spring_rain$SD*(100/results_table_spring_rain$new_sync[1])
-results_table_spring_rain$rescaled_ci <- results_table_spring_rain$rescaled_sd*1.96
-## remove new_sync column
-results_table_spring_rain <- subset(results_table_spring_rain, select = -c(new_sync))
-## save final results table ##
-write.csv(results_table_spring_rain, file = "../Results/Climate_results/spring_rainfall_synchrony.csv", row.names=FALSE)
-
-###### SUMMER RAINFALL ######
-summer_rainfall_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=summer_rainfall)
-summary(summer_rainfall_model)
-## save results
-results_table_summer_rain <- data.frame(summary(summer_rainfall_model)$coefficients[,1:3])
-## change names and add in parameter column ##
-names(results_table_summer_rain) <- c("synchrony", "SD", "t")
-results_table_summer_rain$parameter <- paste(row.names(results_table_summer_rain))
-rownames(results_table_summer_rain) <- 1:nrow(results_table_summer_rain)
-## change parameter names to year
-results_table_summer_rain$parameter <- rep(1985:2012)
-
-### rescale estimate, SD and CI ### 
-## add 10 to each value so scale remains the same, but values are all positive
-results_table_summer_rain$new_sync <- results_table_summer_rain$synchrony + 10 
-## scale using new_sync
-results_table_summer_rain$rescaled_sync <- results_table_summer_rain$new_sync*(100/results_table_summer_rain$new_sync[1]) ## rescale to 100
-results_table_summer_rain$rescaled_sd <- results_table_summer_rain$SD*(100/results_table_summer_rain$new_sync[1])
-results_table_summer_rain$rescaled_ci <- results_table_summer_rain$rescaled_sd*1.96
-## remove new_sync column
-results_table_summer_rain <- subset(results_table_summer_rain, select = -c(new_sync))
-## save final results table ##
-write.csv(results_table_summer_rain, file = "../Results/Climate_results/summer_rainfall_synchrony.csv", row.names=FALSE)
-
-###### AUTUMN RAINFALL ######
-autumn_rainfall_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=autumn_rainfall)
-summary(autumn_rainfall_model)
-plot(autumn_rainfall_model)
-qqnorm(residuals(autumn_rainfall_model))
-## save results
-results_table_autumn_rain <- data.frame(summary(autumn_rainfall_model)$coefficients[,1:3])
-## change names and add in parameter column ##
-names(results_table_autumn_rain) <- c("synchrony", "SD", "t")
-results_table_autumn_rain$parameter <- paste(row.names(results_table_autumn_rain))
-rownames(results_table_autumn_rain) <- 1:nrow(results_table_autumn_rain)
-## change parameter names to year
-results_table_autumn_rain$parameter <- rep(1985:2012)
-
-### rescale estimate, SD and CI ### 
-## add 10 to each value so scale remains the same, but values are all positive
-results_table_autumn_rain$new_sync <- results_table_autumn_rain$synchrony + 10 
-## scale using new_sync
-results_table_autumn_rain$rescaled_sync <- results_table_autumn_rain$new_sync*(100/results_table_autumn_rain$new_sync[1]) ## rescale to 100
-results_table_autumn_rain$rescaled_sd <- results_table_autumn_rain$SD*(100/results_table_autumn_rain$new_sync[1])
-results_table_autumn_rain$rescaled_ci <- results_table_autumn_rain$rescaled_sd*1.96
-## remove new_sync column
-results_table_autumn_rain <- subset(results_table_autumn_rain, select = -c(new_sync))
-## save final results table ##
-write.csv(results_table_autumn_rain, file = "../Results/Climate_results/autumn_rainfall_synchrony.csv", row.names=FALSE)
-
-##### plots ######
-## load data
-winter_rain <- read.csv("../Results/Climate_results/winter_rainfall_synchrony.csv", header=TRUE)
-spring_rain <- read.csv("../Results/Climate_results/spring_rainfall_synchrony.csv", header=TRUE)
-summer_rain <- read.csv("../Results/Climate_results/summer_rainfall_synchrony.csv", header=TRUE)
-autumn_rain <- read.csv("../Results/Climate_results/autumn_rainfall_synchrony.csv", header=TRUE)
-
-winter_rain_plot <- ggplot(winter_rain, aes(x = parameter, y = rescaled_sync)) +
-  stat_smooth(colour="black", method=loess, se=FALSE) +
-  geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
-  geom_point(size=2) + 
-  labs(x = "Mid-year of moving window", y = "Rainfall synchrony") +
-  #scale_y_continuous(breaks=seq(40,160,10)) +
-  scale_x_continuous(breaks=seq(1985,2012,3)) +
-  geom_hline(yintercept = 100, linetype = "dashed") +
-  theme_bw() +
-  theme(text = element_text(size = 16)) +
-  labs(size=3) +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-winter_rain_plot
-
-spring_rain_plot <- ggplot(spring_rain, aes(x = parameter, y = rescaled_sync)) +
-  stat_smooth(colour="black", method=loess, se=FALSE) +
-  geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
-  geom_point(size=2) + 
-  labs(x = "Mid-year of moving window", y = "Rainfall synchrony") +
-  #scale_y_continuous(breaks=seq(40,160,10)) +
-  scale_x_continuous(breaks=seq(1985,2012,3)) +
-  geom_hline(yintercept = 100, linetype = "dashed") +
-  theme_bw() +
-  theme(text = element_text(size = 16)) +
-  labs(size=3) +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-spring_rain_plot
-
-summer_rain_plot <- ggplot(summer_rain, aes(x = parameter, y = rescaled_sync)) +
-  stat_smooth(colour="black", method=loess, se=FALSE) +
-  geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
-  geom_point(size=2) + 
-  labs(x = "Mid-year of moving window", y = "Rainfall synchrony") +
-  #scale_y_continuous(breaks=seq(40,160,10)) +
-  scale_x_continuous(breaks=seq(1985,2012,3)) +
-  geom_hline(yintercept = 100, linetype = "dashed") +
-  theme_bw() +
-  theme(text = element_text(size = 16)) +
-  labs(size=3) +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-summer_rain_plot
-
-autumn_rain_plot <- ggplot(autumn_rain, aes(x = parameter, y = rescaled_sync)) +
-  stat_smooth(colour="black", method=loess, se=FALSE) +
-  geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
-  geom_point(size=2) + 
-  labs(x = "Mid-year of moving window", y = "Rainfall synchrony") +
-  #scale_y_continuous(breaks=seq(40,160,10)) +
-  scale_x_continuous(breaks=seq(1985,2012,3)) +
-  geom_hline(yintercept = 100, linetype = "dashed") +
-  theme_bw() +
-  theme(text = element_text(size = 16)) +
-  labs(size=3) +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-autumn_rain_plot
-
-## save all 4 rainfall plots
-library(ggpubr)
-rain_plots <- ggarrange(winter_rain_plot, spring_rain_plot, summer_rain_plot, autumn_rain_plot,
-                        hjust = 0, ncol = 2, nrow = 2, labels = c("(a)", "(b)", "(c)", "(d)"))
-rain_plots
-ggsave("../Graphs/Climate/seasonal_rainfall_synchrony.png", plot = rain_plots, width=12, height=10)
-
-#########################
-###### Temperature ######
-#########################
-
-## create PairID column
-final_pair_data_temp$pair.id <- paste("ID", final_pair_data_temp$site1, final_pair_data_temp$site2, sep = "_")
-
-final_pair_data_temp$mid.year <- as.factor(final_pair_data_temp$mid.year)
-final_pair_data_temp$pair.id <- as.character(final_pair_data_temp$pair.id)
-final_pair_data_temp$season <- as.factor(final_pair_data_temp$season)
-
-## split into 4 dataframes (one for each season)
-winter_temp <- final_pair_data_temp[final_pair_data_temp$season=="a",]
-winter_temp <- droplevels(winter_temp)
-spring_temp <- final_pair_data_temp[final_pair_data_temp$season=="b",]
-spring_temp <- droplevels(spring_temp)
-summer_temp <- final_pair_data_temp[final_pair_data_temp$season=="c",]
-summer_temp <- droplevels(summer_temp)
-autumn_temp <- final_pair_data_temp[final_pair_data_temp$season=="d",]
-autumn_temp <- droplevels(autumn_temp)
-
-## run mixed effects model to extract coefficients for each dataframe
-library(lme4)
-
-###### WINTER TEMPERATURE ######
-winter_temp_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=winter_temp)
-summary(winter_temp_model)
-## save results
-results_table_winter_temp <- data.frame(summary(winter_temp_model)$coefficients[,1:3])
-## change names and add in parameter column ##
-names(results_table_winter_temp) <- c("synchrony", "SD", "t")
-results_table_winter_temp$parameter <- paste(row.names(results_table_winter_temp))
-rownames(results_table_winter_temp) <- 1:nrow(results_table_winter_temp)
-## change parameter names to year
-results_table_winter_temp$parameter <- rep(1985:2012)
-
-### rescale estimate, SD and CI ### 
-## add 10 to each value so scale remains the same, but values are all positive
-results_table_winter_temp$new_sync <- results_table_winter_temp$synchrony + 10 
-## scale using new_sync
-results_table_winter_temp$rescaled_sync <- results_table_winter_temp$new_sync*(100/results_table_winter_temp$new_sync[1]) ## rescale to 100
-results_table_winter_temp$rescaled_sd <- results_table_winter_temp$SD*(100/results_table_winter_temp$new_sync[1])
-results_table_winter_temp$rescaled_ci <- results_table_winter_temp$rescaled_sd*1.96
-## remove new_sync column
-results_table_winter_temp <- subset(results_table_winter_temp, select = -c(new_sync))
-## save final results table ##
-write.csv(results_table_winter_temp, file = "../Results/Climate_results/winter_temp_synchrony.csv", row.names=FALSE)
-
-###### SPRING TEMPERATURE ######
-spring_temp_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=spring_temp)
-summary(spring_temp_model)
-## save results
-results_table_spring_temp <- data.frame(summary(spring_temp_model)$coefficients[,1:3])
-## change names and add in parameter column ##
-names(results_table_spring_temp) <- c("synchrony", "SD", "t")
-results_table_spring_temp$parameter <- paste(row.names(results_table_spring_temp))
-rownames(results_table_spring_temp) <- 1:nrow(results_table_spring_temp)
-## change parameter names to year
-results_table_spring_temp$parameter <- rep(1985:2012)
-
-### rescale estimate, SD and CI ### 
-## add 10 to each value so scale remains the same, but values are all positive
-results_table_spring_temp$new_sync <- results_table_spring_temp$synchrony + 10 
-## scale using new_sync
-results_table_spring_temp$rescaled_sync <- results_table_spring_temp$new_sync*(100/results_table_spring_temp$new_sync[1]) ## rescale to 100
-results_table_spring_temp$rescaled_sd <- results_table_spring_temp$SD*(100/results_table_spring_temp$new_sync[1])
-results_table_spring_temp$rescaled_ci <- results_table_spring_temp$rescaled_sd*1.96
-## remove new_sync column
-results_table_spring_temp <- subset(results_table_spring_temp, select = -c(new_sync))
-## save final results table ##
-write.csv(results_table_spring_temp, file = "../Results/Climate_results/spring_temp_synchrony.csv", row.names=FALSE)
-
-###### SUMMER TEMPERATURE ######
-# logitTransform <- function(p) { log(p/(1-p)) }
-# summer_temp$lag0_logit <- logitTransform(summer_temp$lag0)
+# #############################################################################################################################
+# #############################################################################################################################
+# #############################################################################################################################
 # 
-# hist(summer_temp$lag0)
-# hist(summer_temp$lag0_logit)
+# rm(list=ls()) # clear R
 # 
-# summer_temp_model1 <- lmer(lag0 ~ mid.year + (1|pair.id)-1, data=summer_temp)
-summer_temp_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=summer_temp)
-
-# qqnorm(residuals(summer_temp_model1))
-# qqline(residuals(summer_temp_model1))
-# plot(summer_temp_model1)
+# ## read in final pair data for temp and rainfall
+# final_pair_data_rain <- read.csv("../Data/MetOffice_data/final_pair_data_mean_rainfall.csv", header=TRUE)
+# final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp.csv", header=TRUE)  
 # 
-# qqnorm(residuals(summer_temp_model))
-# qqline(residuals(summer_temp_model))
-# plot(summer_temp_model)
-
-
-summary(summer_temp_model)
-## save results
-results_table_summer_temp <- data.frame(summary(summer_temp_model)$coefficients[,1:3])
-## change names and add in parameter column ##
-names(results_table_summer_temp) <- c("synchrony", "SD", "t")
-results_table_summer_temp$parameter <- paste(row.names(results_table_summer_temp))
-rownames(results_table_summer_temp) <- 1:nrow(results_table_summer_temp)
-## change parameter names to year
-results_table_summer_temp$parameter <- rep(1985:2012)
-
-### rescale estimate, SD and CI ### 
-## add 10 to each value so scale remains the same, but values are all positive
-results_table_summer_temp$new_sync <- results_table_summer_temp$synchrony + 10 
-## scale using new_sync
-results_table_summer_temp$rescaled_sync <- results_table_summer_temp$new_sync*(100/results_table_summer_temp$new_sync[1]) ## rescale to 100
-results_table_summer_temp$rescaled_sd <- results_table_summer_temp$SD*(100/results_table_summer_temp$new_sync[1])
-results_table_summer_temp$rescaled_ci <- results_table_summer_temp$rescaled_sd*1.96
-## remove new_sync column
-results_table_summer_temp <- subset(results_table_summer_temp, select = -c(new_sync))
-## save final results table ##
-write.csv(results_table_summer_temp, file = "../Results/Climate_results/summer_temp_synchrony.csv", row.names=FALSE)
-
-###### AUTUMN TEMPERATURE ######
-autumn_temp_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=autumn_temp)
-summary(autumn_temp_model)
-## save results
-results_table_autumn_temp <- data.frame(summary(autumn_temp_model)$coefficients[,1:3])
-## change names and add in parameter column ##
-names(results_table_autumn_temp) <- c("synchrony", "SD", "t")
-results_table_autumn_temp$parameter <- paste(row.names(results_table_autumn_temp))
-rownames(results_table_autumn_temp) <- 1:nrow(results_table_autumn_temp)
-## change parameter names to year
-results_table_autumn_temp$parameter <- rep(1985:2012)
-
-### rescale estimate, SD and CI ### 
-## add 10 to each value so scale remains the same, but values are all positive
-results_table_autumn_temp$new_sync <- results_table_autumn_temp$synchrony + 10 
-## scale using new_sync
-results_table_autumn_temp$rescaled_sync <- results_table_autumn_temp$new_sync*(100/results_table_autumn_temp$new_sync[1]) ## rescale to 100
-results_table_autumn_temp$rescaled_sd <- results_table_autumn_temp$SD*(100/results_table_autumn_temp$new_sync[1])
-results_table_autumn_temp$rescaled_ci <- results_table_autumn_temp$rescaled_sd*1.96
-## remove new_sync column
-results_table_autumn_temp <- subset(results_table_autumn_temp, select = -c(new_sync))
-## save final results table ##
-write.csv(results_table_autumn_temp, file = "../Results/Climate_results/autumn_temp_synchrony.csv", row.names=FALSE)
-
-##### plots ######
-## load data
-
-winter_temp <- read.csv("../Results/Climate_results/winter_temp_synchrony.csv", header=TRUE)
-spring_temp <- read.csv("../Results/Climate_results/spring_temp_synchrony.csv", header=TRUE)
-summer_temp <- read.csv("../Results/Climate_results/summer_temp_synchrony.csv", header=TRUE)
-autumn_temp <- read.csv("../Results/Climate_results/autumn_temp_synchrony.csv", header=TRUE)
-
-winter_temp_plot <- ggplot(winter_temp, aes(x = parameter, y = rescaled_sync)) +
-  stat_smooth(colour="black", method=loess, se=FALSE) +
-  geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
-  geom_point(size=2) + 
-  labs(x = "Mid-year of moving window", y = "Temperature synchrony") +
-  #scale_y_continuous(breaks=seq(40,160,10)) +
-  scale_x_continuous(breaks=seq(1985,2012,3)) +
-  geom_hline(yintercept = 100, linetype = "dashed") +
-  theme_bw() +
-  theme(text = element_text(size = 16)) +
-  labs(size=3) +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-winter_temp_plot
-
-spring_temp_plot <- ggplot(spring_temp, aes(x = parameter, y = rescaled_sync)) +
-  stat_smooth(colour="black", method=loess, se=FALSE) +
-  geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
-  geom_point(size=2) + 
-  labs(x = "Mid-year of moving window", y = "Temperature synchrony") +
-  #scale_y_continuous(breaks=seq(40,160,10)) +
-  scale_x_continuous(breaks=seq(1985,2012,3)) +
-  geom_hline(yintercept = 100, linetype = "dashed") +
-  theme_bw() +
-  theme(text = element_text(size = 16)) +
-  labs(size=3) +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-spring_temp_plot
-
-summer_temp_plot <- ggplot(summer_temp, aes(x = parameter, y = rescaled_sync)) +
-  stat_smooth(colour="black", method=loess, se=FALSE) +
-  geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
-  geom_point(size=2) + 
-  labs(x = "Mid-year of moving window", y = "Temperature synchrony") +
-  #scale_y_continuous(breaks=seq(40,160,10)) +
-  scale_x_continuous(breaks=seq(1985,2012,3)) +
-  geom_hline(yintercept = 100, linetype = "dashed") +
-  theme_bw() +
-  theme(text = element_text(size = 16)) +
-  labs(size=3) +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-summer_temp_plot
-
-autumn_temp_plot <- ggplot(autumn_temp, aes(x = parameter, y = rescaled_sync)) +
-  stat_smooth(colour="black", method=loess, se=FALSE) +
-  geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
-  geom_point(size=2) + 
-  labs(x = "Mid-year of moving window", y = "Temperature synchrony") +
-  #scale_y_continuous(breaks=seq(40,160,10)) +
-  scale_x_continuous(breaks=seq(1985,2012,3)) +
-  geom_hline(yintercept = 100, linetype = "dashed") +
-  theme_bw() +
-  theme(text = element_text(size = 16)) +
-  labs(size=3) +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
-autumn_temp_plot
-
-## save all 4 temperature plots
-library(ggpubr)
-temp_plots <- ggarrange(winter_temp_plot, spring_temp_plot, summer_temp_plot, autumn_temp_plot,
-          hjust = 0, ncol = 2, nrow = 2, labels = c("(a)", "(b)", "(c)", "(d)"))
-temp_plots
-ggsave("../Graphs/Climate/seasonal_temperature_synchrony.png", plot = temp_plots, width=12, height=10)
-
-
-
-##############################################################################################################
-##############################################################################################################
-##############################################################################################################
-
-rm(list=ls()) # clear R
-library(lme4)
-library(lmerTest)
-
-## read in data
-final_pair_data_rain <- read.csv("../Data/MetOffice_data/final_pair_data_mean_rainfall.csv", header=TRUE)
-final_pair_data_temp <- read.csv("../Data/MetOffice_data/final_pair_data_mean_temp.csv", header=TRUE)  
-
-summ_data_temp <- final_pair_data_temp %>% 
-  group_by(mid.year,season) %>% 
-  summarise(freq = n())
-
-summ_data_rain <- final_pair_data_rain %>% 
-  group_by(mid.year,season) %>% 
-  summarise(freq = n()) 
-
-## create PairID column
-final_pair_data_rain$pair.id <- paste("ID", final_pair_data_rain$site1, final_pair_data_rain$site2, sep = "_")
-final_pair_data_temp$pair.id <- paste("ID", final_pair_data_temp$site1, final_pair_data_temp$site2, sep = "_")
-
-final_pair_data_rain$mid.year <- as.factor(final_pair_data_rain$mid.year)
-final_pair_data_rain$pair.id <- as.character(final_pair_data_rain$pair.id)
-final_pair_data_rain$season <- as.factor(final_pair_data_rain$season)
-
-final_pair_data_temp$site1 <- as.factor(final_pair_data_temp$site1)
-final_pair_data_temp$site2 <- as.factor(final_pair_data_temp$site2)
-final_pair_data_temp$mid.year <- as.factor(final_pair_data_temp$mid.year)
-final_pair_data_temp$pair.id <- as.character(final_pair_data_temp$pair.id)
-final_pair_data_temp$season <- as.factor(final_pair_data_temp$season)
-
-######## TEMPERATURE SIGNIFICANCE TESTING
-
-###### create 3 new pair_attr files whicih compares early, late and overall
-final_pair_1985 <- final_pair_data_temp[final_pair_data_temp$mid.year==1984.5,]
-final_pair_2000 <- final_pair_data_temp[final_pair_data_temp$mid.year==1999.5,]
-final_pair_2012 <- final_pair_data_temp[final_pair_data_temp$mid.year==2011.5,]
-
-final_pair_early_temp <- rbind(final_pair_1985, final_pair_2000) # comparison of early years 1980 & 1995
-final_pair_late_temp <- rbind(final_pair_2000, final_pair_2012) # comparison of late years 1995 & 2007
-
-## early model (85-00) for each season
-season_early <- unique(final_pair_data_temp$season)
-
+# final_pair_data_temp <- final_pair_data_temp[!(final_pair_data_temp$lag0==1),]
+# final_pair_data_rain <- final_pair_data_rain[!(final_pair_data_rain$lag0==1),]
+# 
+# site1 <- unique(final_pair_data_temp[,1, drop=FALSE])
+# site2 <- unique(final_pair_data_temp[,2, drop=FALSE])
+# colnames(site1)[1] <- "site"
+# colnames(site2)[1] <- "site"
+# site_list <- rbind(site1, site2)
+# site_list <- unique(site_list) ## 686 sites
+# 
+# ## change values that are <0 to just above 0
+# ## otherwise logit transformation doesn't work 
+# final_pair_data_rain$lag0[final_pair_data_rain$lag0<0 ] <- 0.000001
+# 
+# summ_data_temp <- final_pair_data_temp %>% 
+#   group_by(mid.year,season) %>% 
+#   summarise(freq = dplyr::n())
+# 
+# summ_data_rain <- final_pair_data_rain %>% 
+#   group_by(mid.year,season) %>% 
+#   summarise(freq = n()) 
+# 
+# ######################
+# ###### Rainfall ######
+# ######################
+# 
+# ## create PairID column
+# final_pair_data_rain$pair.id <- paste("ID", final_pair_data_rain$site1, final_pair_data_rain$site2, sep = "_")
+# 
+# final_pair_data_rain$mid.year <- as.factor(final_pair_data_rain$mid.year)
+# final_pair_data_rain$pair.id <- as.character(final_pair_data_rain$pair.id)
+# final_pair_data_rain$season <- as.factor(final_pair_data_rain$season)
+# 
+# ## split into 4 dataframes (one for each season)
+# winter_rainfall <- final_pair_data_rain[final_pair_data_rain$season=="a",]
+# winter_rainfall <- droplevels(winter_rainfall)
+# spring_rainfall <- final_pair_data_rain[final_pair_data_rain$season=="b",]
+# spring_rainfall <- droplevels(spring_rainfall)
+# summer_rainfall <- final_pair_data_rain[final_pair_data_rain$season=="c",]
+# summer_rainfall <- droplevels(summer_rainfall)
+# autumn_rainfall <- final_pair_data_rain[final_pair_data_rain$season=="d",]
+# autumn_rainfall <- droplevels(autumn_rainfall)
+# 
+# ## run mixed effects model to extract coefficients for each dataframe
+# library(lme4)
+# 
+# ###### WINTER RAINFALL ######
+# 
+# min(winter_rainfall$lag0) ## = -0.39
+# ## add -0.4 to all lag0 values
+# winter_rainfall$lag0_new <- winter_rainfall$lag0 + 0.4
+# hist(winter_rainfall$lag0_sqr)
+# winter_rainfall$lag0_sqrt <- sqrt(winter_rainfall$lag0)
+# 
+# winter_rainfall <- winter_rainfall[!(winter_rainfall$lag0==1),]
+# hist(winter_rainfall$lag0)
+# winter_rainfall$lag0_sqr <- winter_rainfall$lag0^2
+# hist(winter_rainfall$lag0_sqr)
 # 
 # logitTransform <- function(p) { log(p/(1-p)) }
-# final_pair_data_temp$lag0_logit <- logitTransform(final_pair_data_temp$lag0)
+# winter_rainfall$lag0_logit <- log(winter_rainfall$lag0_new/(1-winter_rainfall$lag0_new))
+# winter_rainfall$lag0_log <- log10(winter_rainfall$lag0_new)
+# hist(winter_rainfall$lag0_log)
 # 
-# hist(final_pair_data_temp$lag0)
-# hist(final_pair_data_temp$lag0_logit)
+# winter_rainfall_model <- lmer(lag0 ~ mid.year + (1|pair.id)-1, data=winter_rainfall)
+# summary(winter_rainfall_model)
+# hist(residuals(winter_rainfall_model))
+# qqnorm(residuals(winter_rainfall_model))
+# qqline(residuals(winter_rainfall_model), 
+#        col="red")
+# 
+# ## save results
+# results_table_winter_rain <- data.frame(summary(winter_rainfall_model)$coefficients[,1:3])
+# ## change names and add in parameter column ##
+# names(results_table_winter_rain) <- c("synchrony", "SD", "t")
+# results_table_winter_rain$parameter <- paste(row.names(results_table_winter_rain))
+# rownames(results_table_winter_rain) <- 1:nrow(results_table_winter_rain)
+# ## change parameter names to year
+# results_table_winter_rain$parameter <- rep(1985:2012)
+# 
+# ### rescale estimate, SD and CI ### 
+# ## add 10 to each value so scale remains the same, but values are all positive
+# results_table_winter_rain$new_sync <- results_table_winter_rain$synchrony + 10 
+# ## scale using new_sync
+# results_table_winter_rain$rescaled_sync <- results_table_winter_rain$new_sync*(100/results_table_winter_rain$new_sync[1]) ## rescale to 100
+# results_table_winter_rain$rescaled_sd <- results_table_winter_rain$SD*(100/results_table_winter_rain$new_sync[1])
+# results_table_winter_rain$rescaled_ci <- results_table_winter_rain$rescaled_sd*1.96
+# ## remove new_sync column
+# results_table_winter_rain <- subset(results_table_winter_rain, select = -c(new_sync))
+# ## save final results table ##
+# write.csv(results_table_winter_rain, file = "../Results/Climate_results/winter_rainfall_synchrony.csv", row.names=FALSE)
+# 
+# ###### SPRING RAINFALL ######
+# spring_rainfall_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=spring_rainfall)
+# summary(spring_rainfall_model)
+# ## save results
+# results_table_spring_rain <- data.frame(summary(spring_rainfall_model)$coefficients[,1:3])
+# ## change names and add in parameter column ##
+# names(results_table_spring_rain) <- c("synchrony", "SD", "t")
+# results_table_spring_rain$parameter <- paste(row.names(results_table_spring_rain))
+# rownames(results_table_spring_rain) <- 1:nrow(results_table_spring_rain)
+# ## change parameter names to year
+# results_table_spring_rain$parameter <- rep(1985:2012)
+# 
+# ### rescale estimate, SD and CI ### 
+# ## add 10 to each value so scale remains the same, but values are all positive
+# results_table_spring_rain$new_sync <- results_table_spring_rain$synchrony + 10 
+# ## scale using new_sync
+# results_table_spring_rain$rescaled_sync <- results_table_spring_rain$new_sync*(100/results_table_spring_rain$new_sync[1]) ## rescale to 100
+# results_table_spring_rain$rescaled_sd <- results_table_spring_rain$SD*(100/results_table_spring_rain$new_sync[1])
+# results_table_spring_rain$rescaled_ci <- results_table_spring_rain$rescaled_sd*1.96
+# ## remove new_sync column
+# results_table_spring_rain <- subset(results_table_spring_rain, select = -c(new_sync))
+# ## save final results table ##
+# write.csv(results_table_spring_rain, file = "../Results/Climate_results/spring_rainfall_synchrony.csv", row.names=FALSE)
+# 
+# ###### SUMMER RAINFALL ######
+# summer_rainfall_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=summer_rainfall)
+# summary(summer_rainfall_model)
+# ## save results
+# results_table_summer_rain <- data.frame(summary(summer_rainfall_model)$coefficients[,1:3])
+# ## change names and add in parameter column ##
+# names(results_table_summer_rain) <- c("synchrony", "SD", "t")
+# results_table_summer_rain$parameter <- paste(row.names(results_table_summer_rain))
+# rownames(results_table_summer_rain) <- 1:nrow(results_table_summer_rain)
+# ## change parameter names to year
+# results_table_summer_rain$parameter <- rep(1985:2012)
+# 
+# ### rescale estimate, SD and CI ### 
+# ## add 10 to each value so scale remains the same, but values are all positive
+# results_table_summer_rain$new_sync <- results_table_summer_rain$synchrony + 10 
+# ## scale using new_sync
+# results_table_summer_rain$rescaled_sync <- results_table_summer_rain$new_sync*(100/results_table_summer_rain$new_sync[1]) ## rescale to 100
+# results_table_summer_rain$rescaled_sd <- results_table_summer_rain$SD*(100/results_table_summer_rain$new_sync[1])
+# results_table_summer_rain$rescaled_ci <- results_table_summer_rain$rescaled_sd*1.96
+# ## remove new_sync column
+# results_table_summer_rain <- subset(results_table_summer_rain, select = -c(new_sync))
+# ## save final results table ##
+# write.csv(results_table_summer_rain, file = "../Results/Climate_results/summer_rainfall_synchrony.csv", row.names=FALSE)
+# 
+# ###### AUTUMN RAINFALL ######
+# autumn_rainfall_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=autumn_rainfall)
+# summary(autumn_rainfall_model)
+# plot(autumn_rainfall_model)
+# qqnorm(residuals(autumn_rainfall_model))
+# ## save results
+# results_table_autumn_rain <- data.frame(summary(autumn_rainfall_model)$coefficients[,1:3])
+# ## change names and add in parameter column ##
+# names(results_table_autumn_rain) <- c("synchrony", "SD", "t")
+# results_table_autumn_rain$parameter <- paste(row.names(results_table_autumn_rain))
+# rownames(results_table_autumn_rain) <- 1:nrow(results_table_autumn_rain)
+# ## change parameter names to year
+# results_table_autumn_rain$parameter <- rep(1985:2012)
+# 
+# ### rescale estimate, SD and CI ### 
+# ## add 10 to each value so scale remains the same, but values are all positive
+# results_table_autumn_rain$new_sync <- results_table_autumn_rain$synchrony + 10 
+# ## scale using new_sync
+# results_table_autumn_rain$rescaled_sync <- results_table_autumn_rain$new_sync*(100/results_table_autumn_rain$new_sync[1]) ## rescale to 100
+# results_table_autumn_rain$rescaled_sd <- results_table_autumn_rain$SD*(100/results_table_autumn_rain$new_sync[1])
+# results_table_autumn_rain$rescaled_ci <- results_table_autumn_rain$rescaled_sd*1.96
+# ## remove new_sync column
+# results_table_autumn_rain <- subset(results_table_autumn_rain, select = -c(new_sync))
+# ## save final results table ##
+# write.csv(results_table_autumn_rain, file = "../Results/Climate_results/autumn_rainfall_synchrony.csv", row.names=FALSE)
+# 
+# ##### plots ######
+# ## load data
+# winter_rain <- read.csv("../Results/Climate_results/winter_rainfall_synchrony.csv", header=TRUE)
+# spring_rain <- read.csv("../Results/Climate_results/spring_rainfall_synchrony.csv", header=TRUE)
+# summer_rain <- read.csv("../Results/Climate_results/summer_rainfall_synchrony.csv", header=TRUE)
+# autumn_rain <- read.csv("../Results/Climate_results/autumn_rainfall_synchrony.csv", header=TRUE)
+# 
+# winter_rain_plot <- ggplot(winter_rain, aes(x = parameter, y = rescaled_sync)) +
+#   stat_smooth(colour="black", method=loess, se=FALSE) +
+#   geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
+#   geom_point(size=2) + 
+#   labs(x = "Mid-year of moving window", y = "Rainfall synchrony") +
+#   #scale_y_continuous(breaks=seq(40,160,10)) +
+#   scale_x_continuous(breaks=seq(1985,2012,3)) +
+#   geom_hline(yintercept = 100, linetype = "dashed") +
+#   theme_bw() +
+#   theme(text = element_text(size = 16)) +
+#   labs(size=3) +
+#   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+# winter_rain_plot
+# 
+# spring_rain_plot <- ggplot(spring_rain, aes(x = parameter, y = rescaled_sync)) +
+#   stat_smooth(colour="black", method=loess, se=FALSE) +
+#   geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
+#   geom_point(size=2) + 
+#   labs(x = "Mid-year of moving window", y = "Rainfall synchrony") +
+#   #scale_y_continuous(breaks=seq(40,160,10)) +
+#   scale_x_continuous(breaks=seq(1985,2012,3)) +
+#   geom_hline(yintercept = 100, linetype = "dashed") +
+#   theme_bw() +
+#   theme(text = element_text(size = 16)) +
+#   labs(size=3) +
+#   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+# spring_rain_plot
+# 
+# summer_rain_plot <- ggplot(summer_rain, aes(x = parameter, y = rescaled_sync)) +
+#   stat_smooth(colour="black", method=loess, se=FALSE) +
+#   geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
+#   geom_point(size=2) + 
+#   labs(x = "Mid-year of moving window", y = "Rainfall synchrony") +
+#   #scale_y_continuous(breaks=seq(40,160,10)) +
+#   scale_x_continuous(breaks=seq(1985,2012,3)) +
+#   geom_hline(yintercept = 100, linetype = "dashed") +
+#   theme_bw() +
+#   theme(text = element_text(size = 16)) +
+#   labs(size=3) +
+#   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+# summer_rain_plot
+# 
+# autumn_rain_plot <- ggplot(autumn_rain, aes(x = parameter, y = rescaled_sync)) +
+#   stat_smooth(colour="black", method=loess, se=FALSE) +
+#   geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
+#   geom_point(size=2) + 
+#   labs(x = "Mid-year of moving window", y = "Rainfall synchrony") +
+#   #scale_y_continuous(breaks=seq(40,160,10)) +
+#   scale_x_continuous(breaks=seq(1985,2012,3)) +
+#   geom_hline(yintercept = 100, linetype = "dashed") +
+#   theme_bw() +
+#   theme(text = element_text(size = 16)) +
+#   labs(size=3) +
+#   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+# autumn_rain_plot
+# 
+# ## save all 4 rainfall plots
+# library(ggpubr)
+# rain_plots <- ggarrange(winter_rain_plot, spring_rain_plot, summer_rain_plot, autumn_rain_plot,
+#                         hjust = 0, ncol = 2, nrow = 2, labels = c("(a)", "(b)", "(c)", "(d)"))
+# rain_plots
+# ggsave("../Graphs/Climate/seasonal_rainfall_synchrony.png", plot = rain_plots, width=12, height=10)
+# 
+# #########################
+# ###### Temperature ######
+# #########################
+# 
+# ## create PairID column
+# final_pair_data_temp$pair.id <- paste("ID", final_pair_data_temp$site1, final_pair_data_temp$site2, sep = "_")
+# 
+# final_pair_data_temp$mid.year <- as.factor(final_pair_data_temp$mid.year)
+# final_pair_data_temp$pair.id <- as.character(final_pair_data_temp$pair.id)
+# final_pair_data_temp$season <- as.factor(final_pair_data_temp$season)
+# 
+# ## split into 4 dataframes (one for each season)
+# winter_temp <- final_pair_data_temp[final_pair_data_temp$season=="a",]
+# winter_temp <- droplevels(winter_temp)
+# spring_temp <- final_pair_data_temp[final_pair_data_temp$season=="b",]
+# spring_temp <- droplevels(spring_temp)
+# summer_temp <- final_pair_data_temp[final_pair_data_temp$season=="c",]
+# summer_temp <- droplevels(summer_temp)
+# autumn_temp <- final_pair_data_temp[final_pair_data_temp$season=="d",]
+# autumn_temp <- droplevels(autumn_temp)
+# 
+# ## run mixed effects model to extract coefficients for each dataframe
+# library(lme4)
+# library(lmerTest)
+# 
+# ###### WINTER TEMPERATURE ######
+# winter_temp_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=winter_temp)
+# summary(winter_temp_model)
+# ## save results
+# results_table_winter_temp <- data.frame(summary(winter_temp_model)$coefficients[,1:3])
+# ## change names and add in parameter column ##
+# names(results_table_winter_temp) <- c("synchrony", "SD", "t")
+# results_table_winter_temp$parameter <- paste(row.names(results_table_winter_temp))
+# rownames(results_table_winter_temp) <- 1:nrow(results_table_winter_temp)
+# ## change parameter names to year
+# results_table_winter_temp$parameter <- rep(1985:2012)
+# 
+# ### rescale estimate, SD and CI ### 
+# ## add 10 to each value so scale remains the same, but values are all positive
+# results_table_winter_temp$new_sync <- results_table_winter_temp$synchrony + 10 
+# ## scale using new_sync
+# results_table_winter_temp$rescaled_sync <- results_table_winter_temp$new_sync*(100/results_table_winter_temp$new_sync[1]) ## rescale to 100
+# results_table_winter_temp$rescaled_sd <- results_table_winter_temp$SD*(100/results_table_winter_temp$new_sync[1])
+# results_table_winter_temp$rescaled_ci <- results_table_winter_temp$rescaled_sd*1.96
+# ## remove new_sync column
+# results_table_winter_temp <- subset(results_table_winter_temp, select = -c(new_sync))
+# ## save final results table ##
+# write.csv(results_table_winter_temp, file = "../Results/Climate_results/winter_temp_synchrony.csv", row.names=FALSE)
+# 
+# ###### SPRING TEMPERATURE ######
+# spring_temp_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=spring_temp)
+# summary(spring_temp_model)
+# ## save results
+# results_table_spring_temp <- data.frame(summary(spring_temp_model)$coefficients[,1:3])
+# ## change names and add in parameter column ##
+# names(results_table_spring_temp) <- c("synchrony", "SD", "t")
+# results_table_spring_temp$parameter <- paste(row.names(results_table_spring_temp))
+# rownames(results_table_spring_temp) <- 1:nrow(results_table_spring_temp)
+# ## change parameter names to year
+# results_table_spring_temp$parameter <- rep(1985:2012)
+# 
+# ### rescale estimate, SD and CI ### 
+# ## add 10 to each value so scale remains the same, but values are all positive
+# results_table_spring_temp$new_sync <- results_table_spring_temp$synchrony + 10 
+# ## scale using new_sync
+# results_table_spring_temp$rescaled_sync <- results_table_spring_temp$new_sync*(100/results_table_spring_temp$new_sync[1]) ## rescale to 100
+# results_table_spring_temp$rescaled_sd <- results_table_spring_temp$SD*(100/results_table_spring_temp$new_sync[1])
+# results_table_spring_temp$rescaled_ci <- results_table_spring_temp$rescaled_sd*1.96
+# ## remove new_sync column
+# results_table_spring_temp <- subset(results_table_spring_temp, select = -c(new_sync))
+# ## save final results table ##
+# write.csv(results_table_spring_temp, file = "../Results/Climate_results/spring_temp_synchrony.csv", row.names=FALSE)
+# 
+# ###### SUMMER TEMPERATURE ######
+# # logitTransform <- function(p) { log(p/(1-p)) }
+# # summer_temp$lag0_logit <- logitTransform(summer_temp$lag0)
+# # 
+# # hist(summer_temp$lag0)
+# # hist(summer_temp$lag0_logit)
+# # 
+# # summer_temp_model1 <- lmer(lag0 ~ mid.year + (1|pair.id)-1, data=summer_temp)
+# summer_temp_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=summer_temp)
+# 
+# # qqnorm(residuals(summer_temp_model1))
+# # qqline(residuals(summer_temp_model1))
+# # plot(summer_temp_model1)
+# # 
+# # qqnorm(residuals(summer_temp_model))
+# # qqline(residuals(summer_temp_model))
+# # plot(summer_temp_model)
+# 
+# 
+# summary(summer_temp_model)
+# ## save results
+# results_table_summer_temp <- data.frame(summary(summer_temp_model)$coefficients[,1:3])
+# ## change names and add in parameter column ##
+# names(results_table_summer_temp) <- c("synchrony", "SD", "t")
+# results_table_summer_temp$parameter <- paste(row.names(results_table_summer_temp))
+# rownames(results_table_summer_temp) <- 1:nrow(results_table_summer_temp)
+# ## change parameter names to year
+# results_table_summer_temp$parameter <- rep(1985:2012)
+# 
+# ### rescale estimate, SD and CI ### 
+# ## add 10 to each value so scale remains the same, but values are all positive
+# results_table_summer_temp$new_sync <- results_table_summer_temp$synchrony + 10 
+# ## scale using new_sync
+# results_table_summer_temp$rescaled_sync <- results_table_summer_temp$new_sync*(100/results_table_summer_temp$new_sync[1]) ## rescale to 100
+# results_table_summer_temp$rescaled_sd <- results_table_summer_temp$SD*(100/results_table_summer_temp$new_sync[1])
+# results_table_summer_temp$rescaled_ci <- results_table_summer_temp$rescaled_sd*1.96
+# ## remove new_sync column
+# results_table_summer_temp <- subset(results_table_summer_temp, select = -c(new_sync))
+# ## save final results table ##
+# write.csv(results_table_summer_temp, file = "../Results/Climate_results/summer_temp_synchrony.csv", row.names=FALSE)
+# 
+# ###### AUTUMN TEMPERATURE ######
+# autumn_temp_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id)-1, data=autumn_temp)
+# summary(autumn_temp_model)
+# ## save results
+# results_table_autumn_temp <- data.frame(summary(autumn_temp_model)$coefficients[,1:3])
+# ## change names and add in parameter column ##
+# names(results_table_autumn_temp) <- c("synchrony", "SD", "t")
+# results_table_autumn_temp$parameter <- paste(row.names(results_table_autumn_temp))
+# rownames(results_table_autumn_temp) <- 1:nrow(results_table_autumn_temp)
+# ## change parameter names to year
+# results_table_autumn_temp$parameter <- rep(1985:2012)
+# 
+# ### rescale estimate, SD and CI ### 
+# ## add 10 to each value so scale remains the same, but values are all positive
+# results_table_autumn_temp$new_sync <- results_table_autumn_temp$synchrony + 10 
+# ## scale using new_sync
+# results_table_autumn_temp$rescaled_sync <- results_table_autumn_temp$new_sync*(100/results_table_autumn_temp$new_sync[1]) ## rescale to 100
+# results_table_autumn_temp$rescaled_sd <- results_table_autumn_temp$SD*(100/results_table_autumn_temp$new_sync[1])
+# results_table_autumn_temp$rescaled_ci <- results_table_autumn_temp$rescaled_sd*1.96
+# ## remove new_sync column
+# results_table_autumn_temp <- subset(results_table_autumn_temp, select = -c(new_sync))
+# ## save final results table ##
+# write.csv(results_table_autumn_temp, file = "../Results/Climate_results/autumn_temp_synchrony.csv", row.names=FALSE)
+# 
+# ##### plots ######
+# ## load data
+# 
+# winter_temp <- read.csv("../Results/Climate_results/winter_temp_synchrony.csv", header=TRUE)
+# spring_temp <- read.csv("../Results/Climate_results/spring_temp_synchrony.csv", header=TRUE)
+# summer_temp <- read.csv("../Results/Climate_results/summer_temp_synchrony.csv", header=TRUE)
+# autumn_temp <- read.csv("../Results/Climate_results/autumn_temp_synchrony.csv", header=TRUE)
+# 
+# winter_temp_plot <- ggplot(winter_temp, aes(x = parameter, y = rescaled_sync)) +
+#   stat_smooth(colour="black", method=loess, se=FALSE) +
+#   geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
+#   geom_point(size=2) + 
+#   labs(x = "Mid-year of moving window", y = "Temperature synchrony") +
+#   #scale_y_continuous(breaks=seq(40,160,10)) +
+#   scale_x_continuous(breaks=seq(1985,2012,3)) +
+#   geom_hline(yintercept = 100, linetype = "dashed") +
+#   theme_bw() +
+#   theme(text = element_text(size = 16)) +
+#   labs(size=3) +
+#   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+# winter_temp_plot
+# 
+# spring_temp_plot <- ggplot(spring_temp, aes(x = parameter, y = rescaled_sync)) +
+#   stat_smooth(colour="black", method=loess, se=FALSE) +
+#   geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
+#   geom_point(size=2) + 
+#   labs(x = "Mid-year of moving window", y = "Temperature synchrony") +
+#   #scale_y_continuous(breaks=seq(40,160,10)) +
+#   scale_x_continuous(breaks=seq(1985,2012,3)) +
+#   geom_hline(yintercept = 100, linetype = "dashed") +
+#   theme_bw() +
+#   theme(text = element_text(size = 16)) +
+#   labs(size=3) +
+#   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+# spring_temp_plot
+# 
+# summer_temp_plot <- ggplot(summer_temp, aes(x = parameter, y = rescaled_sync)) +
+#   stat_smooth(colour="black", method=loess, se=FALSE) +
+#   geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
+#   geom_point(size=2) + 
+#   labs(x = "Mid-year of moving window", y = "Temperature synchrony") +
+#   #scale_y_continuous(breaks=seq(40,160,10)) +
+#   scale_x_continuous(breaks=seq(1985,2012,3)) +
+#   geom_hline(yintercept = 100, linetype = "dashed") +
+#   theme_bw() +
+#   theme(text = element_text(size = 16)) +
+#   labs(size=3) +
+#   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+# summer_temp_plot
+# 
+# autumn_temp_plot <- ggplot(autumn_temp, aes(x = parameter, y = rescaled_sync)) +
+#   stat_smooth(colour="black", method=loess, se=FALSE) +
+#   geom_errorbar(aes(ymin = rescaled_sync - rescaled_sd, ymax = rescaled_sync + rescaled_sd), width=0.2, size = 0.5) +
+#   geom_point(size=2) + 
+#   labs(x = "Mid-year of moving window", y = "Temperature synchrony") +
+#   #scale_y_continuous(breaks=seq(40,160,10)) +
+#   scale_x_continuous(breaks=seq(1985,2012,3)) +
+#   geom_hline(yintercept = 100, linetype = "dashed") +
+#   theme_bw() +
+#   theme(text = element_text(size = 16)) +
+#   labs(size=3) +
+#   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+# autumn_temp_plot
+# 
+# ## save all 4 temperature plots
+# library(ggpubr)
+# temp_plots <- ggarrange(winter_temp_plot, spring_temp_plot, summer_temp_plot, autumn_temp_plot,
+#           hjust = 0, ncol = 2, nrow = 2, labels = c("(a)", "(b)", "(c)", "(d)"))
+# temp_plots
+# ggsave("../Graphs/Climate/seasonal_temperature_synchrony.png", plot = temp_plots, width=12, height=10)
+# 
 
-results_table_early<-NULL
-for (i in season_early){
-  print(i)
-  
-  ## create unique pair_attr for each species
-  final_pair_season <- final_pair_early_temp[final_pair_early_temp$season==i,]
-    
-    # early_model_2 <- lmer(lag0 ~ mid.year + (1|pair.id), data = final_pair_season)
-    early_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id), data = final_pair_season)
-    
-    # qqnorm(residuals(early_model))
-    # qqline(residuals(early_model))
-    # plot(early_model)
-    # 
-    # qqnorm(residuals(early_model_2))
-    # qqline(residuals(early_model_2))
-    # plot(early_model_2)
-    
-    
-    summary(early_model)
-    anova(early_model)
-    
-    ### save and plot the results ###
-    results_table_temp <- data.frame(summary(early_model)$coefficients[,1:5],i)
-    results_table_early <-rbind(results_table_early,results_table_temp)
-    
-  }
-## all non-significant
-## save table
-write.csv(results_table_early, file="../Results/Climate_results/temp_85_00_UKBMS.csv", row.names=FALSE)
-
-## late model (00-12) for each season
-season_late <- unique(final_pair_data_temp$season)
-
-results_table_late<-NULL
-for (i in season_late){
-  print(i)
-  
-  ## create unique pair_attr for each species
-  final_pair_season <- final_pair_late_temp[final_pair_late_temp$season==i,]
-  
-  late_model <- (lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id), data = final_pair_season))
-  summary(late_model)
-  anova(late_model)
-  
-  ### save and plot the results ###
-  results_table_temp <- data.frame(summary(late_model)$coefficients[,1:5],i)
-  results_table_late <-rbind(results_table_late,results_table_temp)
-  
-}
-## all non-significant
-## save table
-write.csv(results_table_late, file="../Results/Climate_results/temp_00_12_UKBMS.csv", row.names=FALSE)
 
 
-######## RAINFALL SIGNIFICANCE TESTING
-
-###### create 3 new pair_attr files whicih compares early, late and overall
-final_pair_1985 <- final_pair_data_rain[final_pair_data_rain$mid.year==1984.5,]
-final_pair_2000 <- final_pair_data_rain[final_pair_data_rain$mid.year==1999.5,]
-final_pair_2012 <- final_pair_data_rain[final_pair_data_rain$mid.year==2011.5,]
-
-final_pair_early_rain <- rbind(final_pair_1985, final_pair_2000) # comparison of early years 1980 & 1995
-final_pair_late_rain <- rbind(final_pair_2000, final_pair_2012) # comparison of late years 1995 & 2007
-
-## early model (85-00) for each season
-season_early <- unique(final_pair_data_rain$season)
-
-results_table_early2<-NULL
-for (i in season_early){
-  print(i)
-  
-  ## create unique pair_attr for each species
-  final_pair_season <- final_pair_early_rain[final_pair_early_rain$season==i,]
-  
-  early_model <- (lmer(lag0 ~ mid.year + (1|pair.id), data = final_pair_season))
-  summary(early_model)
-  anova(early_model)
-  
-  ### save and plot the results ###
-  results_table_temp <- data.frame(summary(early_model)$coefficients[,1:5],i)
-  results_table_early2 <-rbind(results_table_early2,results_table_temp)
-  
-}
-## all non-significant
-## save table
-write.csv(results_table_early2, file="../Results/Climate_results/rain_85_00_UKBMS.csv", row.names=FALSE)
-
-## late model (00-12) for each season
-season_late <- unique(final_pair_data_rain$season)
-
-results_table_late2<-NULL
-for (i in season_late){
-  print(i)
-  
-  ## create unique pair_attr for each species
-  final_pair_season <- final_pair_late_rain[final_pair_late_rain$season==i,]
-  
-  late_model <- (lmer(lag0 ~ mid.year + (1|pair.id), data = final_pair_season))
-  summary(late_model)
-  anova(late_model)
-  
-  ### save and plot the results ###
-  results_table_temp <- data.frame(summary(late_model)$coefficients[,1:5],i)
-  results_table_late2 <-rbind(results_table_late2,results_table_temp)
-  
-}
-## all non-significant
-## save table
-write.csv(results_table_late2, file="../Results/Climate_results/rain_00_12_UKBMS.csv", row.names=FALSE)
-
-
-temp1 <- final_pair_data_temp[(final_pair_data_temp$season=="c" & final_pair_data_temp$mid.year==1984.5),]
-hist(temp1$lag0)
-temp2 <- final_pair_data_temp[(final_pair_data_temp$season=="c" & final_pair_data_temp$mid.year==1999.5),]
-hist(temp2$lag0)
-temp3 <- final_pair_data_temp[(final_pair_data_temp$season=="c" & final_pair_data_temp$mid.year==2011.5),]
-hist(temp3$lag0)
-
-temp_sum <- final_pair_data_temp[(final_pair_data_temp$season=="c"),]
-hist(temp_sum$lag0)
-temp_aut <- final_pair_data_temp[(final_pair_data_temp$season=="d"),]
-hist(temp_aut$lag0)
-temp_win <- final_pair_data_temp[(final_pair_data_temp$season=="a"),]
-hist(temp_win$lag0)
-temp_spr <- final_pair_data_temp[(final_pair_data_temp$season=="b"),]
-hist(temp_spr$lag0)
-
-## number of sites
-site1 <- unique(final_pair_data_temp[,1, drop=FALSE])
-site2 <- unique(final_pair_data_temp[,2, drop=FALSE])
-colnames(site1)[1] <- "site"
-colnames(site2)[1] <- "site"
-site_list <- rbind(site1, site2)
-site_list <- unique(site_list) ## 487 sites
-
-site1 <- unique(final_pair_data_rain[,1, drop=FALSE])
-site2 <- unique(final_pair_data_rain[,2, drop=FALSE])
-colnames(site1)[1] <- "site"
-colnames(site2)[1] <- "site"
-site_list2 <- rbind(site1, site2)
-site_list2 <- unique(site_list) ## 487 sites
+# 
+# 
+# 
+# ## create PairID column
+# final_pair_data_rain$pair.id <- paste("ID", final_pair_data_rain$site1, final_pair_data_rain$site2, sep = "_")
+# final_pair_data_temp$pair.id <- paste("ID", final_pair_data_temp$site1, final_pair_data_temp$site2, sep = "_")
+# 
+# final_pair_data_rain$mid.year <- as.factor(final_pair_data_rain$mid.year)
+# final_pair_data_rain$pair.id <- as.character(final_pair_data_rain$pair.id)
+# final_pair_data_rain$season <- as.factor(final_pair_data_rain$season)
+# 
+# final_pair_data_temp$site1 <- as.factor(final_pair_data_temp$site1)
+# final_pair_data_temp$site2 <- as.factor(final_pair_data_temp$site2)
+# final_pair_data_temp$mid.year <- as.factor(final_pair_data_temp$mid.year)
+# final_pair_data_temp$pair.id <- as.character(final_pair_data_temp$pair.id)
+# final_pair_data_temp$season <- as.factor(final_pair_data_temp$season)
+# 
+# ######## TEMPERATURE SIGNIFICANCE TESTING
+# 
+# ###### create 3 new pair_attr files whicih compares early, late and overall
+# final_pair_1985 <- final_pair_data_temp[final_pair_data_temp$mid.year==1984.5,]
+# final_pair_2000 <- final_pair_data_temp[final_pair_data_temp$mid.year==1999.5,]
+# final_pair_2012 <- final_pair_data_temp[final_pair_data_temp$mid.year==2011.5,]
+# 
+# final_pair_early_temp <- rbind(final_pair_1985, final_pair_2000) # comparison of early years 1980 & 1995
+# final_pair_late_temp <- rbind(final_pair_2000, final_pair_2012) # comparison of late years 1995 & 2007
+# 
+# ## early model (85-00) for each season
+# season_early <- unique(final_pair_data_temp$season)
+# 
+# # 
+# # logitTransform <- function(p) { log(p/(1-p)) }
+# # final_pair_data_temp$lag0_logit <- logitTransform(final_pair_data_temp$lag0)
+# # 
+# # hist(final_pair_data_temp$lag0)
+# # hist(final_pair_data_temp$lag0_logit)
+# 
+# results_table_early<-NULL
+# for (i in season_early){
+#   print(i)
+#   
+#   ## create unique pair_attr for each species
+#   final_pair_season <- final_pair_early_temp[final_pair_early_temp$season==i,]
+#     
+#     # early_model_2 <- lmer(lag0 ~ mid.year + (1|pair.id), data = final_pair_season)
+#     early_model <- lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id), data = final_pair_season)
+#     
+#     # qqnorm(residuals(early_model))
+#     # qqline(residuals(early_model))
+#     # plot(early_model)
+#     # 
+#     # qqnorm(residuals(early_model_2))
+#     # qqline(residuals(early_model_2))
+#     # plot(early_model_2)
+#     
+#     
+#     summary(early_model)
+#     anova(early_model)
+#     
+#     ### save and plot the results ###
+#     results_table_temp <- data.frame(summary(early_model)$coefficients[,1:5],i)
+#     results_table_early <-rbind(results_table_early,results_table_temp)
+#     
+#   }
+# ## all non-significant
+# ## save table
+# write.csv(results_table_early, file="../Results/Climate_results/temp_85_00_UKBMS.csv", row.names=FALSE)
+# 
+# ## late model (00-12) for each season
+# season_late <- unique(final_pair_data_temp$season)
+# 
+# results_table_late<-NULL
+# for (i in season_late){
+#   print(i)
+#   
+#   ## create unique pair_attr for each species
+#   final_pair_season <- final_pair_late_temp[final_pair_late_temp$season==i,]
+#   
+#   late_model <- (lmer(log(lag0/(1-lag0)) ~ mid.year + (1|pair.id), data = final_pair_season))
+#   summary(late_model)
+#   anova(late_model)
+#   
+#   ### save and plot the results ###
+#   results_table_temp <- data.frame(summary(late_model)$coefficients[,1:5],i)
+#   results_table_late <-rbind(results_table_late,results_table_temp)
+#   
+# }
+# ## all non-significant
+# ## save table
+# write.csv(results_table_late, file="../Results/Climate_results/temp_00_12_UKBMS.csv", row.names=FALSE)
+# 
+# 
+# ######## RAINFALL SIGNIFICANCE TESTING
+# 
+# ###### create 3 new pair_attr files whicih compares early, late and overall
+# final_pair_1985 <- final_pair_data_rain[final_pair_data_rain$mid.year==1984.5,]
+# final_pair_2000 <- final_pair_data_rain[final_pair_data_rain$mid.year==1999.5,]
+# final_pair_2012 <- final_pair_data_rain[final_pair_data_rain$mid.year==2011.5,]
+# 
+# final_pair_early_rain <- rbind(final_pair_1985, final_pair_2000) # comparison of early years 1980 & 1995
+# final_pair_late_rain <- rbind(final_pair_2000, final_pair_2012) # comparison of late years 1995 & 2007
+# 
+# ## early model (85-00) for each season
+# season_early <- unique(final_pair_data_rain$season)
+# 
+# results_table_early2<-NULL
+# for (i in season_early){
+#   print(i)
+#   
+#   ## create unique pair_attr for each species
+#   final_pair_season <- final_pair_early_rain[final_pair_early_rain$season==i,]
+#   
+#   early_model <- (lmer(lag0 ~ mid.year + (1|pair.id), data = final_pair_season))
+#   summary(early_model)
+#   anova(early_model)
+#   
+#   ### save and plot the results ###
+#   results_table_temp <- data.frame(summary(early_model)$coefficients[,1:5],i)
+#   results_table_early2 <-rbind(results_table_early2,results_table_temp)
+#   
+# }
+# ## all non-significant
+# ## save table
+# write.csv(results_table_early2, file="../Results/Climate_results/rain_85_00_UKBMS.csv", row.names=FALSE)
+# 
+# ## late model (00-12) for each season
+# season_late <- unique(final_pair_data_rain$season)
+# 
+# results_table_late2<-NULL
+# for (i in season_late){
+#   print(i)
+#   
+#   ## create unique pair_attr for each species
+#   final_pair_season <- final_pair_late_rain[final_pair_late_rain$season==i,]
+#   
+#   late_model <- (lmer(lag0 ~ mid.year + (1|pair.id), data = final_pair_season))
+#   summary(late_model)
+#   anova(late_model)
+#   
+#   ### save and plot the results ###
+#   results_table_temp <- data.frame(summary(late_model)$coefficients[,1:5],i)
+#   results_table_late2 <-rbind(results_table_late2,results_table_temp)
+#   
+# }
+# ## all non-significant
+# ## save table
+# write.csv(results_table_late2, file="../Results/Climate_results/rain_00_12_UKBMS.csv", row.names=FALSE)
+# 
+# 
+# temp1 <- final_pair_data_temp[(final_pair_data_temp$season=="c" & final_pair_data_temp$mid.year==1984.5),]
+# hist(temp1$lag0)
+# temp2 <- final_pair_data_temp[(final_pair_data_temp$season=="c" & final_pair_data_temp$mid.year==1999.5),]
+# hist(temp2$lag0)
+# temp3 <- final_pair_data_temp[(final_pair_data_temp$season=="c" & final_pair_data_temp$mid.year==2011.5),]
+# hist(temp3$lag0)
+# 
+# temp_sum <- final_pair_data_temp[(final_pair_data_temp$season=="c"),]
+# hist(temp_sum$lag0)
+# temp_aut <- final_pair_data_temp[(final_pair_data_temp$season=="d"),]
+# hist(temp_aut$lag0)
+# temp_win <- final_pair_data_temp[(final_pair_data_temp$season=="a"),]
+# hist(temp_win$lag0)
+# temp_spr <- final_pair_data_temp[(final_pair_data_temp$season=="b"),]
+# hist(temp_spr$lag0)
+# 
+# ## number of sites
+# site1 <- unique(final_pair_data_temp[,1, drop=FALSE])
+# site2 <- unique(final_pair_data_temp[,2, drop=FALSE])
+# colnames(site1)[1] <- "site"
+# colnames(site2)[1] <- "site"
+# site_list <- rbind(site1, site2)
+# site_list <- unique(site_list) ## 686 sites
+# 
+# site1 <- unique(final_pair_data_rain[,1, drop=FALSE])
+# site2 <- unique(final_pair_data_rain[,2, drop=FALSE])
+# colnames(site1)[1] <- "site"
+# colnames(site2)[1] <- "site"
+# site_list2 <- rbind(site1, site2)
+# site_list2 <- unique(site_list) ## 686 sites
