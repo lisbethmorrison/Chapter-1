@@ -15,13 +15,13 @@ library(gridExtra)
 ####################################
 
 ### read in results tables ###
-results_final_all_spp <- read.csv("../Results/Bird_results/results_final_all_spp_CBC.csv", header=TRUE)
+# results_final_all_spp <- read.csv("../Results/Bird_results/results_final_all_spp_CBC.csv", header=TRUE)
 # results_final_sp <- read.csv("../Results/Bird_results/results_final_sp_CBC.csv", header=TRUE)
 # results_final_spec <- read.csv("../Results/Bird_results/results_final_spec_CBC.csv", header=TRUE) 
-results_final_all_spp_climate <- read.csv("../Results/Bird_results/results_final_all_spp_climate_CBC.csv", header=TRUE)
+results_final_all_spp <- read.csv("../Results/Bird_results/results_final_all_spp_climate_CBC.csv", header=TRUE)
 
 ## FCI plot with error bars and sacled to 100
-FCI_plot_scaled_error <- ggplot(results_final_all_spp_climate, aes(x = parameter, y = rescaled_FCI)) +
+FCI_plot_scaled_error <- ggplot(results_final_all_spp, aes(x = parameter, y = rescaled_FCI)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
   geom_errorbar(aes(ymin = rescaled_FCI - rescaled_sd, ymax = rescaled_FCI + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
@@ -52,5 +52,5 @@ FCI_indicator_plot <- FCI_indicator_plot[-c(4:6,9:10)]
 FCI_indicator_plot <- FCI_indicator_plot[c(4,5,1,3,2)]
 names(FCI_indicator_plot) <-  c("year", "unsmoothed", "smoothed", "upperCI", "lowerCI")
 ## save file
-write.csv(FCI_indicator_plot, file="../Connectivity fiche/Data files/CBC/CBC trend data_correct.csv", row.names=FALSE)
+write.csv(FCI_indicator_plot, file="../Connectivity fiche/Data files/CBC/CBC trend data.csv", row.names=FALSE)
 

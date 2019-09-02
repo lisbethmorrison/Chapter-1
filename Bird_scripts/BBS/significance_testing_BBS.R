@@ -17,7 +17,7 @@ options(scipen=999)
 
 
 ## load data
-pair_attr <- read.csv("../Data/Bird_sync_data/pair_attr_BBS.csv", header=TRUE)
+pair_attr <- read.csv("../Data/Bird_sync_data/pop_climate_synchrony_BBS.csv", header=TRUE) # BBS pair attribute data
 
 ### just want to compare 1985 with 1996 
 ## to see if there has been an increase/decrease/no change in connectivity
@@ -28,10 +28,6 @@ pair_attr_2012 <- pair_attr[pair_attr$mid.year==2011.5,]
 pair_attr_comp <- rbind(pair_attr_1999, pair_attr_2012) ## rbind them together
 summary(pair_attr_comp)
 unique(pair_attr_comp$mid.year) ## 1998.5 and 2011.5
-
-## centre and standardise continuous variables by mean and SD
-pair_attr_comp$distance <- (pair_attr_comp$distance - mean(na.omit(pair_attr_comp$distance)))/sd(na.omit(pair_attr_comp$distance))
-pair_attr_comp$mean_northing <- (pair_attr_comp$mean_northing - mean(na.omit(pair_attr_comp$mean_northing)))/sd(na.omit(pair_attr_comp$mean_northing))
 
 ## write file to save time
 write.csv(pair_attr_comp, file = "../Data/Bird_sync_data/pair_attr_comp_BBS.csv", row.names = FALSE) 
@@ -44,6 +40,11 @@ str(pair_attr_comp)
 pair_attr_comp$mid.year <- as.factor(pair_attr_comp$mid.year)
 pair_attr_comp$pair.id <- as.character(pair_attr_comp$pair.id)
 pair_attr_comp$spp <- as.factor(pair_attr_comp$spp)
+
+## centre and standardise continuous variables by mean and SD
+pair_attr_comp$distance <- (pair_attr_comp$distance - mean(na.omit(pair_attr_comp$distance)))/sd(na.omit(pair_attr_comp$distance))
+pair_attr_comp$mean_northing <- (pair_attr_comp$mean_northing - mean(na.omit(pair_attr_comp$mean_northing)))/sd(na.omit(pair_attr_comp$mean_northing))
+pair_attr_comp$renk_hab_sim <- (pair_attr_comp$renk_hab_sim - mean(na.omit(pair_attr_comp$renk_hab_sim)))/sd(na.omit(pair_attr_comp$renk_hab_sim))
 
 ############################################
 #### model comparison for each species ####
@@ -66,7 +67,7 @@ for (i in spp.list){
 
   } else {
 
-  model_comp <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data = pair_attr_comp[pair_attr_comp$spp==i,])
+  model_comp <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + winter_rain + autumn_rain + spring_rain + mid.year + (1|pair.id), data = pair_attr_comp[pair_attr_comp$spp==i,])
   summary(model_comp)
   anova(model_comp)
   
@@ -118,7 +119,7 @@ spp_list <- unique(F_result_final$j) ## only run this on the species that work (
 
 ## Set up number of cores to run on (7)
 cores <- parallel::detectCores()
-cl <- makeSOCKcluster(cores[1]-1) # not to overload your computer
+cl <- makeCluster(cores[1]-1) # not to overload your computer
 registerDoSNOW(cl)
 
 ## this code creates a progress percentage bar
@@ -132,7 +133,7 @@ bbs_spp_para <- foreach (i=1:n_sims,  .combine=rbind, .options.snow = opts, .pac
   foreach (j=spp_list, .combine=rbind, .options.snow = opts, .packages=c('lme4', 'foreach')) %dopar% { ## loop through each species
     print(j)
     pair_attr_comp$mid.year_shuffle <- sample(pair_attr_comp$mid.year) ## randomly shuffle mid year variable
-    model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year_shuffle + (1|pair.id), data = pair_attr_comp[pair_attr_comp$spp==j,])
+    model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + winter_rain + autumn_rain + spring_rain + mid.year_shuffle + (1|pair.id), data = pair_attr_comp[pair_attr_comp$spp==j,])
     ## run model with shuffled variable
     ## save results
     anoresult<-anova(model)

@@ -30,12 +30,13 @@ pair_attr_2 <- merge(final_pair_data, site_data_reverse, by.x=c("site1", "site2"
 pair_attr <- rbind(pair_attr_1, pair_attr_2) # combine the two datasets
 
 # centre and standardize the distance and northing variables
-### should we standardise and centre here?! - standardise by mean and sd?
-pair_attr$distance <- pair_attr$distance - mean(na.omit(pair_attr$distance))
-pair_attr$distance <- pair_attr$distance/(max(abs(na.omit(pair_attr$distance))))
+pair_attr[c(17:18)] <- lapply(pair_attr[c(17:18)], function(pair_attr) c(scale(pair_attr, center = TRUE, scale = TRUE))) 
 
-pair_attr$mean_northing <- pair_attr$mean_northing - mean(na.omit(pair_attr$mean_northing))
-pair_attr$mean_northing <- pair_attr$mean_northing/(max(abs(na.omit(pair_attr$mean_northing))))
+# pair_attr$distance <- pair_attr$distance - mean(na.omit(pair_attr$distance))
+# pair_attr$distance <- pair_attr$distance/(max(abs(na.omit(pair_attr$distance))))
+# 
+# pair_attr$mean_northing <- pair_attr$mean_northing - mean(na.omit(pair_attr$mean_northing))
+# pair_attr$mean_northing <- pair_attr$mean_northing/(max(abs(na.omit(pair_attr$mean_northing))))
 
 # check colinearity
 cor.test(pair_attr$mean_northing, pair_attr$distance) # -0.002
@@ -191,9 +192,9 @@ write.csv(pop_climate_results, file = "../Results/Model_outputs/CBC/pop_climate_
 ################################## RUN SYNCHRONY MODELS ############################################
 ####################################################################################################
 
-pair_attr <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE) ## read in data
+# pair_attr <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE) ## read in data
 ## and read in pop and climate synchrony
-pair_attr_climate <- read.csv("../Data/Bird_sync_data/pop_climate_synchrony_CBC.csv", header=TRUE) 
+pair_attr <- read.csv("../Data/Bird_sync_data/pop_climate_synchrony_CBC.csv", header=TRUE) 
 
 ## check all variables are correct format
 pair_attr$pair.id <- as.character(pair_attr$pair.id)
@@ -202,13 +203,6 @@ pair_attr$end.year <- as.factor(pair_attr$end.year)
 pair_attr$mid.year <- as.factor(pair_attr$mid.year)
 str(pair_attr)
 
-pair_attr_climate$spp <- as.factor(pair_attr_climate$spp)
-pair_attr_climate$start.year <- as.factor(pair_attr_climate$start.year)
-pair_attr_climate$end.year <- as.factor(pair_attr_climate$end.year)
-pair_attr_climate$mid.year <- as.factor(pair_attr_climate$mid.year)
-pair_attr_climate$pair.id <- as.character(pair_attr_climate$pair.id)
-pair_attr_climate$pair.id_5k <- as.character(pair_attr_climate$pair.id_5k)
-
 ###############################################
 ### run the synchrony model for all species ###
 ###############################################
@@ -216,33 +210,30 @@ pair_attr_climate$pair.id_5k <- as.character(pair_attr_climate$pair.id_5k)
 ## first check whether family and genus is significant in main model (phylogenetic checks)
 
 ### run model with family to test for a relationship with synchrony
-all_spp_model_family <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + family + (1|pair.id) + (1|spp), data = pair_attr)
+all_spp_model_family <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + family + summer_temp + (1|pair.id) + (1|spp), data = pair_attr)
 summary(all_spp_model_family) 
 anova(all_spp_model_family) ## family significant (p=0.042)
 
-all_spp_model_genus <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + genus + (1|pair.id) + (1|spp), data = pair_attr)
+all_spp_model_genus <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + genus + summer_temp + (1|pair.id) + (1|spp), data = pair_attr)
 summary(all_spp_model_genus) 
 anova(all_spp_model_genus) ## genus non-significant (p=0.21)
 
 ## run model with intercept to get fixed effect results
 ## model with intercept
-start_time <- Sys.time()
-all_spp_model_int <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
+all_spp_model_int <- lmer(lag0 ~ mean_northing + distance + hab_sim + summer_temp + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
 summary(all_spp_model_int)
-end_time <- Sys.time()
-end_time - start_time # 20.5 seconds
 
 ### save results for northing, distance and hab sim
 fixed_results <- data.frame(summary(all_spp_model_int)$coefficients[,1:5])
 fixed_results$parameter <- paste(row.names(fixed_results))
 rownames(fixed_results) <- 1:nrow(fixed_results)
 ## remove mid.year rows
-fixed_results <- fixed_results[-c(1,5:15),]
+fixed_results <- fixed_results[-c(1,5:16),]
 ## save results
-write.csv(fixed_results, file = "../Results/Model_outputs/fixed_effect_results_cbc.csv", row.names=FALSE)
+write.csv(fixed_results, file = "../Results/Model_outputs/CBC/fixed_effect_results_cbc.csv", row.names=FALSE)
 
 ##  model to produce aggregate synchrony values for all 26 species - no intercept (with climate data - summer temp is significant)
-all_spp_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + summer_temp + (1|pair.id) + (1|pair.id_5k) + (1|spp)-1, data = pair_attr_climate)
+all_spp_model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + summer_temp + (1|pair.id) + (1|spp)-1, data = pair_attr)
 summary(all_spp_model) 
 anova(all_spp_model)
 

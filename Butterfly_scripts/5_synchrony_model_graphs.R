@@ -17,10 +17,10 @@ library(ggpubr)
 library(gridExtra)
 
 ## input data ##
-results_final_all_spp <- read.csv("../Results/Butterfly_results/results_final_all_spp.csv", header=TRUE)
+# results_final_all_spp <- read.csv("../Results/Butterfly_results/results_final_all_spp.csv", header=TRUE)
 results_final_sp <- read.csv("../Results/Butterfly_results/results_final_sp.csv", header=TRUE)
 results_final_spec <- read.csv("../Results/Butterfly_results/results_final_spec.csv", header=TRUE)
-results_final_climate <- read.csv("../Results/Butterfly_results/results_final_all_spp_climate.csv", header=TRUE)
+results_final_all_spp <- read.csv("../Results/Butterfly_results/results_final_all_spp_climate.csv", header=TRUE)
 
 ## read in specialism data
 spp_data <- read.csv("../Data/UKBMS_data/UKBMS_UKspecieslist.csv", header=TRUE)
@@ -33,7 +33,7 @@ results_final_sp <- merge(results_final_sp, spp_data, by.x="sp", by.y="BMSCODE")
 
 
 ## FCI plot scaled to 100 with smoothed line and SE error bars ##
-FCI_plot_scaled <- ggplot(results_final_climate, aes(x = parameter, y = rescaled_FCI)) +
+FCI_plot_scaled <- ggplot(results_final_all_spp, aes(x = parameter, y = rescaled_FCI)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
   geom_errorbar(aes(ymin = rescaled_FCI - rescaled_sd, ymax = rescaled_FCI + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
@@ -51,8 +51,8 @@ FCI_plot_scaled
 ggsave("../Graphs/Connectivity_plots/FCI_plot_all_spp_scaled_climate.png", plot = FCI_plot_scaled, width=7, height=5)
 
 ############### plot with all 3 temporal synchrony graphs for ms #########################
-results_final_all_spp_BBS <- read.csv("../Results/Bird_results/results_final_all_spp_BBS.csv", header=TRUE)
-results_final_all_spp_CBC <- read.csv("../Results/Bird_results/results_final_all_spp_CBC.csv", header=TRUE)
+results_final_all_spp_BBS <- read.csv("../Results/Bird_results/results_final_all_spp_climate_BBS.csv", header=TRUE)
+results_final_all_spp_CBC <- read.csv("../Results/Bird_results/results_final_all_spp_climate_CBC.csv", header=TRUE)
 
 FCI_BBS <- ggplot(results_final_all_spp_BBS, aes(x = parameter, y = rescaled_FCI)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +

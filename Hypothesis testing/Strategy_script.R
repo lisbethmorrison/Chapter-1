@@ -53,7 +53,7 @@ strategy_model_cbc <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year 
 summary(strategy_model_cbc)
 anova(strategy_model_cbc) ## specialism is non-significant (p=0.09)
 results_table_average_spec <- data.frame(summary(strategy_model_cbc)$coefficients[,1:5]) ## 26 species
-write.csv(results_table_average_spec, file = "../Results/Model_outputs/CBC/average_spec_cbc.csv", row.names=TRUE) # 24 species
+write.csv(results_table_average_spec, file = "../Results/Model_outputs/CBC/average_spec_cbc.csv", row.names=TRUE) # 26 species
 
 ## BBS ##
 str(pair_attr_BBS)
@@ -91,12 +91,12 @@ pair_attr_late <- rbind(pair_attr_2000, pair_attr_2012) ## 3 years and 33 specie
 pair_attr_early <- droplevels(pair_attr_early)
 pair_attr_late <- droplevels(pair_attr_late)
 
-pair_attr_early$mid.year <- as.factor(pair_attr_early$mid.year)
+pair_attr_early$mid.year <- as.numeric(pair_attr_early$mid.year)
 pair_attr_early$pair.id <- as.character(pair_attr_early$pair.id)
 pair_attr_early$spp <- as.factor(pair_attr_early$spp)
 pair_attr_early$specialism <- as.factor(pair_attr_early$specialism)
 
-pair_attr_late$mid.year <- as.factor(pair_attr_late$mid.year)
+pair_attr_late$mid.year <- as.numeric(pair_attr_late$mid.year)
 pair_attr_late$pair.id <- as.character(pair_attr_late$pair.id)
 pair_attr_late$spp <- as.factor(pair_attr_late$spp)
 pair_attr_late$specialism <- as.factor(pair_attr_late$specialism)
@@ -118,162 +118,159 @@ summary(spec_model_ukbms3) ## interaction is significant
 anova(spec_model_ukbms3)
 ## mid.year*strategy interaction is significant overall
 ## save model output
-results_table_spec_ukbms <- data.frame(summary(spec_model_ukbms3)$coefficients[,1:5]) ## 32 species
-write.csv(results_table_spec_ukbms, file = "../Results/Model_outputs/UKBMS/change_spec_ukbms_00_12.csv", row.names=TRUE)
+results_table_spec_ukbms2 <- data.frame(summary(spec_model_ukbms3)$coefficients[,1:5]) ## 32 species
+write.csv(results_table_spec_ukbms2, file = "../Results/Model_outputs/UKBMS/change_spec_ukbms_00_12.csv", row.names=TRUE)
 
-## predict new data for [EARLY] model
-newdata <- expand.grid(mean_northing=mean(pair_attr_early$mean_northing), distance=mean(pair_attr_early$distance), 
-              renk_hab_sim=mean(pair_attr_early$renk_hab_sim), mid.year=unique(pair_attr_early$mid.year), 
-              specialism=unique(pair_attr_early$specialism), pair.id=sample(pair_attr_early$pair.id,100), 
-              spp=unique(pair_attr_early$spp))
-                         
-newdata$lag0 <- predict(spec_model_ukbms2, newdata=newdata, re.form=NA)
+############################################# PLOT REUSLTS ############################################# 
 
-mm2 <- model.matrix(terms(spec_model_ukbms2), newdata)
-pvar2 <- diag(mm2 %*% tcrossprod(vcov(spec_model_ukbms2),mm2))
-tvar2 <- pvar2+VarCorr(spec_model_ukbms2)$spp[1]+VarCorr(spec_model_ukbms2)$pair.id[1]
-cmult <- 2
+############### EARLY MODEL ############### 
+## run model without specialism for each species and extract the slope (mid.year) coefficient for each
+results_table<-NULL
+for (i in unique(pair_attr_early$spp)){
+  print(i)
+  ## if statement: if if the mixed effects model doesn't throw an error (levels of pairID), then run an lmer, else run a linear model 
+  loadError=F
+  a=try({spec_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + winter_rain + autumn_rain + spring_rain + summer_rain + 
+                              winter_temp + autumn_temp + spring_temp + summer_temp + (1|pair.id), data=pair_attr_early[pair_attr_early$spp==i,])})
+  loadError <- (is(a, 'try-error')|is(a,'error'))
+  if(loadError==F){
+    spec_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + winter_rain + autumn_rain + spring_rain + summer_rain + 
+                         winter_temp + autumn_temp + spring_temp + summer_temp + (1|pair.id), data=pair_attr_early[pair_attr_early$spp==i,])
+  }else{
+    spec_ukbms <- lm(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + winter_rain + autumn_rain + spring_rain + summer_rain + 
+                         winter_temp + autumn_temp + spring_temp + summer_temp, data=pair_attr_early[pair_attr_early$spp==i,])
+  }
 
-newdata <- data.frame(
-  newdata
-  , plo = newdata$lag0-1.96*sqrt(pvar2)
-  , phi = newdata$lag0+1.96*sqrt(pvar2)
-  , tlo = newdata$lag0-1.96*sqrt(tvar2)
-  , thi = newdata$lag0+1.96*sqrt(tvar2)
-)
+    ### save and plot the results ###
+    results_table_temp <- data.frame(summary(spec_ukbms)$coefficients[,1:2],i)
+    results_table_temp$parameter <- paste(row.names(results_table_temp))
+    rownames(results_table_temp) <- 1:nrow(results_table_temp)
+    results_table_temp <- results_table_temp[grep("mid.year", results_table_temp$parameter),]
+    results_table<-rbind(results_table,results_table_temp)
+}
 
-## run model without specialism or species random effect to obtain residuals
-spec_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_early)
-pair_attr_early$residuals <- resid(spec_ukbms)
-## check mean synchrony of each group
-group_by(pair_attr_early, specialism) %>% summarize(m = mean(lag0)) ## WC mean = 0.265, HS mean = 0.195
-## put mean of each group into pair_attr dataframe
-pair_attr_early <- ddply(pair_attr_early, "specialism", transform, spec_mean = mean(lag0))
-## add mean to each residual
-pair_attr_early$residuals2 <- pair_attr_early$residuals + pair_attr_early$spec_mean
+## merge in this dataframe with specialism info (spec/gen)
+specialism <- pair_attr_early[,c(14,26)]
+specialism <- unique(specialism)
+results_table <- merge(results_table, specialism, by.x="i", by.y="spp")
+## remove parameter column
+results_table <- results_table[,-c(4)]
+## re-name some columns
+names(results_table) <- c("species", "slope", "SE", "Specialism")
+results_table$Specialism <- revalue(results_table$Specialism, c("specialist"="Specialist"))
+results_table$Specialism <- revalue(results_table$Specialism, c("wider.countryside"="Generalist"))
 
+########## calculate slope and SE from main model (with specialism)
+### plot points and SE ontop of raw data
+results_table_spec_ukbms <- results_table_spec_ukbms[,-c(3:5)]
+## leave rows with year and interaction
+results_table_spec_ukbms$Specialism <- paste(row.names(results_table_spec_ukbms))
+rownames(results_table_spec_ukbms) <- 1:nrow(results_table_spec_ukbms)
+results_table_spec_ukbms <- results_table_spec_ukbms[-c(1:4,6:14),]
+results_table_spec_ukbms$Specialism <- revalue(results_table_spec_ukbms$Specialism, c("mid.year"="Specialist"))
+results_table_spec_ukbms$Specialism <- revalue(results_table_spec_ukbms$Specialism, c("mid.year:specialismwider.countryside"="Generalist"))
 
-## create dataframe which calculates mean, SD and SE of residuals for each species
-summary_ukbms <- pair_attr_early %>% group_by(spp, specialism, mid.year) %>% 
-  summarise_at(vars(residuals2), funs(mean,std.error,sd))
+## create new dataframe
+specialist_slope <- results_table_spec_ukbms[1,1]
+generalist_slope <- sum(results_table_spec_ukbms$Estimate)
+specialist_SE <- results_table_spec_ukbms[1,2]
+interaction_SE <- results_table_spec_ukbms[2,2]
+generalist_SE <- sqrt((specialist_SE)^2) + ((interaction_SE)^2)
+model_summary <- data.frame(Specialism=c("Specialist", "Generalist"), slope=c(specialist_slope, generalist_slope), SE=c(specialist_SE, generalist_SE))
 
-## change year values
-newdata$mid.year <- revalue(newdata$mid.year, c("1984.5"="1985"))
-newdata$mid.year <- revalue(newdata$mid.year, c("1999.5"="2000"))
-## change strategy heading
-colnames(newdata)[5] <- "Specialism"
-newdata$Specialism <- revalue(newdata$Specialism, c("specialist"="Specialist"))
-newdata$Specialism <- revalue(newdata$Specialism, c("wider.countryside"="Generalist"))
-newdata$Specialism <- factor(newdata$Specialism, levels=c("Generalist", "Specialist"))
-## same as above for summary dataframe
-summary_ukbms$mid.year <- revalue(summary_ukbms$mid.year, c("1984.5"="1985"))
-summary_ukbms$mid.year <- revalue(summary_ukbms$mid.year, c("1999.5"="2000"))
-## change strategy heading
-colnames(summary_ukbms)[2] <- "Specialism"
-summary_ukbms$Specialism <- revalue(summary_ukbms$Specialism, c("specialist"="Specialist"))
-summary_ukbms$Specialism <- revalue(summary_ukbms$Specialism, c("wider.countryside"="Generalist"))
-summary_ukbms$Specialism <- factor(summary_ukbms$Specialism, levels=c("Generalist", "Specialist"))
+model_summary$Specialism <- factor(model_summary$Specialism, levels=c("Generalist", "Specialist"))
+results_table$Specialism <- factor(results_table$Specialism, levels=c("Generalist", "Specialist"))
 
-## plot graph with raw data residuals (+SE error bars) and fitted lines
-png("../Graphs/Specialism/Specialism_change_predicted_ukbms_85_00.png", height = 150, width = 180, units = "mm", res = 300)
-butterfly_spec <- ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Specialism)) +
-  geom_point(aes(shape=Specialism), colour="grey66", size = 3, position = myjit) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey66", width=0.2, position = myjit) +
-  geom_line(data=newdata, aes(x=mid.year, y=lag0, linetype=Specialism), colour="black", lwd=1) +
-  labs(x="Mid year of moving window", y="Population synchrony") +
+png("../Graphs/Specialism/Specialism_change_ukbms_85_00.png", height = 150, width = 180, units = "mm", res = 300)
+spec <- ggplot(mapping=aes(x=Specialism, y=slope, ymin=slope-SE, ymax=slope+SE)) +
+  geom_point(data=results_table, size=2, color="lightgrey", position=myjit) +
+  geom_errorbar(data=results_table, color="lightgrey", position=myjit, width=0.1) +
+  geom_point(data=model_summary, size=4) +
+  geom_errorbar(data=model_summary, width=0.1) +
+  labs(x="Specialism", y="Change in population synchrony 1985-2000") +
+  #scale_y_continuous(breaks = seq(-1.8,0.8,0.4)) +
   theme_bw() +
-  theme(legend.key.width = unit(0.8,"cm"), legend.key = element_rect(size = 2), text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.margin=margin(c(-10,20,-10,0)),
-        axis.text.x=element_text(colour="black"), axis.text.y = element_text(colour="black")) +
-  scale_linetype_manual(name=" ",
-                        labels=c("Generalist", "Specialist"), values=c(1,2)) +
-  scale_shape_manual(name="Biotype specialism", 
-                     labels=c("Generalist", "Specialist"), values=c(16,4)) +
-  guides(shape = guide_legend(override.aes = list(size = 3))) +
-  guides(linetype = guide_legend(override.aes = list(size = 0.5)))
-butterfly_spec
+  theme(text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
+        axis.text.x=element_text(colour="black"), axis.text.y = element_text(colour="black"))
+spec
+## generalists have a more negative change in syncrhony than specialists 
 dev.off()
 
-## predict new data for [LATE] model
-newdata <- expand.grid(mean_northing=mean(pair_attr_late$mean_northing), distance=mean(pair_attr_late$distance), 
-                       renk_hab_sim=mean(pair_attr_late$renk_hab_sim), mid.year=unique(pair_attr_late$mid.year), 
-                       specialism=unique(pair_attr_late$specialism), pair.id=sample(pair_attr_late$pair.id,100), 
-                       spp=unique(pair_attr_late$spp))
 
-newdata$lag0 <- predict(spec_model_ukbms3, newdata=newdata, re.form=NA)
+############### LATE MODEL ############### 
+## run model without specialism for each species and extract the slope (mid.year) coefficient for each
+results_table<-NULL
+for (i in unique(pair_attr_late$spp)){
+  print(i)
+  ## if statement: if if the mixed effects model doesn't throw an error (levels of pairID), then run an lmer, else run a linear model 
+  loadError=F
+  a=try({spec_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + winter_rain + autumn_rain + spring_rain + summer_rain + 
+                              winter_temp + autumn_temp + spring_temp + summer_temp + (1|pair.id), data=pair_attr_late[pair_attr_late$spp==i,])})
+  loadError <- (is(a, 'try-error')|is(a,'error'))
+  if(loadError==F){
+    spec_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + winter_rain + autumn_rain + spring_rain + summer_rain + 
+                         winter_temp + autumn_temp + spring_temp + summer_temp + (1|pair.id), data=pair_attr_late[pair_attr_late$spp==i,])
+  }else{
+    spec_ukbms <- lm(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + winter_rain + autumn_rain + spring_rain + summer_rain + 
+                       winter_temp + autumn_temp + spring_temp + summer_temp, data=pair_attr_late[pair_attr_late$spp==i,])
+  }
+  
+  ### save and plot the results ###
+  results_table_temp <- data.frame(summary(spec_ukbms)$coefficients[,1:2],i)
+  results_table_temp$parameter <- paste(row.names(results_table_temp))
+  rownames(results_table_temp) <- 1:nrow(results_table_temp)
+  results_table_temp <- results_table_temp[grep("mid.year", results_table_temp$parameter),]
+  results_table<-rbind(results_table,results_table_temp)
+}
 
-mm2 <- model.matrix(terms(spec_model_ukbms3), newdata)
-pvar2 <- diag(mm2 %*% tcrossprod(vcov(spec_model_ukbms3),mm2))
-tvar2 <- pvar2+VarCorr(spec_model_ukbms3)$spp[1]+VarCorr(spec_model_ukbms3)$pair.id[1]
-cmult <- 2
+## merge in this dataframe with specialism info (spec/gen)
+specialism <- pair_attr_late[,c(14,26)]
+specialism <- unique(specialism)
+results_table <- merge(results_table, specialism, by.x="i", by.y="spp")
+## remove parameter column
+results_table <- results_table[,-c(4)]
+## re-name some columns
+names(results_table) <- c("species", "slope", "SE", "Specialism")
+results_table$Specialism <- revalue(results_table$Specialism, c("specialist"="Specialist"))
+results_table$Specialism <- revalue(results_table$Specialism, c("wider.countryside"="Generalist"))
 
-newdata <- data.frame(
-  newdata
-  , plo = newdata$lag0-1.96*sqrt(pvar2)
-  , phi = newdata$lag0+1.96*sqrt(pvar2)
-  , tlo = newdata$lag0-1.96*sqrt(tvar2)
-  , thi = newdata$lag0+1.96*sqrt(tvar2)
-)
+########## calculate slope and SE from main model (with specialism)
+### plot points and SE ontop of raw data
+results_table_spec_ukbms2 <- results_table_spec_ukbms2[,-c(3:5)]
+## leave rows with year and interaction
+results_table_spec_ukbms2$Specialism <- paste(row.names(results_table_spec_ukbms2))
+rownames(results_table_spec_ukbms2) <- 1:nrow(results_table_spec_ukbms2)
+results_table_spec_ukbms2 <- results_table_spec_ukbms2[-c(1:4,6:14),]
+results_table_spec_ukbms2$Specialism <- revalue(results_table_spec_ukbms2$Specialism, c("mid.year"="Specialist"))
+results_table_spec_ukbms2$Specialism <- revalue(results_table_spec_ukbms2$Specialism, c("mid.year:specialismwider.countryside"="Generalist"))
 
-## run model without specialism or species random effect to obtain residuals
-spec_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_late)
-pair_attr_late$residuals <- resid(spec_ukbms)
-## check mean synchrony of each group
-group_by(pair_attr_late, specialism) %>% summarize(m = mean(lag0)) ## WC mean = 0.265, HS mean = 0.195
-## put mean of each group into pair_attr dataframe
-pair_attr_late <- ddply(pair_attr_late, "specialism", transform, spec_mean = mean(lag0))
-## add mean to each residual
-pair_attr_late$residuals2 <- pair_attr_late$residuals + pair_attr_late$spec_mean
+## create new dataframe
+specialist_slope <- results_table_spec_ukbms2[1,1]
+generalist_slope <- sum(results_table_spec_ukbms2$Estimate)
+specialist_SE <- results_table_spec_ukbms2[1,2]
+interaction_SE <- results_table_spec_ukbms2[2,2]
+generalist_SE <- sqrt((specialist_SE)^2) + ((interaction_SE)^2)
+model_summary <- data.frame(Specialism=c("Specialist", "Generalist"), slope=c(specialist_slope, generalist_slope), SE=c(specialist_SE, generalist_SE))
 
+model_summary$Specialism <- factor(model_summary$Specialism, levels=c("Generalist", "Specialist"))
+results_table$Specialism <- factor(results_table$Specialism, levels=c("Generalist", "Specialist"))
 
-## create dataframe which calculates mean, SD and SE of residuals for each species
-summary_ukbms <- pair_attr_late %>% group_by(spp, specialism, mid.year) %>% 
-  summarise_at(vars(residuals2), funs(mean,std.error,sd))
-
-## change year values
-newdata$mid.year <- revalue(newdata$mid.year, c("2011.5"="2012"))
-newdata$mid.year <- revalue(newdata$mid.year, c("1999.5"="2000"))
-## change strategy heading
-colnames(newdata)[5] <- "Specialism"
-newdata$Specialism <- revalue(newdata$Specialism, c("specialist"="Specialist"))
-newdata$Specialism <- revalue(newdata$Specialism, c("wider.countryside"="Generalist"))
-newdata$Specialism <- factor(newdata$Specialism, levels=c("Generalist", "Specialist"))
-## same as above for summary dataframe
-summary_ukbms$mid.year <- revalue(summary_ukbms$mid.year, c("2011.5"="2012"))
-summary_ukbms$mid.year <- revalue(summary_ukbms$mid.year, c("1999.5"="2000"))
-## change strategy heading
-colnames(summary_ukbms)[2] <- "Specialism"
-summary_ukbms$Specialism <- revalue(summary_ukbms$Specialism, c("specialist"="Specialist"))
-summary_ukbms$Specialism <- revalue(summary_ukbms$Specialism, c("wider.countryside"="Generalist"))
-summary_ukbms$Specialism <- factor(summary_ukbms$Specialism, levels=c("Generalist", "Specialist"))
-
-## plot graph with raw data residuals (+SE error bars) and fitted lines
-png("../Graphs/Specialism/Specialism_change_predicted_ukbms_00_12.png", height = 150, width = 180, units = "mm", res = 300)
-butterfly_spec2 <- ggplot(summary_ukbms, aes(x = mid.year, y = mean, group=Specialism)) +
-  geom_point(aes(shape=Specialism), colour="grey66", size = 3, position = myjit) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey66", width=0.2, position = myjit) +
-  geom_line(data=newdata, aes(x=mid.year, y=lag0, linetype=Specialism), colour="black", lwd=1) +
-  labs(x="Mid year of moving window", y="Population synchrony") +
+png("../Graphs/Specialism/Specialism_change_ukbms_00_12.png", height = 150, width = 180, units = "mm", res = 300)
+ggplot(mapping=aes(x=Specialism, y=slope, ymin=slope-SE, ymax=slope+SE)) +
+  geom_point(data=results_table, size=2, color="lightgrey", position=myjit) +
+  geom_errorbar(data=results_table, color="lightgrey", position=myjit, width=0.1) +
+  geom_point(data=model_summary, size=4) +
+  geom_errorbar(data=model_summary, width=0.1) +
+  labs(x="Specialism", y="Change in population synchrony 1985-2000") +
+  #scale_y_continuous(breaks = seq(-0.3,0.3,0.05)) +
   theme_bw() +
-  theme(legend.key.width = unit(0.8,"cm"), legend.key = element_rect(size = 2), text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.margin=margin(c(-10,20,-10,0)),
-        axis.text.x=element_text(colour="black"), axis.text.y = element_text(colour="black")) +
-  scale_linetype_manual(name=" ",
-                        labels=c("Generalist", "Specialist"), values=c(1,2)) +
-  scale_shape_manual(name="Biotype specialism", 
-                     labels=c("Generalist", "Specialist"), values=c(16,4)) +
-  guides(shape = guide_legend(override.aes = list(size = 3))) +
-  guides(linetype = guide_legend(override.aes = list(size = 0.5)))
-butterfly_spec2
+  theme(text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
+        axis.text.x=element_text(colour="black"), axis.text.y = element_text(colour="black"))
+## generalists have a more negative change in syncrhony than specialists 
 dev.off()
 
-install.packages("ggpubr")
-library(ggpubr)
-png("../Graphs/FINAL/Figure4.png", height = 200, width = 150, units = "mm", res = 300)
-ggarrange(butterfly_spec, butterfly_abund, 
-          labels = c("(a)", "(b)"), font.label = list(size = 10, color ="black"),
-          ncol = 1, nrow = 2)
-dev.off()
 
 ############ jitter code #################
 myjit <- ggproto("fixJitter", PositionDodge,

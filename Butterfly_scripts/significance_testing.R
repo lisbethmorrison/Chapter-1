@@ -19,7 +19,7 @@ library(lme4)
 options(scipen=999)
 
 ## load data
-pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE)
+pair_attr <- read.csv("../Data/Butterfly_sync_data/pop_climate_synchrony.csv", header=TRUE)
 
 length(unique(pair_attr$spp)) # 32 species
 
@@ -28,8 +28,8 @@ pair_attr_1985 <- pair_attr[pair_attr$mid.year==1984.5,]
 pair_attr_2000 <- pair_attr[pair_attr$mid.year==1999.5,]
 pair_attr_2012 <- pair_attr[pair_attr$mid.year==2011.5,]
 
-pair_attr_early <- rbind(pair_attr_1985, pair_attr_2000) # comparison of early years 1985 & 1985
-pair_attr_late <- rbind(pair_attr_2000, pair_attr_2012) # comparison of late years 1985 & 2012
+pair_attr_early <- rbind(pair_attr_1985, pair_attr_2000) # comparison of early years 1985 & 2000
+pair_attr_late <- rbind(pair_attr_2000, pair_attr_2012) # comparison of late years 2000 & 2012
 pair_attr_overall <- rbind(pair_attr_1985, pair_attr_2012) # comparison of overall years 1985 & 2012
 
 ## centre and standardise continuous variables by mean and SD
@@ -93,7 +93,8 @@ for (i in spp.list.early){
     
   } else {
   
-  early_model <- (lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data = pair_attr_early[pair_attr_early$spp==i,]))
+  early_model <- (lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + winter_rain + autumn_rain + spring_rain + summer_rain +
+                         winter_temp + autumn_temp + spring_temp + summer_temp + (1|pair.id), data = pair_attr_early[pair_attr_early$spp==i,]))
   summary(early_model)
   anova(early_model)
   
@@ -107,9 +108,8 @@ for (i in spp.list.early){
     
 }
 
-## if else function removes 1 species when nrow of 1980 is set at <20:
-## species 110, 116, 119, 17, 18, 23, 27 and 48
-## 24 species 
+## species 110, 116, 119, 17, 18, 23, 27 and 48 skipped
+## 24 species total
 
 ## save results
 names(results_table_early) <- c("Estimate", "SD", "df", "t","p_value", "species")
@@ -149,7 +149,7 @@ spp_list <- unique(F_result_final$j) ## only run this on the species that work (
 spp_list <- as.data.frame(spp_list)
 pair_attr_early <- merge(pair_attr_early, spp_list, by.x="spp", by.y="spp_list", all=FALSE)
 pair_attr_early <- droplevels(pair_attr_early)
-length(unique(pair_attr_early$spp))
+length(unique(pair_attr_early$spp)) ## 24 species
 spp_list <- unique(F_result_final$j) ## only run this on the species that work (24)
 str(spp_list)
 
@@ -159,7 +159,8 @@ ukbms_spp_para <- foreach (i=1:n_sims,  .combine=rbind, .packages=c('lme4', 'for
   foreach (j=spp_list, .combine=rbind, .packages=c('lme4', 'foreach')) %dopar% { ## loop through each species
     print(j)
     pair_attr_early$mid.year_shuffle <- sample(pair_attr_early$mid.year) ## randomly shuffle mid year variable
-  model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year_shuffle + (1|pair.id), data = pair_attr_early[pair_attr_early$spp==j,])
+  model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + winter_rain + autumn_rain + spring_rain + summer_rain +
+                  winter_temp + autumn_temp + spring_temp + summer_temp + mid.year_shuffle + (1|pair.id), data = pair_attr_early[pair_attr_early$spp==j,])
   ## run model with shuffled variable
   ## save results
   anoresult<-anova(model)
@@ -251,7 +252,8 @@ for (i in spp.list.late){
     next
   }
   
-  late_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data = pair_attr_late[pair_attr_late$spp==i,])
+  late_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + winter_rain + autumn_rain + spring_rain + summer_rain +
+                       winter_temp + autumn_temp + spring_temp + summer_temp + (1|pair.id), data = pair_attr_late[pair_attr_late$spp==i,])
   summary(late_model)
   anova(late_model)
   
@@ -314,7 +316,8 @@ ukbms_spp_para <- foreach (i=1:n_sims,  .combine=rbind, .packages=c('lme4', 'for
   foreach (j=spp_list, .combine=rbind, .packages=c('lme4', 'foreach')) %dopar% { ## loop through each species
     print(j)
     pair_attr_late$mid.year_shuffle <- sample(pair_attr_late$mid.year) ## randomly shuffle mid year variable
-    model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year_shuffle + (1|pair.id), data = pair_attr_late[pair_attr_late$spp==j,])
+    model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + winter_rain + autumn_rain + spring_rain + summer_rain +
+                    winter_temp + autumn_temp + spring_temp + summer_temp + mid.year_shuffle + (1|pair.id), data = pair_attr_late[pair_attr_late$spp==j,])
     ## run model with shuffled variable
     ## save results
     anoresult<-anova(model)
@@ -370,13 +373,14 @@ final_results_late <- merge(results_final_late, p_values_late, by="species")
 ## classify each species as either no change (insignificant p value), decreasing (negative estimte), or increasing (positive estimate)
 final_results_late <- final_results_late %>% group_by(species) %>% mutate(change = ifelse(pvalue>0.05, "No change", ifelse(pvalue<0.05 & Estimate<0, "Decrease", "Increase")))
 
-nrow(final_results_late[final_results_late$change=="No change",]) ## 5 species unchanged
+nrow(final_results_late[final_results_late$change=="No change",]) ## 8 species unchanged
 nrow(final_results_late[final_results_late$change=="Decrease",]) ## 3 species decreasing
-nrow(final_results_late[final_results_late$change=="Increase",]) ## 23 species increasing
+nrow(final_results_late[final_results_late$change=="Increase",]) ## 20 species increasing
 
 write.csv(final_results_late, file="../Results/Butterfly_results/ukbms_spp_trends_00_12.csv", row.names=FALSE)
+final_results_late <- read.csv("../Results/Butterfly_results/ukbms_spp_trends_00_12.csv", header=TRUE)
 
-final_results_late2 <- data.frame(change=unique(final_results_late$change), no_species=c(23,5,3), total_species=31)
+final_results_late2 <- data.frame(change=unique(final_results_late$change), no_species=c(20,8,3), total_species=31)
 final_results_late2$percentage <- (final_results_late2$no_species / final_results_late2$total_species)*100
 
 ## save file
@@ -412,7 +416,8 @@ for (i in spp.list.overall){
     
   } else {
   
-  overall_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data = pair_attr_overall[pair_attr_overall$spp==i,])
+  overall_model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + winter_rain + autumn_rain + spring_rain + summer_rain +
+                          winter_temp + autumn_temp + spring_temp + summer_temp + (1|pair.id), data = pair_attr_overall[pair_attr_overall$spp==i,])
   summary(overall_model)
   anova(overall_model)
   
@@ -477,7 +482,8 @@ ukbms_spp_para <- foreach (i=1:n_sims,  .combine=rbind, .packages=c('lme4', 'for
   foreach (j=spp_list, .combine=rbind, .packages=c('lme4', 'foreach')) %dopar% { ## loop through each species
     print(j)
     pair_attr_overall$mid.year_shuffle <- sample(pair_attr_overall$mid.year) ## randomly shuffle mid year variable
-    model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year_shuffle + (1|pair.id), data = pair_attr_overall[pair_attr_overall$spp==j,])
+    model <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year_shuffle + winter_rain + autumn_rain + spring_rain + summer_rain +
+                    winter_temp + autumn_temp + spring_temp + summer_temp + (1|pair.id), data = pair_attr_overall[pair_attr_overall$spp==j,])
     ## run model with shuffled variable
     ## save results
     anoresult<-anova(model)
@@ -533,13 +539,14 @@ final_results_overall <- merge(results_final_overall, p_values_overall, by="spec
 ## classify each species as either no change (insignificant p value), decreasing (negative estimte), or increasing (positive estimate)
 final_results_overall <- final_results_overall %>% group_by(species) %>% mutate(change = ifelse(pvalue>0.05, "No change", ifelse(pvalue<0.05 & Estimate<0, "Decrease", "Increase")))
 
-nrow(final_results_overall[final_results_overall$change=="No change",]) ## 6 species unchanged
+nrow(final_results_overall[final_results_overall$change=="No change",]) ## 10 species unchanged
 nrow(final_results_overall[final_results_overall$change=="Decrease",]) ## 6 species decreasing
-nrow(final_results_overall[final_results_overall$change=="Increase",]) ## 9 species increasing
+nrow(final_results_overall[final_results_overall$change=="Increase",]) ## 5 species increasing
 
 write.csv(final_results_overall, file="../Results/Butterfly_results/ukbms_spp_trends_85_12.csv", row.names=FALSE)
+final_results_overall <- read.csv("../Results/Butterfly_results/ukbms_spp_trends_85_12.csv", header=TRUE)
 
-final_results_overall2 <- data.frame(change=unique(final_results_overall$change), no_species=c(9,6,6), total_species=21)
+final_results_overall2 <- data.frame(change=unique(final_results_overall$change), no_species=c(5,10,6), total_species=21)
 final_results_overall2$percentage <- (final_results_overall2$no_species / final_results_overall2$total_species)*100
 
 ## save file

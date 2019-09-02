@@ -27,8 +27,6 @@ pair_attr_CBC <- read.csv("../Data/Bird_sync_data/pop_climate_synchrony_CBC.csv"
 pair_attr_BBS <- read.csv("../Data/Bird_sync_data/pop_climate_synchrony_BBS.csv", header=TRUE) # BBS pair attribute data
 bird_common <- read.csv("../Data/BTO_data/pop_estimates_birds.csv", header=TRUE)
 WCBS_data <- read.csv("../Data/UKBMS_data/WCBS_data.csv", header=TRUE)
-## bird phylogeny info 
-species_traits <- read.csv("../Data/BTO_data/woodland_generalist_specialist.csv", header=TRUE)
 
 ######### UKBMS ###########
 ## remove unneccessary columns from WCBS data
@@ -51,8 +49,8 @@ pair_attr$pair.id <- as.character(pair_attr$pair.id)
 pair_attr$spp <- as.factor(pair_attr$spp)
 
 ### full model with average_abundance as a measure of commonness
-common_model_ukbms2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + pop_est_stand + winter_rain + autumn_rain + spring_rain + summer_rain +
-                              winter_temp + autumn_temp + spring_temp + summer_temp + (1|pair.id) + (1|spp), data = pair_attr)
+common_model_ukbms2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + winter_rain + autumn_rain + spring_rain + summer_rain +
+                              winter_temp + autumn_temp + spring_temp + summer_temp + pop_est_stand + (1|pair.id) + (1|spp), data = pair_attr)
 
 qqnorm(residuals(common_model_ukbms2))
 qqline(residuals(common_model_ukbms2))
@@ -106,7 +104,7 @@ summary(common_model_bbs)
 ## non-significant
 ## save result
 results_table_abund_bbs <- data.frame(summary(common_model_bbs)$coefficients[,1:5]) ## 24 species
-write.csv(results_table_abund_cbc, file = "../Results/Model_outputs/CBC/average_abund_bbs.csv", row.names=TRUE)
+write.csv(results_table_abund_bbs, file = "../Results/Model_outputs/BBS/average_abund_bbs.csv", row.names=TRUE)
 
 
 #######################################################################################################
@@ -177,11 +175,6 @@ pair_attr_ukbms$mid.year <- as.factor(pair_attr_ukbms$mid.year)
 pair_attr_ukbms$pair.id <- as.character(pair_attr_ukbms$pair.id)
 pair_attr_ukbms$spp <- as.factor(pair_attr_ukbms$spp)
 
-## rescale variables 
-pair_attr_ukbms$distance <- (pair_attr_ukbms$distance - mean(na.omit(pair_attr_ukbms$distance)))/sd(na.omit(pair_attr_ukbms$distance))
-pair_attr_ukbms$mean_northing <- (pair_attr_ukbms$mean_northing - mean(na.omit(pair_attr_ukbms$mean_northing)))/sd(na.omit(pair_attr_ukbms$mean_northing))
-pair_attr_ukbms$renk_hab_sim <- (pair_attr_ukbms$renk_hab_sim - mean(na.omit(pair_attr_ukbms$renk_hab_sim)))/sd(na.omit(pair_attr_ukbms$renk_hab_sim))
-
 ## merge with abundance data 
 pair_attr_ukbms <- merge(pair_attr_ukbms, abundance_results, by.x="spp", by.y="Species.code", all=FALSE)
 
@@ -190,7 +183,7 @@ abund_model1 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + winter_rai
                        winter_temp + autumn_temp + spring_temp + summer_temp + mid.year*ab_change_85_00 + (1|spp) + (1|pair.id), data=pair_attr_ukbms)
 summary(abund_model1)
 anova(abund_model1)
-## not significant (p=0.13)
+## not significant (p=0.22)
 results_table_abund_ukbms <- data.frame(summary(abund_model1)$coefficients[,1:5]) ## 32 species
 write.csv(results_table_abund_ukbms, file = "../Results/Model_outputs/UKBMS/change_abund_85_00_ukbms.csv", row.names=TRUE)
 
@@ -222,6 +215,7 @@ abundance_results$ab_change_00_12 <- ifelse(abundance_results$mean_change_abund>
 ## save abundance results
 write.csv(abundance_results, file="../Results/Butterfly_results/abundance_results_00_12.csv", row.names=FALSE)
 abundance_results <- read.csv("../Results/Butterfly_results/abundance_results_00_12.csv", header=TRUE)
+
 ################ Interaction between mid-year and abundance change ####################
 ## UKBMS butterflies
 ## subset to only look at mid years 1985 and 2000
@@ -229,14 +223,9 @@ pair_attr_2000 <- pair_attr[pair_attr$mid.year==1999.5,]
 pair_attr_2012 <- pair_attr[pair_attr$mid.year==2011.5,]
 pair_attr_ukbms <- rbind(pair_attr_2000, pair_attr_2012) ## 2 years
 
-pair_attr_ukbms$mid.year <- as.factor(pair_attr_ukbms$mid.year)
+pair_attr_ukbms$mid.year <- as.numeric(pair_attr_ukbms$mid.year)
 pair_attr_ukbms$pair.id <- as.character(pair_attr_ukbms$pair.id)
 pair_attr_ukbms$spp <- as.factor(pair_attr_ukbms$spp)
-
-## rescale variables 
-pair_attr_ukbms$distance <- (pair_attr_ukbms$distance - mean(na.omit(pair_attr_ukbms$distance)))/sd(na.omit(pair_attr_ukbms$distance))
-pair_attr_ukbms$mean_northing <- (pair_attr_ukbms$mean_northing - mean(na.omit(pair_attr_ukbms$mean_northing)))/sd(na.omit(pair_attr_ukbms$mean_northing))
-pair_attr_ukbms$renk_hab_sim <- (pair_attr_ukbms$renk_hab_sim - mean(na.omit(pair_attr_ukbms$renk_hab_sim)))/sd(na.omit(pair_attr_ukbms$renk_hab_sim))
 
 ## merge with abundance data 
 pair_attr_ukbms <- merge(pair_attr_ukbms, abundance_results, by.x="spp", by.y="Species.code", all=FALSE)
@@ -249,77 +238,89 @@ anova(abund_model2)
 ## very significant interaction (p<0.00001)
 results_table_abund_ukbms <- data.frame(summary(abund_model2)$coefficients[,1:5]) ## 32 species
 write.csv(results_table_abund_ukbms, file = "../Results/Model_outputs/UKBMS/change_abund_00_12_ukbms.csv", row.names=TRUE)
+############################################# PLOT REUSLTS ############################################# 
 
-### predict new data to plot graph
-pair_attr_ukbms <- droplevels(pair_attr_ukbms)
-newdata_ukbms <- expand.grid(mean_northing=mean(pair_attr_ukbms$mean_northing), distance=mean(pair_attr_ukbms$distance), 
-                             renk_hab_sim=mean(pair_attr_ukbms$renk_hab_sim), pair.id=sample(pair_attr_ukbms$pair.id,100),
-                             spp=unique(pair_attr_ukbms$spp), mid.year=unique(pair_attr_ukbms$mid.year), 
-                             ab_change_00_12=unique(pair_attr_ukbms$ab_change_00_12))
-newdata_ukbms$lag0 <- predict(abund_model2, newdata=newdata_ukbms, re.form=NA)
+############### LATE MODEL ############### 
+## run model without abundance for each species and extract the slope (mid.year) coefficient for each
+results_table<-NULL
+for (i in unique(pair_attr_ukbms$spp)){
+  print(i)
+  ## if statement: if if the mixed effects model doesn't throw an error (levels of pairID), then run an lmer, else run a linear model 
+  loadError=F
+  a=try({spec_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + winter_rain + autumn_rain + spring_rain + summer_rain + 
+                              winter_temp + autumn_temp + spring_temp + summer_temp + (1|pair.id), data=pair_attr_ukbms[pair_attr_ukbms$spp==i,])})
+  loadError <- (is(a, 'try-error')|is(a,'error'))
+  if(loadError==F){
+    spec_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + winter_rain + autumn_rain + spring_rain + summer_rain + 
+                         winter_temp + autumn_temp + spring_temp + summer_temp + (1|pair.id), data=pair_attr_ukbms[pair_attr_ukbms$spp==i,])
+  }else{
+    spec_ukbms <- lm(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + winter_rain + autumn_rain + spring_rain + summer_rain + 
+                       winter_temp + autumn_temp + spring_temp + summer_temp, data=pair_attr_ukbms[pair_attr_ukbms$spp==i,])
+  }
+  
+  ### save and plot the results ###
+  results_table_temp <- data.frame(summary(spec_ukbms)$coefficients[,1:2],i)
+  results_table_temp$parameter <- paste(row.names(results_table_temp))
+  rownames(results_table_temp) <- 1:nrow(results_table_temp)
+  results_table_temp <- results_table_temp[grep("mid.year", results_table_temp$parameter),]
+  results_table<-rbind(results_table,results_table_temp)
+}
 
+## merge in this dataframe with abundance info 
+abundance <- pair_attr_ukbms[,c(1,43)]
+abundance <- unique(abundance)
+results_table <- merge(results_table, abundance, by.x="i", by.y="spp")
+## remove parameter column
+results_table <- results_table[,-c(4)]
+## re-name some columns
+names(results_table) <- c("species", "slope", "SE", "Abundance")
+results_table$Abundance <- revalue(results_table$Abundance, c("increase"="Increase"))
+results_table$Abundance <- revalue(results_table$Abundance, c("decrease"="Decrease"))
 
-mm <- model.matrix(terms(abund_model2), newdata_ukbms)
-pvar <- diag(mm %*% tcrossprod(vcov(abund_model2),mm))
-tvar <- pvar+VarCorr(abund_model2)$spp[1]+VarCorr(abund_model2)$pair.id[1]
-cmult <- 2
+########## calculate slope and SE from main model (with specialism)
+### plot points and SE ontop of raw data
+results_table_abund_ukbms <- results_table_abund_ukbms[,-c(3:5)]
+## leave rows with year and interaction
+results_table_abund_ukbms$Abundance <- paste(row.names(results_table_abund_ukbms))
+rownames(results_table_abund_ukbms) <- 1:nrow(results_table_abund_ukbms)
+results_table_abund_ukbms <- results_table_abund_ukbms[c(13,15),]
+results_table_abund_ukbms$Abundance <- revalue(results_table_abund_ukbms$Abundance, c("mid.year"="Decrease"))
+results_table_abund_ukbms$Abundance <- revalue(results_table_abund_ukbms$Abundance, c("mid.year:ab_change_00_12increase"="Increase"))
 
-newdata_ukbms <- data.frame(
-  newdata_ukbms
-  , plo = newdata_ukbms$lag0-1.96*sqrt(pvar)
-  , phi = newdata_ukbms$lag0+1.96*sqrt(pvar)
-  , tlo = newdata_ukbms$lag0-1.96*sqrt(tvar)
-  , thi = newdata_ukbms$lag0+1.96*sqrt(tvar)
-)
+## create new dataframe
+decrease_slope <- results_table_abund_ukbms[1,1]
+increase_slope <- sum(results_table_abund_ukbms$Estimate)
+decrease_SE <- results_table_abund_ukbms[1,2]
+interaction_SE <- results_table_abund_ukbms[2,2]
+increase_SE <- sqrt((decrease_SE)^2) + ((interaction_SE)^2)
+model_summary <- data.frame(Abundance=c("Decrease", "Increase"), slope=c(decrease_slope, increase_slope), SE=c(decrease_SE, increase_SE))
 
-## run model without abundance and species random effect to obtain residuals
-abund_model_ukbms <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id), data=pair_attr_ukbms)
-pair_attr_ukbms$residuals <- resid(abund_model_ukbms)
-group_by(pair_attr_ukbms, ab_change_00_12) %>% summarize(m = mean(lag0)) ## decrease=0.25, increase=0.286
-## put mean of each group into pair_attr dataframe
-pair_attr_ukbms <- ddply(pair_attr_ukbms, "ab_change_00_12", transform, abund_mean = mean(lag0))
-## add mean to each residual
-pair_attr_ukbms$residuals2 <- pair_attr_ukbms$residuals + pair_attr_ukbms$abund_mean
+model_summary$Abundance <- factor(model_summary$Abundance, levels=c("Increase", "Decrease"))
+results_table$Abundance <- factor(results_table$Abundance, levels=c("Increase", "Decrease"))
 
-## create new dataframe to calculate mean, SD and SE of residuals for each species
-summary_ukbms2 <- pair_attr_ukbms %>% group_by(spp, ab_change_00_12, mid.year) %>% 
-  summarise_at(vars(residuals2), funs(mean,std.error,sd))
-
-## change year values and abundance variable names
-newdata_ukbms$mid.year <- revalue(newdata_ukbms$mid.year, c("1999.5"="2000"))
-newdata_ukbms$mid.year <- revalue(newdata_ukbms$mid.year, c("2011.5"="2012"))
-colnames(newdata_ukbms)[7] <- "Abundance_change"
-newdata_ukbms$Abundance_change <- revalue(newdata_ukbms$Abundance_change, c("decrease"="Decrease"))
-newdata_ukbms$Abundance_change <- revalue(newdata_ukbms$Abundance_change, c("increase"="Increase"))
-newdata_ukbms$Abundance_change <- factor(newdata_ukbms$Abundance_change, levels=c("Increase", "Decrease"))
-## same for summary dataframe
-summary_ukbms2$mid.year <- revalue(summary_ukbms2$mid.year, c("1999.5"="2000"))
-summary_ukbms2$mid.year <- revalue(summary_ukbms2$mid.year, c("2011.5"="2012"))
-colnames(summary_ukbms2)[2] <- "Abundance_change"
-summary_ukbms2$Abundance_change <- revalue(summary_ukbms2$Abundance_change, c("decrease"="Decrease"))
-summary_ukbms2$Abundance_change <- revalue(summary_ukbms2$Abundance_change, c("increase"="Increase"))
-summary_ukbms2$Abundance_change <- factor(summary_ukbms2$Abundance_change, levels=c("Increase", "Decrease"))
-
-## plot graph with raw data residuals (+SE error bars) and fitted line
-png("../Graphs/Abundance/Abundance_change_predicted_ukbms_00_12.png", height = 150, width = 180, units = "mm", res = 300)
-butterfly_abund <- ggplot(summary_ukbms2, aes(x = mid.year, y = mean, group=Abundance_change)) +
-  geom_point(aes(shape=Abundance_change), colour="grey66", size = 3, position=myjit) +
-  geom_errorbar(aes(ymin = mean-std.error, ymax = mean+std.error), colour="grey66", position=myjit, width=0.2) +
-  geom_line(data=newdata_ukbms, aes(x=mid.year, y=lag0, linetype=Abundance_change), colour="black", lwd=1) +
-  labs(x="Mid year of moving window", y="Population synchrony") +
+png("../Graphs/Abundance/Abundance_change_ukbms_00_12.png", height = 150, width = 180, units = "mm", res = 300)
+abund <- ggplot(mapping=aes(x=Abundance, y=slope, ymin=slope-SE, ymax=slope+SE)) +
+  geom_point(data=results_table, size=2, color="lightgrey", position=myjit) +
+  geom_errorbar(data=results_table, color="lightgrey", position=myjit, width=0.1) +
+  geom_point(data=model_summary, size=4) +
+  geom_errorbar(data=model_summary, width=0.1) +
+  labs(x="Change in abundance", y="Change in population synchrony 2000-2012") +
+  scale_y_continuous(breaks = seq(-0.2,0.3,0.1)) +
   theme_bw() +
-  theme(legend.key.width = unit(0.8,"cm"), legend.key = element_rect(size = 2), text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), legend.margin=margin(c(-10,20,-10,0)),
-        axis.text.x=element_text(colour="black"), axis.text.y = element_text(colour="black")) +
-  scale_linetype_manual(name="Change in abundance",
-                        labels=c("Increase", "Decrease"), values=c(1,2)) +
-  scale_shape_manual(name="", 
-                     labels=c("Increase", "Decrease"), values=c(16,4)) +
-  guides(shape = guide_legend(override.aes = list(size = 3))) +
-  guides(linetype = guide_legend(override.aes = list(size = 0.5)))
+  theme(text = element_text(size = 10), panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
+        axis.text.x=element_text(colour="black"), axis.text.y = element_text(colour="black"))
+abund
+dev.off()
 
-butterfly_abund
+readPNG("../Graphs/Specialism/Specialism_change_predicted_ukbms_85_00.png", native = FALSE, info = FALSE)
 
+install.packages("ggpubr")
+library(ggpubr)
+png("../Graphs/FINAL/Figure4.png", height = 200, width = 150, units = "mm", res = 300)
+ggarrange(spec, abund, 
+          labels = c("(a)", "(b)"), font.label = list(size = 10, color ="black"),
+          ncol = 1, nrow = 2)
 dev.off()
 
 myjit <- ggproto("fixJitter", PositionDodge,
@@ -465,5 +466,5 @@ summary(abund_model_bbs)
 ## intercept is mid.year 1999
 anova(abund_model_bbs)
 ## mid.year*mean_abund_change interaction is non-significant (0.26)
-results_table_abund_bbs <- data.frame(summary(abund_model_bbs)$coefficients[,1:5]) ## 22 species
+results_table_abund_bbs <- data.frame(summary(abund_model_bbs)$coefficients[,1:5]) ## 18 species
 write.csv(results_table_abund_bbs, file = "../Results/Model_outputs/BBS/change_abund_bbs.csv", row.names=TRUE)

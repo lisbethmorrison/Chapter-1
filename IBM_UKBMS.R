@@ -12,7 +12,7 @@ library(gridExtra)
 # List of 14 species of interest
 species_list <- read.csv("../IBM_UKBMS/species_list.csv")
 # Traits database of 14 species
-trait_data <- read.csv("../IBM_UKBMS/UKBMS_14spp_traits.csv")
+trait_data <- read.csv("../IBM_UKBMS/UKBMS_16spp_traits.csv")
 # Site index scores for all years of UKBMS up to 2016 for UK species
 s_index <-read.csv("../IBM_UKBMS/ukbms_sindex.csv")
 # CEH landcover map data
@@ -26,8 +26,8 @@ names(s_index)<-tolower(names(s_index))
 
 #### ~ Site Selection ####
 
-# Remove all site index data before 1997 - only want last 20 years of data 1997
-# -2016 inc. Only want where brood = 0 and where s_index is 0 or greater
+# Remove all site index data before 2007 - only want last 10 years of data 
+# 2007-2016 inc. Only want where brood = 0 and where s_index is 0 or greater
 s_index <- s_index %>%
   filter(year >= 2007) %>%
   filter(brood == 0) %>%
@@ -35,7 +35,12 @@ s_index <- s_index %>%
 
 ## merge in species_list so sindex only has the 14 species we're interested in
 s_index <- merge(s_index, species_list, by="species", all=FALSE)
-length(unique(s_index$species)) ## 14 species
+length(unique(s_index$species)) ## 16 species
+
+s_index$site <- as.factor(s_index$site)
+s_index$species <- as.factor(s_index$species)
+s_index$year <- as.factor(s_index$year)
+s_index$sindex <- as.numeric(s_index$sindex)
 
 # Create list of potential sites by finding out how many sites have 10 years of 
 # counts for all species
@@ -54,12 +59,12 @@ possible_sites2 <- possible_sites %>%
 # possible_sites3 <- subset(possible_sites3, n==14) ## 102 sites
 
 # Create list of sites
-site_list <- unique(possible_sites2$site) # 1068 sites
+site_list <- unique(possible_sites2$site) # 1895 sites
 
 # Filter gis data to only include UKBMS sites with 500m buffer
 # Select only woodland (combine broadleaf and coniferous), arable, chalk and 
 # urban
-## only 749 (out of 1068) have gis data
+## only 505 (out of 1895) have gis data
 gis_data <- gis_data %>%
   filter(Surv == "UKBMS" & buffer == "2000") %>%
   filter(siteno.gref %in% site_list) %>%
@@ -91,7 +96,10 @@ top_sites <- gis_data %>% gather(key=habitat_type,value=value,-siteno.gref) %>% 
   top_n(5,value) %>% #select the top 5 sites for each habitat type
   arrange(habitat_type,-value) #sort by habitat type and descending value
 top_sites <- droplevels(top_sites)
-
+## two arable sites have exact same percentage
+## remove one of them (keep site = 173)
+top_sites <- top_sites[-c(6),]
+top_sites <- droplevels(top_sites)
 # Create list of sites
 selected_sites <- unique(top_sites$siteno.gref) ## 20 unique sites
 
@@ -227,6 +235,26 @@ arable_plot <- ggplot(arable,
 
 arable_plot
 
+## choose 8 species for Luke's poster
+arable <- arable[c(2:4,7,9:11,15),] 
+
+## save plot
+png("../IBM_UKBMS/arable_proportions.png", height = 250, width = 300, units = "mm", res = 300)
+arable_plot2 <- ggplot(arable,
+                      aes(common_name, proportion, fill = specialism)) +
+  geom_bar(stat = "identity") +
+  theme_classic() +
+  xlab("Species") +
+  ylab("Proportion") +
+  ylim(0,0.45) +
+  labs(title = "Arable") +
+  scale_fill_discrete(name = "Specialism",
+                      labels = c("Specialist", "Wider Countryside")) +
+  theme(axis.text.x=element_text(size=20, angle=-45, hjust=0), axis.text.y=element_text(size=20), axis.title=element_text(size=20),
+        legend.title=element_text(size=20), legend.key.size = unit(0.9, "cm"),
+        legend.text=element_text(size=20))
+arable_plot2
+dev.off()
 
 #### ~ Woodland ####
 
@@ -263,6 +291,27 @@ chalk_grassland_plot <-
                       labels = c("Specialist", "Wider Countryside"))
 
 chalk_grassland_plot
+
+## choose 8 species for Luke's poster
+chalk_grassland <- chalk_grassland[c(2:4,7,9:11,15),] 
+
+## save plot
+png("../IBM_UKBMS/chalk_grass_proportions.png", height = 250, width = 300, units = "mm", res = 300)
+chalk_grassland_plot2 <- ggplot(chalk_grassland,
+                       aes(common_name, proportion, fill = specialism)) +
+  geom_bar(stat = "identity") +
+  theme_classic() +
+  xlab("Species") +
+  ylab("Proportion") +
+  ylim(0,0.45) +
+  labs(title = "Chalk grassland") +
+  scale_fill_discrete(name = "Specialism",
+                      labels = c("Specialist", "Wider Countryside")) +
+  theme(axis.text.x=element_text(size=20, angle=-45, hjust=0), axis.text.y=element_text(size=20), axis.title=element_text(size=20),
+        legend.title=element_text(size=20), legend.key.size = unit(0.9, "cm"),
+        legend.text=element_text(size=20))
+chalk_grassland_plot2
+dev.off()
 
 
 #### ~ Grassland ####

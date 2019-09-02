@@ -18,7 +18,7 @@ options(scipen=999)
 
 
 ## load data
-pair_attr <- read.csv("../Data/Bird_sync_data/pair_attr_CBC.csv", header=TRUE)
+pair_attr <- read.csv("../Data/Bird_sync_data/pop_climate_synchrony_CBC.csv", header=TRUE) 
 
 ### just want to compare 1985 with 1996 
 ## to see if there has been an increase/decrease/no change in connectivity
@@ -70,7 +70,7 @@ for (i in spp.list){
     next
   }
 
-    model_comp <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id), data = pair_attr_comp[pair_attr_comp$spp==i,])
+    model_comp <- lmer(lag0 ~ mean_northing + distance + hab_sim + summer_temp + mid.year + (1|pair.id), data = pair_attr_comp[pair_attr_comp$spp==i,])
     summary(model_comp)
     anova(model_comp)
 
@@ -126,7 +126,7 @@ spp_list <- unique(F_result_final$j) ## only run this on the species that work (
 
 ## Set up number of cores to run on (7)
 cores <- parallel::detectCores()
-cl <- makeSOCKcluster(cores[1]-1) # not to overload your computer
+cl <- makeCluster(cores[1]-1) # not to overload your computer
 registerDoSNOW(cl)
 
 ## this code creates a progress percentage bar
@@ -140,7 +140,7 @@ cbc_spp_para <- foreach (i=1:n_sims,  .combine=rbind, .options.snow = opts, .pac
   foreach (j=spp_list, .combine=rbind, .packages=c('lme4', 'foreach')) %dopar% { ## loop through each species
     print(j)
     pair_attr_comp$mid.year_shuffle <- sample(pair_attr_comp$mid.year) ## randomly shuffle mid year variable
-    model <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year_shuffle + (1|pair.id), data = pair_attr_comp[pair_attr_comp$spp==j,])
+    model <- lmer(lag0 ~ mean_northing + distance + hab_sim + summer_temp + mid.year_shuffle + (1|pair.id), data = pair_attr_comp[pair_attr_comp$spp==j,])
     ## run model with shuffled variable
     ## save results
     anoresult<-anova(model)
@@ -151,7 +151,7 @@ close(pb)
 stopCluster(cl)
 para_end_time = Sys.time()
 para_run_time = para_end_time - para_start_time
-print(paste0("TOTAL RUN TIME: ", para_run_time)) ## 9 mins for 999 runs
+print(paste0("TOTAL RUN TIME: ", para_run_time)) ## 23 mins for 999 runs
 #### end
 
 ### save results

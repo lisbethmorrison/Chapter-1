@@ -20,8 +20,11 @@ library(MuMIn)
 
 ## add data ##
 final_pair_data <- read.csv("../Data/Butterfly_sync_data/final_pair_data_all_spp.csv", header = TRUE) # pair attr synchrony data 35 species
-site_data_ukbms <- read.csv("../Data/UKBMS_data/pair_attr_mean_northing_dist_sim.csv", header = TRUE) # pair attr site data
+site_data <- read.csv("../Data/UKBMS_data/pair_attr_mean_northing_dist_sim.csv", header = TRUE) # pair attr site data
 trait_data <- read.csv("../Data/UKBMS_data/species.traits.full.table.csv", header = TRUE) # mobility trait data for each species
+
+## remove frequency columns
+final_pair_data <- final_pair_data[,-c(9,10)]
 
 ## merge to site data for each species ##
 pair_attr_1 <- merge(final_pair_data, site_data, by.x=c("site1", "site2"), by.y=c("site_a", "site_b"))  # merge the site comparisons in one direction - site a to a, b to b
@@ -41,23 +44,15 @@ pair_attr$spp <- droplevels(pair_attr$spp)
 length(unique(pair_attr$spp)) ## 32 species
 
 # centre and standardize the distance and northing variables
-### standardise by mean and sd
-pair_attr$distance <- (pair_attr$distance - mean(na.omit(pair_attr$distance)))/sd(na.omit(pair_attr$distance))
-pair_attr$mean_northing <- (pair_attr$mean_northing - mean(na.omit(pair_attr$mean_northing)))/sd(na.omit(pair_attr$mean_northing))
-pair_attr$renk_hab_sim <- (pair_attr$renk_hab_sim - mean(na.omit(pair_attr$renk_hab_sim)))/sd(na.omit(pair_attr$renk_hab_sim))
+pair_attr[c(13:15)] <- lapply(pair_attr[c(13:15)], function(pair_attr) c(scale(pair_attr, center = TRUE, scale = TRUE))) 
 
-## double check SD is 1
+## double check SD is 1 and mean = 0
 sd(pair_attr$distance) # =1
 sd(pair_attr$mean_northing) # =1
 sd(pair_attr$renk_hab_sim) # =1
-
-# check colinearity
-cor.test(pair_attr$mean_northing, pair_attr$distance) # -0.045
-cor.test(pair_attr$mean_northing, pair_attr$renk_hab_sim) # 0.097
-summary(lm(mean_northing ~ end.year, data = pair_attr)) # 0.001
-cor.test(pair_attr$distance, pair_attr$renk_hab_sim) # -0.08
-summary(lm(distance ~ end.year, data = pair_attr)) # 0.002
-summary(lm(renk_hab_sim ~ end.year, data = pair_attr)) # 4.796e-05
+mean(pair_attr$distance) # =0
+mean(pair_attr$mean_northing) # =0
+mean(pair_attr$renk_hab_sim) # =0
 
 ## merge with trait data 
 pair_attr <- merge(pair_attr, trait_data, by.x="spp", by.y="species")
@@ -65,7 +60,7 @@ summary(pair_attr)
 length(unique(pair_attr$spp)) # 32 species
 pair_attr <- droplevels(pair_attr)
 ## remove columns not needed
-pair_attr <- pair_attr[-c(9:10, 18, 22:48, 50:52, 54:56)]
+pair_attr <- pair_attr[-c(20:46,48:50,52:54)]
 summary(pair_attr)
 length(unique(pair_attr$spp)) # 32 species
 ## 32 species - NA's are there because spp 100 has no mobility data
@@ -172,7 +167,7 @@ names(pair_attr_test1)[1:5] <- c("site_b_EAST", "site_b_NORTH", "site_5k_b_EAST"
 ## remove duplicated rows (now the same length as pair_attr_climate)
 pair_attr_test2 <- unique(pair_attr_test1)
 ## reorder columns
-pair_attr_climate <- pair_attr_test2[,c(11,12,6,7,1,2,10,5,8,9,3,4,13:35)]
+pair_attr_climate <- pair_attr_test2[,c(11,12,6,7,1,2,10,5,8,9,3,4,13:36)]
 ## create new 5km pairID column
 pair_attr_climate$pair.id_5k <- paste("ID", pair_attr_climate$site_5k_a, pair_attr_climate$site_5k_b, sep = "_")
 length(unique(pair_attr_climate$pair.id_5k)) ## 23,265
@@ -214,7 +209,7 @@ write.csv(pop_climate_results, file = "../Results/Model_outputs/UKBMS/pop_climat
 ## read in data
 # pair_attr <- read.csv("../Data/Butterfly_sync_data/pair_attr.csv", header=TRUE) # pair attribute synchrony data for 35 species
 ## and read in pop and climate synchrony
-pair_attr_climate <- read.csv("../Data/Butterfly_sync_data/pop_climate_synchrony.csv", header=TRUE)  # pop synchrony for 32 species and climate synchrony for 8 variables
+pair_attr <- read.csv("../Data/Butterfly_sync_data/pop_climate_synchrony.csv", header=TRUE)  # pop synchrony for 32 species and climate synchrony for 8 variables
 
 ## make sure correct variables are factors ## 
 str(pair_attr)
@@ -224,12 +219,6 @@ pair_attr$end.year <- as.factor(pair_attr$end.year)
 pair_attr$mid.year <- as.factor(pair_attr$mid.year)
 pair_attr$pair.id <- as.character(pair_attr$pair.id)
 
-pair_attr_climate$spp <- as.factor(pair_attr_climate$spp)
-pair_attr_climate$start.year <- as.factor(pair_attr_climate$start.year)
-pair_attr_climate$end.year <- as.factor(pair_attr_climate$end.year)
-pair_attr_climate$mid.year <- as.factor(pair_attr_climate$mid.year)
-pair_attr_climate$pair.id <- as.character(pair_attr_climate$pair.id)
-
 ###############################################
 ### run the synchrony model for all species ###
 ###############################################
@@ -238,27 +227,28 @@ length(unique(pair_attr$spp)) ## 32 species
 
 ## first check whether family and genus is significant in main model (phylogenetic checks)
 ### run model with family to test for a relationship with synchrony
-all_spp_model_family <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + family + (1|pair.id) + (1|spp), data = pair_attr)
+all_spp_model_family <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + winter_rain + autumn_rain + spring_rain + 
+                               summer_rain + winter_temp + autumn_temp + spring_temp + summer_temp + family + (1|pair.id) + (1|spp), data = pair_attr)
 summary(all_spp_model_family) 
 anova(all_spp_model_family) ## family non-significant
 
 ### run model with genus to test for a relationship with synchrony
-all_spp_model_genus <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + genus + (1|pair.id) + (1|spp), data = pair_attr)
+all_spp_model_genus <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + winter_rain + autumn_rain + spring_rain + 
+                              summer_rain + winter_temp + autumn_temp + spring_temp + summer_temp + genus + (1|pair.id) + (1|spp), data = pair_attr)
 summary(all_spp_model_genus) 
 anova(all_spp_model_genus) ## genus non-significant
 
 ## run model with intercept to get fixed effect results
 ## model with intercept
-all_spp_model_int <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
+all_spp_model_int <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + winter_rain + autumn_rain + spring_rain + 
+                            summer_rain + winter_temp + autumn_temp + spring_temp + summer_temp + (1|pair.id) + (1|spp), data = pair_attr)
 
 ### save results for northing, distance and hab sim
 fixed_results <- data.frame(summary(all_spp_model_int)$coefficients[,1:5])
 fixed_results$parameter <- paste(row.names(fixed_results))
 rownames(fixed_results) <- 1:nrow(fixed_results)
-r.squaredGLMM(all_spp_model_int)
-## R^2 marginal (fixed) = 0.020, R^2 conditional (random) = 0.222
 ## remove mid.year rows
-fixed_results <- fixed_results[-c(1,5:31),]
+fixed_results <- fixed_results[-c(1,5:39),]
 ## save results
 write.csv(fixed_results, file = "../Results/Model_outputs/UKBMS/fixed_effect_results_ukbms.csv", row.names=FALSE)
 

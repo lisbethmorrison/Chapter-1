@@ -20,11 +20,11 @@ library(dplyr)
 # results_final_all_spp_BBS_3 <- read.csv("../Results/Bird_results/results_final_all_spp_BBS_3.csv", header=TRUE)
 # results_final_all_spp_BBS_4 <- read.csv("../Results/Bird_results/results_final_all_spp_BBS_4.csv", header=TRUE)
 # results_final_all_spp_BBS_5 <- read.csv("../Results/Bird_results/results_final_all_spp_BBS_5.csv", header=TRUE)
-results_final_all_spp_BBS <- read.csv("../Results/Bird_results/results_final_all_spp_BBS.csv", header=TRUE)
-results_final_all_spp_climate_BBS <- read.csv("../Results/Bird_results/results_final_all_spp_climate_BBS.csv", header=TRUE)
+# results_final_all_spp_BBS <- read.csv("../Results/Bird_results/results_final_all_spp_BBS.csv", header=TRUE)
+results_final_all_spp_BBS <- read.csv("../Results/Bird_results/results_final_all_spp_climate_BBS.csv", header=TRUE)
 
 ## FCI plot with error bars and sacled to 100
-FCI_plot_scaled_error <- ggplot(results_final_all_spp_climate_BBS, aes(x = parameter, y = rescaled_FCI)) +
+FCI_plot_scaled_error <- ggplot(results_final_all_spp_BBS, aes(x = parameter, y = rescaled_FCI)) +
   stat_smooth(colour="black", method=loess, se=FALSE) +
   geom_errorbar(aes(ymin = rescaled_FCI - rescaled_sd, ymax = rescaled_FCI + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
