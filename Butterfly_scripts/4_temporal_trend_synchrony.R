@@ -175,6 +175,7 @@ length(unique(pair_attr_climate$pair.id)) ## 37,616
 
 ## save pop + climate sync file
 write.csv(pair_attr_climate, file = "../Data/Butterfly_sync_data/pop_climate_synchrony.csv", row.names=FALSE)
+pair_attr_climate <- read.csv("../Data/Butterfly_sync_data/pop_climate_synchrony.csv", header=TRUE)
 
 ###### run model with pop sync as response and climate variables as explanatory
 pair_attr_climate$spp <- as.factor(pair_attr_climate$spp)
@@ -185,6 +186,11 @@ pair_attr_climate$pair.id_5k <- as.character(pair_attr_climate$pair.id_5k)
 pop_climate <- lmer(lag0 ~ mid.year + winter_rain + autumn_rain + spring_rain + summer_rain + winter_temp + autumn_temp + 
                       spring_temp + summer_temp + (1|spp) + (1|pair.id) + (1|pair.id_5k), data=pair_attr_climate)
 summary(pop_climate)
+
+r.squaredGLMM(pop_climate) ## R^2 marginal = 0.017 (1.7%)
+
+## run model again with only
+
 anova(pop_climate)
 ## all 8 are significant
 ## most positive
@@ -251,6 +257,16 @@ rownames(fixed_results) <- 1:nrow(fixed_results)
 fixed_results <- fixed_results[-c(1,5:39),]
 ## save results
 write.csv(fixed_results, file = "../Results/Model_outputs/UKBMS/fixed_effect_results_ukbms.csv", row.names=FALSE)
+
+## run model without with all fixed effects and then minus climate varaible to compare R2
+climate_model1 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + winter_rain + autumn_rain + spring_rain + 
+                         summer_rain + winter_temp + autumn_temp + spring_temp + summer_temp + (1|pair.id) + (1|spp), data = pair_attr)
+climate_model2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
+## calc R2 and take difference (marginal == fixed effects)
+r.squaredGLMM(climate_model1)
+r.squaredGLMM(climate_model2)
+x = 0.02077165 - 0.02042361
+x2 = x*100 ## 0.035% or 0.00035 proportion
 
 ###########################################################################################
 ##  model to produce aggregate synchrony values for all 32 species - no intercept

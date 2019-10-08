@@ -264,6 +264,16 @@ results_table_all_spp$rescaled_ci <- results_table_all_spp$rescaled_sd*1.96
 ## save final results table ##
 write.csv(results_table_all_spp, file = "../Results/Bird_results/results_final_all_spp_climate_CBC.csv", row.names=FALSE)
 
+## run model without with all fixed effects and then minus climate varaible to compare R2
+climate_model1 <- lmer(lag0 ~ mean_northing + distance + hab_sim + summer_temp + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
+climate_model2 <- lmer(lag0 ~ mean_northing + distance + hab_sim + mid.year + (1|pair.id) + (1|spp), data = pair_attr)
+## calc R2 and take difference (marginal == fixed effects)
+r.squaredGLMM(climate_model1)
+r.squaredGLMM(climate_model2)
+x = 0.0008511256 - 0.000607122
+x ## 0.00024
+x2 = x*100 ## 0.024%
+
 
 ##################################################
 ##### model to produce one line per species #####
