@@ -38,7 +38,7 @@ FCI_plot_scaled <- ggplot(results_final_all_spp, aes(x = parameter, y = rescaled
   geom_errorbar(aes(ymin = rescaled_FCI - rescaled_sd, ymax = rescaled_FCI + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
   labs(x = "Mid-year of moving window", y = "Population synchrony") +
-  #scale_y_continuous(breaks=seq(40,160,10)) +
+  ylim(-60,160) +
   scale_x_continuous(breaks=seq(1985,2012,3)) +
   geom_hline(yintercept = 100, linetype = "dashed") +
   theme_bw() +
@@ -59,7 +59,7 @@ FCI_BBS <- ggplot(results_final_all_spp_BBS, aes(x = parameter, y = rescaled_FCI
   geom_errorbar(aes(ymin = rescaled_FCI - rescaled_sd, ymax = rescaled_FCI + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
   labs(x = "Mid-year of moving window", y = "Population synchrony") +
-  scale_y_continuous(breaks=seq(-20,180,20)) +
+  ylim(-60,160) +
   scale_x_continuous(breaks=seq(1999,2012,3)) +
   theme_bw() +
   theme(text = element_text(size = 11)) +
@@ -74,7 +74,7 @@ FCI_CBC <- ggplot(results_final_all_spp_CBC, aes(x = parameter, y = rescaled_FCI
   geom_errorbar(aes(ymin = rescaled_FCI - rescaled_sd, ymax = rescaled_FCI + rescaled_sd), width=0.2, size = 0.5) +
   geom_point(size=2) + 
   labs(x = "Mid-year of moving window", y = "Population synchrony") +
-  scale_y_continuous(breaks=seq(0,200,20)) +
+  ylim(-60,160) +
   scale_x_continuous(breaks=seq(1985,1996,3)) +
   theme_bw() +
   theme(text = element_text(size = 11)) +
@@ -157,10 +157,15 @@ birds <- birds + theme(legend.position="none")
 
 percentages <- grid.arrange(butterfly2, legend, birds, ncol=1, nrow = 3, widths = c(2.7), heights = c(2.5, 0.4, 2.5))
 
+gt <- arrangeGrob(FCI_plot_scaled, percentages,
+                  FCI_CBC, FCI_BBS, 
+                  layout_matrix=cbind(c(1,3), c(1,4), c(2,2)), nrow=2) ## lay the plots out correctly
+
 png("../Graphs/FINAL/Figure2.png", height = 150, width = 220, units = "mm", res = 300)
-grid.arrange(FCI_plot_scaled, percentages,
-             FCI_CBC, FCI_BBS, 
-             layout_matrix=cbind(c(1,3), c(1,4), c(2,2)), nrow=2)
+p <- as_ggplot(gt) +                                # transform to a ggplot
+  draw_plot_label(label = c("(a)", "(b)", "(c)", "(d)", "(e)"), size = 12,
+                  x = c(0, 0, 0.35,0.65,0.65), y = c(1, 0.5, 0.5,1,0.5))
+p
 dev.off()
 
 ##### method to obtain smoothed values with 95% confidence intervals for indicator
