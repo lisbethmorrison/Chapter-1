@@ -87,11 +87,14 @@ average_synchrony$Scheme <- as.factor(average_synchrony$Scheme)
 levels(average_synchrony$Scheme)
 average_synchrony$Scheme <- factor(average_synchrony$Scheme, levels=c("UKBMS", "CBC", "BBS"))
 
+average_synchrony$vars <- as.factor(average_synchrony$vars)
+levels(average_synchrony$vars)
+average_synchrony$vars <- factor(average_synchrony$vars, levels=c("Mean northing", "Habitat similarity", "Distance", "Specialism", "Mobility", "Abundance"))
+
 ######## FINAL PLOT!!! ########
-png("../Graphs/FINAL/Figure3.png", height = 100, width = 173, units = "mm", res = 300)
+png("../Graphs/FINAL/Figure3.png", height = 100, width = 180, units = "mm", res = 300)
 ggplot(data=average_synchrony,aes(x=vars,y=Estimate, group=Scheme),position=position_dodge(width=0.5)) +
   geom_point(aes(shape=Scheme), size=3,position=position_dodge(width=0.5)) +
-  scale_x_discrete(limits=c("Specialism", "Mobility", "Abundance", "Mean northing",  "Distance","Habitat similarity")) +
   geom_errorbar(aes(ymin=Estimate-CI,ymax=Estimate+CI), position=position_dodge(width=0.5),width=0.2) +
   geom_hline(yintercept=0,linetype="dashed") +
   #scale_y_continuous(breaks=seq(-0.1,0.2,0.05)) +
@@ -104,7 +107,6 @@ dev.off()
 ## also save as pdf
 figure3 <- ggplot(data=average_synchrony,aes(x=vars,y=Estimate, group=Scheme),position=position_dodge(width=0.5)) +
   geom_point(aes(shape=Scheme), size=3,position=position_dodge(width=0.5)) +
-  scale_x_discrete(limits=c("Specialism", "Mobility", "Abundance", "STI", "Mean northing",  "Distance","Habitat similarity")) +
   geom_errorbar(aes(ymin=Estimate-CI,ymax=Estimate+CI), position=position_dodge(width=0.5),width=0.2) +
   geom_hline(yintercept=0,linetype="dashed") +
   scale_y_continuous(breaks=seq(-0.1,0.2,0.05)) +
