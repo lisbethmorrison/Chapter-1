@@ -429,37 +429,6 @@ anova(dispersal_model_bbs1)
 results_table_dispersal_bbs <- data.frame(summary(dispersal_model_bbs1)$coefficients[,1:5])
 write.csv(results_table_dispersal_bbs, file = "../Results/Model_outputs/BBS/change_mob_bbs.csv", row.names=TRUE)
 
-# ## run model with three mobility groups (low, med, high)
-# pair_attr_bbs$Breeding_AM <- as.numeric(pair_attr_bbs$Breeding_AM)
-# pair_attr_bbs$Breeding_AM_score <- cut(pair_attr_bbs$Breeding_AM, 3, labels=FALSE)
-# pair_attr_bbs$Breeding_AM_score <- as.factor(pair_attr_bbs$Breeding_AM_score)
-# 
-# ## remove NAs (one species == redstart)
-# pair_attr_bbs <- na.omit(pair_attr_bbs)
-# summary(pair_attr_bbs)  
-# 
-# dispersal_model_bbs2 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*Breeding_AM_score + (1|spp) + (1|pair.id), data=pair_attr_bbs)
-# summary(dispersal_model_bbs2)
-# anova(dispersal_model_bbs2)
-# ## interaction is very significant (p<0.000001)
-# 
-# ## run model with 2 mobility groups (low and high)
-# pair_attr_bbs$Breeding_AM <- as.numeric(pair_attr_bbs$Breeding_AM)
-# pair_attr_bbs$Breeding_AM_score2 <- cut(pair_attr_bbs$Breeding_AM, 2, labels=FALSE)
-# pair_attr_bbs$Breeding_AM_score2 <- as.factor(pair_attr_bbs$Breeding_AM_score2)
-# 
-# start_time <- Sys.time()
-# dispersal_model_bbs3 <- lmer(lag0 ~ mean_northing + distance + renk_hab_sim + mid.year*Breeding_AM_score2 + (1|spp) + (1|pair.id), data=pair_attr_bbs)
-# end_time <- Sys.time()
-# end_time - start_time ## 34 seconds
-# 
-# summary(dispersal_model_bbs3)
-# anova(dispersal_model_bbs3)
-# ## interaction is very significant (p<0.000001)
-# ## save model output
-# results_table_dispersal_bbs <- data.frame(summary(dispersal_model_bbs3)$coefficients[,1:5])
-# write.csv(results_table_dispersal_bbs, file = "../Results/Model_outputs/BBS/change_mob_bbs.csv", row.names=TRUE)
-
 ############################################# PLOT REUSLT ############################################# 
 
 ## run model without mobility for each species and extract the slope (mid.year) coefficient for each
@@ -505,26 +474,26 @@ results_table_dispersal_bbs$Mobility <- paste(row.names(results_table_dispersal_
 rownames(results_table_dispersal_bbs) <- 1:nrow(results_table_dispersal_bbs)
 results_table_dispersal_bbs <- results_table_dispersal_bbs[c(8,10),]
 
+## extract slope and SE for interaction and mid.year
 mid.year_slope <- results_table_dispersal_bbs[1,1]
-interaction_slope <- results_table_dispersal_bbs[1,2]
+interaction_slope <- results_table_dispersal_bbs[2,1]
+se_mid.year <- results_table_dispersal_bbs[1,2]
+se_interaction <- results_table_dispersal_bbs[2,2]
 
-at.x2<-unique(results_table$Mobility)
-slopes <- mid.year_slope + interaction_slope * at.x2
+## get slopes for each value of mobility
+mobility<-unique(results_table$Mobility)
+slopes <- mid.year_slope + interaction_slope * mobility
 slopes
 
-estvar<-vcov(dispersal_model_bbs1); dispersal_model_bbs1.vcov<-as.data.frame(as.matrix(estvar))
-var.b1<-dispersal_model_bbs1.vcov["mid.year","mid.year"]
-var.b3<-dispersal_model_bbs1.vcov["mid.year:Breeding_AM","mid.year:Breeding_AM"]
-cov.b1.b3<-dispersal_model_bbs1.vcov["mid.year","mid.year:Breeding_AM"]
-
-SEs <- rep(NA, length(at.x2))
-for (i in 1:length(at.x2)){
-  j <- at.x2[i]  
-  SEs[i] <- sqrt(var.b1 + var.b3 * j^2 + 2*j* cov.b1.b3)
+## get standard errors for each value of mobility
+SEs <- rep(NA, length(mobility))
+for (i in 1:length(mobility)){
+  j <- mobility[i]  
+  SEs[i] <- sqrt((se_interaction * j)^2 + se_mid.year^2) 
 }
-model_summary <- data.frame(Mobility=at.x2, slope=slopes, SE=SEs)
+model_summary <- data.frame(Mobility=mobility, slope=slopes, SE=SEs)
 
-png("../Graphs/Mobility/Mobility_change_bbs_99_12.png", height = 150, width = 180, units = "mm", res = 300)
+png("../Graphs/FINAL/Figure5.png", height = 11, width = 11, units = "cm", res = 300)
 ggplot(mapping=aes(x=Mobility, y=slope, ymin=slope-SE, ymax=slope+SE)) +
   geom_point(data=results_table, size=2, color="lightgrey") +
   geom_errorbar(data=results_table, color="lightgrey", width=0.1) +
@@ -533,7 +502,7 @@ ggplot(mapping=aes(x=Mobility, y=slope, ymin=slope-SE, ymax=slope+SE)) +
   labs(x="Standardised dispersal distance", y="Change in population synchrony 1999-2012") +
   scale_x_continuous(breaks = seq(-2,3,0.5)) +
   theme_bw() +
-  theme(text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
+  theme(text = element_text(size = 10), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
         axis.text.x=element_text(colour="black"), axis.text.y = element_text(colour="black"))
 dev.off()

@@ -68,6 +68,7 @@ bbs_fixed <- bbs_fixed[,c(6,1,2,3,4,5,7)]
 
 average_synchrony <- rbind(ukbms_strat, ukbms_common, ukbms_mob, ukbms_fixed, cbc_strat, cbc_common, 
                            cbc_mob, cbc_fixed, bbs_strat, bbs_common, bbs_mob, bbs_fixed)
+average_synchrony <- rbind(ukbms_fixed, cbc_fixed, bbs_fixed)
 colnames(average_synchrony)[1] <- "vars"
 rownames(average_synchrony) <- 1:nrow(average_synchrony)
 
@@ -89,18 +90,18 @@ average_synchrony$Scheme <- factor(average_synchrony$Scheme, levels=c("UKBMS", "
 
 average_synchrony$vars <- as.factor(average_synchrony$vars)
 levels(average_synchrony$vars)
-average_synchrony$vars <- factor(average_synchrony$vars, levels=c("Mean northing", "Habitat similarity", "Distance", "Specialism", "Mobility", "Abundance"))
+average_synchrony$vars <- factor(average_synchrony$vars, levels=c("Distance", "Habitat similarity", "Mean northing"))
 
 ######## FINAL PLOT!!! ########
-png("../Graphs/FINAL/Figure3.png", height = 100, width = 180, units = "mm", res = 300)
+png("../Graphs/FINAL/Figure3_fixed.png", height = 12, width = 20, units = "cm", res = 300)
 ggplot(data=average_synchrony,aes(x=vars,y=Estimate, group=Scheme),position=position_dodge(width=0.5)) +
   geom_point(aes(shape=Scheme), size=3,position=position_dodge(width=0.5)) +
   geom_errorbar(aes(ymin=Estimate-CI,ymax=Estimate+CI), position=position_dodge(width=0.5),width=0.2) +
   geom_hline(yintercept=0,linetype="dashed") +
   #scale_y_continuous(breaks=seq(-0.1,0.2,0.05)) +
-  labs(x = "Fixed effects", y = "Standardised coefficient") +
+  labs(x = "Control variables", y = "Standardised coefficient") +
   theme_bw() +
-  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+  theme(text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 dev.off()
 

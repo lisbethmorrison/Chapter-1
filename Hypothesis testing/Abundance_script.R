@@ -305,7 +305,7 @@ abund <- ggplot(mapping=aes(x=Abundance, y=slope, ymin=slope-SE, ymax=slope+SE))
   geom_point(data=model_summary, size=4) +
   geom_errorbar(data=model_summary, width=0.1) +
   labs(x="Change in abundance", y="Change in population synchrony 2000-2012") +
-  scale_y_continuous(breaks = seq(-0.2,0.3,0.1)) +
+  scale_y_continuous(breaks = seq(-0.02,0.03,0.01)) +
   theme_bw() +
   theme(text = element_text(size = 10), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
@@ -315,7 +315,6 @@ dev.off()
 
 readPNG("../Graphs/Specialism/Specialism_change_predicted_ukbms_85_00.png", native = FALSE, info = FALSE)
 
-install.packages("ggpubr")
 library(ggpubr)
 png("../Graphs/FINAL/Figure4.png", height = 200, width = 150, units = "mm", res = 300)
 ggarrange(spec, abund, 

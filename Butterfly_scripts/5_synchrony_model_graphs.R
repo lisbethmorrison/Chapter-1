@@ -42,7 +42,7 @@ FCI_plot_scaled <- ggplot(results_final_all_spp, aes(x = parameter, y = rescaled
   scale_x_continuous(breaks=seq(1985,2012,3)) +
   geom_hline(yintercept = 100, linetype = "dashed") +
   theme_bw() +
-  theme(text = element_text(size = 11)) +
+  theme(text = element_text(size = 8)) +
   labs(size=3) +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
@@ -62,7 +62,7 @@ FCI_BBS <- ggplot(results_final_all_spp_BBS, aes(x = parameter, y = rescaled_FCI
   ylim(-60,160) +
   scale_x_continuous(breaks=seq(1999,2012,3)) +
   theme_bw() +
-  theme(text = element_text(size = 11)) +
+  theme(text = element_text(size = 8)) +
   geom_hline(yintercept = 100, linetype = "dashed") +
   labs(size=3) +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
@@ -77,7 +77,7 @@ FCI_CBC <- ggplot(results_final_all_spp_CBC, aes(x = parameter, y = rescaled_FCI
   ylim(-60,160) +
   scale_x_continuous(breaks=seq(1985,1996,3)) +
   theme_bw() +
-  theme(text = element_text(size = 11)) +
+  theme(text = element_text(size = 8)) +
   geom_hline(yintercept = 100, linetype = "dashed") +
   labs(size=3) +
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
@@ -110,7 +110,7 @@ butterfly <- ggplot(data=UKBMS_percentages, aes(x=comparison, y=percentage, fill
   scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
   theme(legend.position="bottom",legend.direction="horizontal") +
   guides(fill = guide_legend(override.aes = list(size = 1))) +
-  theme(text = element_text(size = 11), panel.border = element_blank(), panel.grid.major = element_blank(),
+  theme(text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
 butterfly
 ## without overall change
@@ -124,8 +124,8 @@ butterfly2 <- ggplot(data=UKBMS_percentages, aes(x=comparison, y=percentage, fil
   theme(axis.text.y=element_text(colour = "black")) +
   scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
   theme(legend.position="bottom",legend.direction="horizontal") +
-  guides(fill = guide_legend(override.aes = list(size = 1))) +
-  theme(text = element_text(size = 11), panel.border = element_blank(), panel.grid.major = element_blank(),
+  guides(fill = guide_legend(override.aes = list(size = 2))) +
+  theme(text = element_text(size = 8), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
 butterfly2
 
@@ -136,10 +136,10 @@ birds <- ggplot(data=model_comp_birds, aes(x=comparison, y=percentage, fill=chan
   theme_bw() +
   theme(axis.text.x=element_text(colour = "black")) +
   theme(axis.text.y=element_text(colour = "black")) +
-  guides(fill = guide_legend(override.aes = list(size = 6))) +
+  guides(fill = guide_legend(override.aes = list(size = 5))) +
   scale_y_continuous(breaks = seq(0,100,10), expand = c(0, 0)) +
   theme(legend.position="top") +
-  theme(text = element_text(size = 11), panel.border = element_blank(), 
+  theme(text = element_text(size = 8), panel.border = element_blank(), 
         panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) 
 birds
 
@@ -161,10 +161,10 @@ gt <- arrangeGrob(FCI_plot_scaled, percentages,
                   FCI_CBC, FCI_BBS, 
                   layout_matrix=cbind(c(1,3), c(1,4), c(2,2)), nrow=2) ## lay the plots out correctly
 
-png("../Graphs/FINAL/Figure2.png", height = 150, width = 220, units = "mm", res = 300)
+png("../Graphs/FINAL/Figure2.png", height = 13, width = 18, units = "cm", res = 300)
 p <- as_ggplot(gt) +                                # transform to a ggplot
-  draw_plot_label(label = c("(a)", "(b)", "(c)", "(d)", "(e)"), size = 12,
-                  x = c(0, 0, 0.35,0.65,0.65), y = c(1, 0.5, 0.5,1,0.5))
+  draw_plot_label(label = c("(a)", "(b)", "(c)", "(d)", "(e)"), size = 10,
+                  x = c(0, 0, 0.35,0.65,0.64), y = c(1, 0.5, 0.5,1,0.5))
 p
 dev.off()
 

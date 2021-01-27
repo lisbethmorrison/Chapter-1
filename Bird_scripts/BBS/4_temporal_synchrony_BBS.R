@@ -290,27 +290,22 @@ for (i in unique(pair_attr$spp)){
 }
 
 ## change names and add in parameter column ##
-names(results_table_sp) <- c("FCI", "SD", "t","sp")
+names(results_table_sp) <- c("FCI", "SD", "df","sp")
 results_table_sp$parameter <- paste(row.names(results_table_sp))
 rownames(results_table_sp) <- 1:nrow(results_table_sp)
 
-## take out 3 columns for each species: mean northing, distance and renk_hab_sim
-results_table4 <- NULL
-results_table1 <- results_table_sp[grep("mean_northing", results_table_sp$parameter),]
-results_table2 <- results_table_sp[grep("distance", results_table_sp$parameter),]
-results_table3 <- results_table_sp[grep("hab_sim", results_table_sp$parameter),]
-results_table4 <- rbind(results_table4, results_table1, results_table2, results_table3)
-results_table_sp <- results_table_sp[!results_table_sp$parameter%in%results_table4$parameter,]
+## leave only rows with mid year (remove fixed effects)
+results_table_sp <- results_table_sp[grep("mid.year", results_table_sp$parameter),]
 
 ## change parameter names to year
 results_table_sp$parameter <- rep(1999:2012)
 
 results_final_sp <- NULL
-for (i in unique(results_table_sp$sp)){
+for (i in unique(results_table_sp$sp)[1]){print(i)}
   
   results_temp_sp <- results_table_sp[results_table_sp$sp==i,]  
   
-  results_temp_sp$rescaled_FCI <- results_temp_sp$FCI*(100/results_temp_sp$FCI[1])
+  results_temp_sp$rescaled_FCI <- results_temp_sp$FCI*(100/-results_temp_sp$FCI[1])
   results_temp_sp$rescaled_sd <- results_temp_sp$SD*(100/results_temp_sp$FCI[1])
   results_temp_sp$rescaled_ci <- results_temp_sp$rescaled_sd*1.96
   

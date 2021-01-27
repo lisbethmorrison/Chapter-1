@@ -190,7 +190,7 @@ spec <- ggplot(mapping=aes(x=Specialism, y=slope, ymin=slope-SE, ymax=slope+SE))
   labs(x="Specialism", y="Change in population synchrony 1985-2000") +
   #scale_y_continuous(breaks = seq(-1.8,0.8,0.4)) +
   theme_bw() +
-  theme(text = element_text(size = 12), panel.border = element_blank(), panel.grid.major = element_blank(),
+  theme(text = element_text(size = 10), panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),
         axis.text.x=element_text(colour="black"), axis.text.y = element_text(colour="black"))
 spec
